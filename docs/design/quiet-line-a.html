@@ -12,6 +12,7 @@
     h1 { margin: 0 0 8px; font-size: 28px; font-weight: 650; letter-spacing: -.04em; }
     .intro { margin: 0 0 26px; color: #b1c0b8; font-size: 15px; line-height: 1.5; }
     .frame { padding: 12px; border: 1px solid #34403e; border-radius: 20px; background: #161c1d; }
+    .frame + .frame { margin-top: 20px; }
     .desk { height: 440px; position: relative; overflow: hidden; border-radius: 12px; background: radial-gradient(circle at 72% 28%, #243532 0%, #172222 38%, #111718 100%); color: #e9eee8; font: 12px 'IBM Plex Sans', sans-serif; }
     .desk::before { content: ''; position: absolute; left: 54%; top: 36%; width: 250px; height: 250px; border: 1px solid #5e786b33; border-radius: 50%; transform: translate(-50%, -50%); box-shadow: 0 0 0 64px #5e786b0b, 0 0 0 128px #5e786b08; }
     .bar { position: absolute; z-index: 2; display: flex; align-items: center; gap: 10px; height: 40px; padding: 0 13px; background: #202929ee; border: 1px solid #56685e55; border-radius: 12px; box-shadow: 0 9px 28px #0005; }
@@ -22,7 +23,8 @@
     .dot.active { background: #c6dfca; width: 18px; border-radius: 8px; }
     .grow { flex: 1; }
     .muted { color: #9faea5; }
-    .mode { background: #c5ddc9; color: #13201a; font-weight: 700; padding: 6px 10px; border-radius: 8px; }
+    .mode { background: #c5ddc9; color: #13201a; font-weight: 700; padding: 6px 10px; border-radius: 8px; transition: transform 180ms ease, background 180ms ease; }
+    .mode:hover { transform: translateY(-2px); background: #d6ead8; }
     .window { position: absolute; z-index: 1; background: #202a2b; border: 1px solid #63766a88; border-radius: 13px; box-shadow: 0 17px 28px #0006; overflow: hidden; }
     .window-head { height: 29px; display: flex; align-items: center; gap: 8px; padding: 0 11px; color: #c9d5cd; border-bottom: 1px solid #3d4b46; font-size: 10px; }
     .window-head i { width: 5px; height: 5px; background: #8baa93; border-radius: 50%; }
@@ -32,14 +34,29 @@
     .line.medium { width: 70%; }
     .tile-left { top: 66px; left: 14px; bottom: 14px; width: 43%; }
     .tile-right { top: 66px; left: calc(43% + 25px); right: 14px; bottom: 14px; }
+    .float-left { top: 75px; left: 8%; width: 52%; height: 276px; }
+    .float-right { top: 116px; right: 8%; width: 42%; height: 241px; background: #192223; }
+    .float-left .window-body { padding: 16px; }
+    .float-right .window-body { padding: 16px; }
+    .window-body .line:first-child { margin-top: 5px; }
+    .line.accent { background: #9bbfa367; }
+    .dock { position: absolute; z-index: 4; left: 50%; bottom: 14px; display: flex; align-items: center; gap: 7px; padding: 8px 11px 10px; border: 1px solid #7084768c; border-radius: 18px; background: #202929f2; box-shadow: 0 14px 38px #0009, inset 0 1px #b5c9b719; transform: translateX(-50%); animation: dock-appear 260ms cubic-bezier(.2,.75,.2,1) both; }
+    .dock-item { position: relative; display: grid; place-items: center; width: 42px; height: 42px; border-radius: 11px; background: #34443f; color: #e8f0e8; font-size: 20px; font-weight: 650; line-height: 1; cursor: default; transition: transform 180ms cubic-bezier(.2,.8,.2,1.2), background 180ms ease; }
+    .dock-item:hover { transform: translateY(-6px) scale(1.12); background: #476052; }
+    .dock-item.active { background: #b9d8be; color: #17261d; }
+    .dock-item.running::after { content: ''; position: absolute; bottom: -7px; width: 4px; height: 4px; border-radius: 50%; background: #bdd7c1; }
+    .dock-item.active::after { background: #dceee0; }
+    .dock-divider { width: 1px; height: 29px; margin: 0 3px; background: #77908066; }
+    @keyframes dock-appear { from { opacity: 0; transform: translate(-50%, 10px); } to { opacity: 1; transform: translate(-50%, 0); } }
     .caption { margin: 15px 5px 4px; color: #b1c0b8; font-size: 13px; line-height: 1.45; }
-    @media (max-width: 620px) { body { padding: 20px 10px; } .desk { height: 300px; } .bar { gap: 6px; padding: 0 8px; } .tile-left, .tile-right { top: 62px; } .muted.app { display: none; } }
+    @media (max-width: 620px) { body { padding: 20px 10px; } .desk { height: 300px; } .bar { gap: 6px; padding: 0 8px; } .tile-left, .tile-right { top: 62px; } .float-left { top: 70px; height: 160px; } .float-right { top: 91px; height: 154px; } .dock { gap: 4px; padding: 6px 8px 8px; } .dock-item { width: 32px; height: 32px; font-size: 16px; } .muted.app { display: none; } }
+    @media (prefers-reduced-motion: reduce) { .mode, .dock-item { transition: none; } .dock { animation: none; } }
   </style>
 </head>
 <body>
   <main>
     <h1>Тихая линия</h1>
-    <p class="intro">Согласованный вариант A для Quietline. Постоянная верхняя панель, видимые пространства и режим; остальные действия открываются по запросу.</p>
+    <p class="intro">Вариант A для Quietline. Постоянная верхняя панель и видимые пространства; в режиме «Окна» появляется компактный док внизу. На другом мониторе в режиме «Тайлы» док одновременно может быть скрыт.</p>
     <div class="frame">
       <div class="desk" role="img" aria-label="Тёмный рабочий стол с верхней панелью, переключателем режима и двумя плиточными окнами">
         <div class="bar topbar">
@@ -51,7 +68,29 @@
         <div class="window tile-left"><div class="window-head"><i></i> Проект</div><div class="window-body"><div class="line short"></div><div class="line medium"></div><div class="line"></div><div class="line medium"></div></div></div>
         <div class="window tile-right"><div class="window-head"><i></i> Терминал</div><div class="window-body"><div class="line medium"></div><div class="line short"></div><div class="line"></div><div class="line medium"></div></div></div>
       </div>
-      <p class="caption">Композиция и визуальный характер этого варианта служат ориентиром для реальной оболочки. Размеры подстраиваются под масштаб экрана.</p>
+      <p class="caption">Режим «Тайлы»: прокручиваемые колонки без нижнего дока. Верхняя панель остаётся на месте.</p>
+    </div>
+    <div class="frame">
+      <div class="desk" role="img" aria-label="Тёмный рабочий стол с плавающими окнами, верхней панелью и компактным доком снизу">
+        <div class="bar topbar">
+          <span class="brand">◩</span><div class="sep"></div>
+          <span class="dot"></span><span class="dot active"></span><span class="dot"></span>
+          <span class="grow"></span><span class="muted app">Браузер</span><span class="grow"></span>
+          <span class="mode">▢ &nbsp; Окна</span><span class="muted">14:28</span>
+        </div>
+        <div class="window float-left"><div class="window-head"><i></i> Файлы · Проекты</div><div class="window-body"><div class="line accent medium"></div><div class="line"></div><div class="line short"></div><div class="line medium"></div></div></div>
+        <div class="window float-right"><div class="window-head"><i></i> Браузер</div><div class="window-body"><div class="line accent short"></div><div class="line medium"></div><div class="line"></div><div class="line short"></div></div></div>
+        <div class="dock" aria-hidden="true">
+          <span class="dock-item running" title="Dolphin">▣</span>
+          <span class="dock-item active running" title="Chrome">◎</span>
+          <span class="dock-item" title="VS Code">⌘</span>
+          <span class="dock-item" title="Ghostty">›_</span>
+          <span class="dock-item" title="Telegram">➤</span>
+          <span class="dock-divider"></span>
+          <span class="dock-item running" title="Другое приложение">◈</span>
+        </div>
+      </div>
+      <p class="caption">Режим «Окна»: закреплённые и запущенные приложения в доке. Наведи на иконку, чтобы увидеть лёгкое увеличение; док плавно появляется при смене режима.</p>
     </div>
   </main>
 </body>
