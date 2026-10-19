@@ -25,6 +25,21 @@
     .muted { color: #9faea5; }
     .mode { background: #c5ddc9; color: #13201a; font-weight: 700; padding: 6px 10px; border-radius: 8px; transition: transform 180ms ease, background 180ms ease; }
     .mode:hover { transform: translateY(-2px); background: #d6ead8; }
+    .metric { color: #bfd0c4; font-size: 10px; white-space: nowrap; }
+    .metric strong { color: #e6eee7; font-weight: 650; }
+    .tray { display: flex; gap: 6px; align-items: center; padding: 0 2px; color: #b9cbbd; font-size: 12px; }
+    .status { color: #d7e5d9; font-weight: 550; white-space: nowrap; }
+    .status.net { color: #bddbc1; }
+    .quick { display: grid; place-items: center; width: 27px; height: 27px; border: 1px solid #758a796f; border-radius: 8px; color: #d9e8dc; background: #33413c; font-size: 15px; }
+    .network-panel { position: absolute; z-index: 5; top: 59px; right: 12px; width: 292px; padding: 14px; border: 1px solid #7084769c; border-radius: 14px; background: #202a29f7; box-shadow: 0 20px 42px #000a; }
+    .network-title { display: flex; align-items: center; gap: 8px; margin-bottom: 4px; font-size: 14px; font-weight: 650; }
+    .network-sub { color: #9fb2a5; font-size: 11px; }
+    .network-divider { height: 1px; margin: 13px 0 10px; background: #506257; }
+    .network-label { margin: 0 0 7px; color: #a5b7aa; font-size: 10px; text-transform: uppercase; letter-spacing: .08em; }
+    .profile { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin: 5px 0; padding: 9px 10px; border: 1px solid #52675a; border-radius: 9px; background: #293631; font-size: 11px; }
+    .profile.active { border-color: #96b59b; background: #33483b; }
+    .profile small { color: #a7c1aa; font-size: 10px; }
+    .profile-action { display: flex; justify-content: space-between; margin-top: 11px; color: #c9dfcc; font-size: 11px; }
     .window { position: absolute; z-index: 1; background: #202a2b; border: 1px solid #63766a88; border-radius: 13px; box-shadow: 0 17px 28px #0006; overflow: hidden; }
     .window-head { height: 29px; display: flex; align-items: center; gap: 8px; padding: 0 11px; color: #c9d5cd; border-bottom: 1px solid #3d4b46; font-size: 10px; }
     .window-head i { width: 5px; height: 5px; background: #8baa93; border-radius: 50%; }
@@ -49,21 +64,22 @@
     .dock-divider { width: 1px; height: 29px; margin: 0 3px; background: #77908066; }
     @keyframes dock-appear { from { opacity: 0; transform: translate(-50%, 10px); } to { opacity: 1; transform: translate(-50%, 0); } }
     .caption { margin: 15px 5px 4px; color: #b1c0b8; font-size: 13px; line-height: 1.45; }
-    @media (max-width: 620px) { body { padding: 20px 10px; } .desk { height: 300px; } .bar { gap: 6px; padding: 0 8px; } .tile-left, .tile-right { top: 62px; } .float-left { top: 70px; height: 160px; } .float-right { top: 91px; height: 154px; } .dock { gap: 4px; padding: 6px 8px 8px; } .dock-item { width: 32px; height: 32px; font-size: 16px; } .muted.app { display: none; } }
+    @media (max-width: 760px) { .metric, .tray, .status.bt { display: none; } }
+    @media (max-width: 620px) { body { padding: 20px 10px; } .desk { height: 300px; } .bar { gap: 6px; padding: 0 8px; } .tile-left, .tile-right { top: 62px; } .float-left { top: 70px; height: 160px; } .float-right { top: 91px; height: 154px; } .dock { gap: 4px; padding: 6px 8px 8px; } .dock-item { width: 32px; height: 32px; font-size: 16px; } .muted.app, .status.battery { display: none; } .network-panel { width: min(292px, calc(100% - 24px)); } }
     @media (prefers-reduced-motion: reduce) { .mode, .dock-item { transition: none; } .dock { animation: none; } }
   </style>
 </head>
 <body>
   <main>
     <h1>Тихая линия</h1>
-    <p class="intro">Вариант A для Quietline. Постоянная верхняя панель и видимые пространства; в режиме «Окна» появляется компактный док внизу. На другом мониторе в режиме «Тайлы» док одновременно может быть скрыт.</p>
+    <p class="intro">Вариант A для Quietline. Верхняя панель показывает пространства, режим, нагрузку, фоновые приложения и доступ к сети. В режиме «Окна» появляется компактный док; на другом мониторе в режиме «Тайлы» он одновременно может быть скрыт.</p>
     <div class="frame">
       <div class="desk" role="img" aria-label="Тёмный рабочий стол с верхней панелью, переключателем режима и двумя плиточными окнами">
         <div class="bar topbar">
           <span class="brand">◩</span><div class="sep"></div>
           <span class="dot active"></span><span class="dot"></span><span class="dot"></span>
           <span class="grow"></span><span class="muted app">Файлы</span><span class="grow"></span>
-          <span class="mode">▦ &nbsp; Тайлы</span><span class="muted">14:28</span>
+          <span class="mode">▦ &nbsp; Тайлы</span><span class="metric">CPU <strong>12%</strong></span><span class="metric">RAM <strong>8/32</strong></span><span class="tray" title="Фоновые приложения: Telegram, 1Password, AmneziaVPN">➤ ◆ ◈</span><span class="status net" title="Сеть">◉</span><span class="status" title="Раскладка">RU</span><span class="status bt" title="Bluetooth">ᛒ</span><span class="status battery" title="Батарея">▰ 82%</span><span class="quick" title="Быстрые настройки">☷</span><span class="muted">14:28</span>
         </div>
         <div class="window tile-left"><div class="window-head"><i></i> Проект</div><div class="window-body"><div class="line short"></div><div class="line medium"></div><div class="line"></div><div class="line medium"></div></div></div>
         <div class="window tile-right"><div class="window-head"><i></i> Терминал</div><div class="window-body"><div class="line medium"></div><div class="line short"></div><div class="line"></div><div class="line medium"></div></div></div>
@@ -76,7 +92,7 @@
           <span class="brand">◩</span><div class="sep"></div>
           <span class="dot"></span><span class="dot active"></span><span class="dot"></span>
           <span class="grow"></span><span class="muted app">Браузер</span><span class="grow"></span>
-          <span class="mode">▢ &nbsp; Окна</span><span class="muted">14:28</span>
+          <span class="mode">▢ &nbsp; Окна</span><span class="metric">CPU <strong>12%</strong></span><span class="metric">RAM <strong>8/32</strong></span><span class="tray" title="Фоновые приложения: Telegram, 1Password, AmneziaVPN">➤ ◆ ◈</span><span class="status net" title="Сеть">◉</span><span class="status" title="Раскладка">RU</span><span class="status bt" title="Bluetooth">ᛒ</span><span class="status battery" title="Батарея">▰ 82%</span><span class="quick" title="Быстрые настройки">☷</span><span class="muted">14:28</span>
         </div>
         <div class="window float-left"><div class="window-head"><i></i> Файлы · Проекты</div><div class="window-body"><div class="line accent medium"></div><div class="line"></div><div class="line short"></div><div class="line medium"></div></div></div>
         <div class="window float-right"><div class="window-head"><i></i> Браузер</div><div class="window-body"><div class="line accent short"></div><div class="line medium"></div><div class="line"></div><div class="line short"></div></div></div>
@@ -91,6 +107,29 @@
         </div>
       </div>
       <p class="caption">Режим «Окна»: закреплённые и запущенные приложения в доке. Наведи на иконку, чтобы увидеть лёгкое увеличение; док плавно появляется при смене режима.</p>
+    </div>
+    <div class="frame">
+      <div class="desk" role="img" aria-label="Верхняя панель Quietline и открытая сетевая панель с быстрым выбором Ethernet-профиля">
+        <div class="bar topbar">
+          <span class="brand">◩</span><div class="sep"></div>
+          <span class="dot active"></span><span class="dot"></span><span class="dot"></span>
+          <span class="grow"></span><span class="muted app">Терминал</span><span class="grow"></span>
+          <span class="mode">▦ &nbsp; Тайлы</span><span class="metric">CPU <strong>12%</strong></span><span class="metric">RAM <strong>8/32</strong></span><span class="tray" title="Фоновые приложения">➤ ◆ ◈</span><span class="status net" title="Ethernet подключён">◉</span><span class="status" title="Раскладка">RU</span><span class="status bt" title="Bluetooth">ᛒ</span><span class="status battery" title="Батарея">▰ 82%</span><span class="quick" title="Быстрые настройки">☷</span><span class="muted">14:28</span>
+        </div>
+        <div class="window tile-left"><div class="window-head"><i></i> Терминал</div><div class="window-body"><div class="line short"></div><div class="line medium"></div><div class="line"></div></div></div>
+        <div class="window tile-right"><div class="window-head"><i></i> Файлы</div><div class="window-body"><div class="line medium"></div><div class="line short"></div><div class="line"></div></div></div>
+        <div class="network-panel" aria-hidden="true">
+          <div class="network-title">◉ &nbsp; Сеть <span class="grow"></span><span class="network-sub">Подключено</span></div>
+          <div class="network-sub">Ethernet · enp4s0 · 192.168.10.20</div>
+          <div class="network-divider"></div>
+          <p class="network-label">Профили Ethernet</p>
+          <div class="profile active"><span>Объект А · контроллер</span><small>Активен</small></div>
+          <div class="profile"><span>Объект Б · сервер</span><small>Применить</small></div>
+          <div class="profile"><span>Автоматически (DHCP)</span><small>Вернуться</small></div>
+          <div class="profile-action"><span>＋ Новый профиль</span><span>Дополнительно ↗</span></div>
+        </div>
+      </div>
+      <p class="caption">Нажатие на сеть открывает сохранённые профили; адрес, шлюз и DNS редактируются в «Дополнительно». При наведении показывается короткая сводка о подключении.</p>
     </div>
   </main>
 </body>
