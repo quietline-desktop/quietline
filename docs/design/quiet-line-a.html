@@ -1,0 +1,58 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Quietline — Тихая линия</title>
+  <style>
+    :root { color-scheme: dark; }
+    * { box-sizing: border-box; }
+    body { margin: 0; padding: 40px 18px; background: #101616; color: #e9eee8; font-family: 'IBM Plex Sans', sans-serif; }
+    main { max-width: 900px; margin: auto; }
+    h1 { margin: 0 0 8px; font-size: 28px; font-weight: 650; letter-spacing: -.04em; }
+    .intro { margin: 0 0 26px; color: #b1c0b8; font-size: 15px; line-height: 1.5; }
+    .frame { padding: 12px; border: 1px solid #34403e; border-radius: 20px; background: #161c1d; }
+    .desk { height: 440px; position: relative; overflow: hidden; border-radius: 12px; background: radial-gradient(circle at 72% 28%, #243532 0%, #172222 38%, #111718 100%); color: #e9eee8; font: 12px 'IBM Plex Sans', sans-serif; }
+    .desk::before { content: ''; position: absolute; left: 54%; top: 36%; width: 250px; height: 250px; border: 1px solid #5e786b33; border-radius: 50%; transform: translate(-50%, -50%); box-shadow: 0 0 0 64px #5e786b0b, 0 0 0 128px #5e786b08; }
+    .bar { position: absolute; z-index: 2; display: flex; align-items: center; gap: 10px; height: 40px; padding: 0 13px; background: #202929ee; border: 1px solid #56685e55; border-radius: 12px; box-shadow: 0 9px 28px #0005; }
+    .topbar { top: 12px; left: 12px; right: 12px; }
+    .brand { font-weight: 750; letter-spacing: -.05em; font-size: 15px; color: #c6dfca; }
+    .sep { width: 1px; height: 15px; background: #55665c; }
+    .dot { width: 6px; height: 6px; background: #64766e; border-radius: 50%; }
+    .dot.active { background: #c6dfca; width: 18px; border-radius: 8px; }
+    .grow { flex: 1; }
+    .muted { color: #9faea5; }
+    .mode { background: #c5ddc9; color: #13201a; font-weight: 700; padding: 6px 10px; border-radius: 8px; }
+    .window { position: absolute; z-index: 1; background: #202a2b; border: 1px solid #63766a88; border-radius: 13px; box-shadow: 0 17px 28px #0006; overflow: hidden; }
+    .window-head { height: 29px; display: flex; align-items: center; gap: 8px; padding: 0 11px; color: #c9d5cd; border-bottom: 1px solid #3d4b46; font-size: 10px; }
+    .window-head i { width: 5px; height: 5px; background: #8baa93; border-radius: 50%; }
+    .window-body { padding: 11px; }
+    .line { height: 6px; margin-bottom: 7px; background: #738b803e; border-radius: 4px; }
+    .line.short { width: 47%; }
+    .line.medium { width: 70%; }
+    .tile-left { top: 66px; left: 14px; bottom: 14px; width: 43%; }
+    .tile-right { top: 66px; left: calc(43% + 25px); right: 14px; bottom: 14px; }
+    .caption { margin: 15px 5px 4px; color: #b1c0b8; font-size: 13px; line-height: 1.45; }
+    @media (max-width: 620px) { body { padding: 20px 10px; } .desk { height: 300px; } .bar { gap: 6px; padding: 0 8px; } .tile-left, .tile-right { top: 62px; } .muted.app { display: none; } }
+  </style>
+</head>
+<body>
+  <main>
+    <h1>Тихая линия</h1>
+    <p class="intro">Согласованный вариант A для Quietline. Постоянная верхняя панель, видимые пространства и режим; остальные действия открываются по запросу.</p>
+    <div class="frame">
+      <div class="desk" role="img" aria-label="Тёмный рабочий стол с верхней панелью, переключателем режима и двумя плиточными окнами">
+        <div class="bar topbar">
+          <span class="brand">◩</span><div class="sep"></div>
+          <span class="dot active"></span><span class="dot"></span><span class="dot"></span>
+          <span class="grow"></span><span class="muted app">Файлы</span><span class="grow"></span>
+          <span class="mode">▦ &nbsp; Плитка</span><span class="muted">14:28</span>
+        </div>
+        <div class="window tile-left"><div class="window-head"><i></i> Проект</div><div class="window-body"><div class="line short"></div><div class="line medium"></div><div class="line"></div><div class="line medium"></div></div></div>
+        <div class="window tile-right"><div class="window-head"><i></i> Терминал</div><div class="window-body"><div class="line medium"></div><div class="line short"></div><div class="line"></div><div class="line medium"></div></div></div>
+      </div>
+      <p class="caption">Композиция и визуальный характер этого варианта служат ориентиром для реальной оболочки. Размеры подстраиваются под масштаб экрана.</p>
+    </div>
+  </main>
+</body>
+</html>
