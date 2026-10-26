@@ -1,1 +1,8 @@
+# Рабочие копии веток для выполнения планов
 .worktrees/
+
+# Локальные файлы ОС и инструментов
+.DS_Store
+.claude/settings.local.json
+.superpowers/
+CLAUDE.local.md
