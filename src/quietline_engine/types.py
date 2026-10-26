@@ -23,9 +23,17 @@ class Monitor:
     focused: bool
 
     @property
-    def work_area_width(self) -> int:
-        """Ширина рабочей области: ширина монитора без отступов слева и справа."""
-        return self.width - self.reserved[0] - self.reserved[2]
+    def work_area_width(self) -> float:
+        """Логическая ширина рабочей области: `width / scale` без отступов слева и справа.
+
+        `width` — пиксели режима монитора, а `reserved` и координаты окон — логические.
+        """
+        if self.scale <= 0:
+            raise ValueError(f"invalid scale {self.scale} of monitor {self.name}")
+        width = self.width / self.scale - self.reserved[0] - self.reserved[2]
+        if width <= 0:
+            raise ValueError(f"empty work area of monitor {self.name}")
+        return width
 
 
 @dataclass(frozen=True, slots=True)
@@ -80,7 +88,7 @@ class CompositorSnapshot:
         """Колонки пространства слева направо.
 
         Колонка — группа видимых тайловых окон с одинаковым `at[0]`; её ширина —
-        `size[0]` окна, делённая на ширину рабочей области монитора пространства.
+        `size[0]` окна, делённая на логическую ширину рабочей области монитора пространства.
         """
         workspace = next((w for w in self.workspaces if w.id == workspace_id), None)
         if workspace is None:

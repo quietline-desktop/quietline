@@ -169,6 +169,29 @@ def test_snapshot_without_active_window_and_derived_columns():
         snap.columns(999)
 
 
+def test_columns_use_logical_work_area_of_scaled_monitor():
+    runner = FakeRunner()
+    scaled = [dict(MONITORS[0], scale=1.25), MONITORS[1]]
+    runner.replies[("hyprctl", "-j", "monitors")] = json.dumps(scaled)
+    snap = Hyprland(runner=runner).snapshot()
+
+    # 2560 / 1.25 = 2048 логических пикселей, минус отступы 10 и 20.
+    assert snap.monitors[0].work_area_width == pytest.approx(2018)
+    assert [c.width for c in snap.columns(1)] == pytest.approx([1240 / 2018, 1240 / 2018])
+
+
+@pytest.mark.parametrize(
+    "patch",
+    [{"scale": 0.0}, {"scale": -1.0}, {"reserved": [1280, 0, 1280, 0]}, {"reserved": [2000, 0, 600, 0]}],
+)
+def test_columns_reject_empty_work_area(patch):
+    runner = FakeRunner()
+    runner.replies[("hyprctl", "-j", "monitors")] = json.dumps([dict(MONITORS[0], **patch), MONITORS[1]])
+    snap = Hyprland(runner=runner).snapshot()
+    with pytest.raises(ValueError):
+        snap.columns(1)
+
+
 def test_eval_escapes_only_validated_ids():
     runner = FakeRunner()
     hypr = Hyprland(runner=runner)
