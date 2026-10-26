@@ -59,13 +59,26 @@ def test_empty_pin_list_is_persisted_instead_of_reset_to_defaults(tmp_path):
     assert load_pins(path) == []
 
 
-@pytest.mark.parametrize("content", ["{broken", '{"version": 2, "pinned": []}', '["code"]'])
+@pytest.mark.parametrize(
+    "content",
+    ["{broken", '{"version": 2, "pinned": []}', '["code"]', '{"version": 1, "pinned": "code"}', '{"version": 1}'],
+)
 def test_corrupt_config_is_reported_without_overwriting_it(tmp_path, content):
     path = tmp_path / "pins.json"
     path.write_text(content)
     with pytest.raises(ValueError):
         load_pins(path)
     assert path.read_text() == content
+
+
+@pytest.mark.parametrize("pinned", ['"code"', '["../etc"]'])
+def test_invalid_pins_in_file_name_the_file(tmp_path, pinned):
+    path = tmp_path / "pins.json"
+    path.write_text('{"version": 1, "pinned": ' + pinned + "}")
+    with pytest.raises(ValueError, match="invalid pins in .*pins.json") as caught:
+        load_pins(path)
+    assert str(path) in str(caught.value)
+    assert str(caught.value).isascii()
 
 
 def test_default_path_follows_xdg_config_home(tmp_path, monkeypatch):

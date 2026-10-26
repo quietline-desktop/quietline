@@ -50,7 +50,10 @@ def load_pins(path: Path) -> list[str]:
         raise ValueError(f"cannot read pinned applications from {path}") from error
     if not isinstance(data, dict) or data.get("version") != 1:
         raise ValueError(f"unknown pins file format in {path}")
-    return validated_pins(data.get("pinned"))
+    try:
+        return validated_pins(data.get("pinned"))
+    except ValueError as error:
+        raise ValueError(f"invalid pins in {path}: {error}") from error
 
 
 def save_pins(path: Path, ids: object) -> None:
