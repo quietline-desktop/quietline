@@ -66,10 +66,10 @@ cl() { hyprctl -j clients | jq -c '.[] | {address, ws: .workspace.id, at, size, 
 | Перезапуск: запомнить `st`, `pkill -f 'quietline-engine serve'` | окна остаются на местах; `Super+Enter` открывает Ghostty; `quietline-engine state` — `cannot connect to quietline-engine …`, код `1` |
 | `quietline-engine serve &`, затем `st` | те же пространства, номера и режимы, что до остановки |
 | `pkill -9 -f 'quietline-engine serve'`, затем `quietline-engine serve &` | сервис стартует (файл сокета от убитого процесса заменён), `st` работает |
-| Запомнить PID из `pgrep -af 'quietline-engine serve'`, `hyprctl dispatch 'hl.dsp.exit()'`, в TTY через 15 с `pgrep -af 'quietline-engine serve'` | процесса нет: сервис завершился вместе с сеансом |
+| Запомнить сигнатуру `echo $HYPRLAND_INSTANCE_SIGNATURE` и PID из `pgrep -af 'quietline-engine serve'`, `hyprctl dispatch 'hl.dsp.exit()'`, в TTY через 15 с `pgrep -af 'quietline-engine serve'` и `ls -la "$XDG_RUNTIME_DIR/hypr/<сигнатура>"` | процесса нет: сервис завершился вместе с сеансом; записать, какие файлы остались в каталоге экземпляра (`hyprland.lock`, `.socket2.sock`, `hyprland.log`) |
 | Новый вход в Hyprland, затем `pgrep -af 'quietline-engine serve'` и `st` | один процесс с новым PID; состояние прошлого сеанса не подхвачено: только активные пространства мониторов как локальные `1`; `Super+1`…`Super+M` работают |
-| Замена сервиса другого сеанса: `mkdir -p "$XDG_RUNTIME_DIR/hypr/smoke"; HYPRLAND_INSTANCE_SIGNATURE=smoke quietline-engine serve &` | журнал нового: `replaced quietline-engine of another Hyprland session …`; прежний сервис завершился с `replaced by quietline-engine of another Hyprland session; stopping` |
-| `rmdir "$XDG_RUNTIME_DIR/hypr/smoke"`, через 15 с `pgrep -af 'quietline-engine serve'`, затем `quietline-engine serve &` | сервис `smoke` завершился с `Hyprland instance smoke is gone …`, код `1`; после запуска `st` и клавиши снова работают |
+| Замена сервиса другого сеанса: `mkdir -p "$XDG_RUNTIME_DIR/hypr/smoke"; touch "$XDG_RUNTIME_DIR/hypr/smoke/hyprland.lock" "$XDG_RUNTIME_DIR/hypr/smoke/.socket2.sock"; HYPRLAND_INSTANCE_SIGNATURE=smoke quietline-engine serve &` | журнал нового: `replaced quietline-engine of another Hyprland session …`; прежний сервис завершился с `replaced by quietline-engine of another Hyprland session; stopping` |
+| `rm "$XDG_RUNTIME_DIR/hypr/smoke/hyprland.lock"`, через 15 с `pgrep -af 'quietline-engine serve'`, затем `rm -r "$XDG_RUNTIME_DIR/hypr/smoke"; quietline-engine serve &` | сервис `smoke` завершился с `Hyprland instance smoke is gone (…/hyprland.lock no longer exists)`, код `1`; после запуска `st` и клавиши снова работают |
 
 ## Review Focus
 

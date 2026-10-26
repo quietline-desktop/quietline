@@ -144,6 +144,7 @@ async def wait_until(condition):
 
 @contextlib.asynccontextmanager
 async def running(path, controller, events=None, **options):
+    options.setdefault("signature", "sig")
     server = EngineServer(controller, events or FakeEvents(), path, reconnect_delay=(0.01, 0.05), **options)
     await server.start()
     try:
@@ -425,7 +426,7 @@ def test_socket_permissions_and_single_instance(path, env, runtime_dir):
             info = os.stat(path)
             assert stat.S_ISSOCK(info.st_mode) and stat.S_IMODE(info.st_mode) == 0o600
 
-            second = EngineServer(controller_for(LiveFake(), env), FakeEvents(), path)
+            second = EngineServer(controller_for(LiveFake(), env), FakeEvents(), path, signature="sig")
             with pytest.raises(ServerError, match="already running"):
                 await second.start()
             client = await connect(path)
@@ -441,7 +442,7 @@ def test_start_refuses_a_path_that_is_not_a_socket(path, env):
     path.write_text("keep me")
 
     async def scenario():
-        server = EngineServer(controller_for(LiveFake(), env), FakeEvents(), path)
+        server = EngineServer(controller_for(LiveFake(), env), FakeEvents(), path, signature="sig")
         with pytest.raises(ServerError, match="not a socket"):
             await server.start()
 
@@ -454,11 +455,21 @@ def instance_dir(env):
     return Path(env["XDG_RUNTIME_DIR"]) / "hypr" / env["HYPRLAND_INSTANCE_SIGNATURE"]
 
 
+def make_instance(env):
+    """Каталог работающего экземпляра: `hyprland.lock` и `.socket2.sock` на месте."""
+    directory = instance_dir(env)
+    directory.mkdir(parents=True)
+    (directory / "hyprland.lock").write_text("1\n")
+    (directory / ".socket2.sock").touch()
+    (directory / "hyprland.log").touch()
+    return directory
+
+
 def test_serve_reconnects_to_event_socket(path, env, caplog):
     fake = LiveFake()
     events = FakeEvents(failures=1)
     caplog.set_level(logging.INFO, logger="quietline_engine")
-    instance_dir(env).mkdir(parents=True)
+    make_instance(env)
 
     async def scenario():
         async with running(path, controller_for(fake, env), events, instance_dir=instance_dir(env)):
@@ -487,6 +498,7 @@ def test_serve_exits_when_its_hyprland_instance_is_gone_at_start(path, env):
             FakeEvents(failures=1),
             path,
             reconnect_delay=(0.01, 0.05),
+            signature="sig",
             instance_dir=instance_dir(env),
         )
         with pytest.raises(ServerError, match="is gone"):
@@ -496,19 +508,28 @@ def test_serve_exits_when_its_hyprland_instance_is_gone_at_start(path, env):
     assert not path.exists()
 
 
-def test_serve_exits_when_hyprland_closes_and_its_instance_is_gone(path, env):
+@pytest.mark.parametrize("removed", ["directory", ".socket2.sock", "hyprland.lock"])
+def test_serve_exits_when_hyprland_closes_and_its_instance_is_gone(path, env, removed):
     events = FakeEvents()
-    instance_dir(env).mkdir(parents=True)
+    directory = make_instance(env)
 
     async def scenario():
         server = EngineServer(
-            controller_for(LiveFake(), env), events, path, reconnect_delay=(0.01, 0.05), instance_dir=instance_dir(env)
+            controller_for(LiveFake(), env),
+            events,
+            path,
+            reconnect_delay=(0.01, 0.05),
+            signature="sig",
+            instance_dir=directory,
         )
         serving = asyncio.create_task(server.serve_forever())
         await wait_until(lambda: events.queue is not None)
         client = await connect(path)
         assert "result" in await client.call("state")
-        shutil.rmtree(instance_dir(env))
+        if removed == "directory":
+            shutil.rmtree(directory)
+        else:
+            (directory / removed).unlink()
         events.close()
         with pytest.raises(ServerError, match="is gone"):
             await asyncio.wait_for(serving, TIMEOUT)
@@ -550,6 +571,27 @@ def test_same_session_service_is_not_replaced(path, env):
             await client.close()
 
     run(scenario())
+
+
+def test_takeover_requires_a_valid_signature(path, env):
+    async def scenario():
+        async with running(path, controller_for(LiveFake(), env), signature="sig"):
+            client = await connect(path)
+            for params in ({}, {"signature": None}, {"signature": ""}, {"signature": "a b"}, {"signature": "../x"}, {"signature": 5}):
+                reply = await client.call("takeover", params, id=9)
+                assert reply["id"] == 9 and reply["error"]["code"] == "invalid_request", params
+            await asyncio.sleep(0.05)
+            assert "result" in await client.call("state")
+            await client.close()
+            assert path.exists()
+
+    run(scenario())
+
+
+def test_server_requires_a_valid_own_signature(path, env):
+    for signature in ("", "a b", "x/y"):
+        with pytest.raises(ServerError, match="signature"):
+            EngineServer(controller_for(LiveFake(), env), FakeEvents(), path, signature=signature)
 
 
 def test_cli_serve_fails_when_hyprland_instance_is_gone(env, monkeypatch, capsys):

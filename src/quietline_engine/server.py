@@ -10,15 +10,16 @@
 - `subscribe {}` — `result` — то же полное состояние; затем по этому соединению приходят
   события `{"event": "state", "state": {...}}`, когда `revision` растёт или меняется
   текст `error`. `revision` событий не убывает и не меньше `revision` из `result`;
-- `takeover {signature}` — служебный: запуск `serve` другого сеанса Hyprland. Если
-  `signature` отличается от сигнатуры сеанса этого сервиса, `result` — `{}`, и сервис
-  завершается; та же сигнатура — ошибка `already_running`.
+- `takeover {signature}` — служебный: запуск `serve` другого сеанса Hyprland.
+  `signature` обязательна и состоит из `A–Z a–z 0–9 _ . -`. Если она отличается от
+  сигнатуры сеанса этого сервиса, `result` — `{}`, и сервис завершается; та же
+  сигнатура — ошибка `already_running`.
 
 Коды ошибок:
 
 - `invalid_request` — строка не JSON-объект; нет `id` или он не строка и не целое число
   (тогда в ответе `id` равен `null`); `method` не строка; `params` не объект; лишний
-  параметр; `monitor` или `signature` не строка;
+  параметр; `monitor` не строка; у `takeover` нет `signature` или она недопустима;
 - `unknown_method` — метода нет в списке выше;
 - `invalid_number` — номер пространства не целое число от 1 до 10; Hyprland не вызывается;
 - `command_failed` — команда не выполнена: `message` — текст `error` подтверждённого
@@ -38,6 +39,7 @@ import contextlib
 import json
 import logging
 import os
+import re
 import socket
 import stat
 from collections.abc import AsyncIterator, Callable, Mapping
@@ -59,6 +61,11 @@ CLIENT_TIMEOUT_SECONDS = 60.0
 TAKEOVER_TIMEOUT_SECONDS = 5.0
 # Первая и наибольшая пауза перед повторным подключением к событиям Hyprland.
 RECONNECT_DELAY_SECONDS = (0.5, 10.0)
+
+# Допустимая сигнатура экземпляра Hyprland.
+_SIGNATURE = re.compile(r"[A-Za-z0-9_.-]+")
+# Файлы работающего экземпляра Hyprland в его каталоге.
+_INSTANCE_FILES = ("hyprland.lock", ".socket2.sock")
 
 # Параметры каждого метода.
 _METHODS: dict[str, frozenset[str]] = {
@@ -158,10 +165,12 @@ class EngineServer:
     до `reconnect_delay[1]` секунд, удваивающейся при каждой неудаче подряд. IPC-клиенты
     обслуживаются всё это время.
 
-    `signature` — `HYPRLAND_INSTANCE_SIGNATURE` сеанса сервиса, `instance_dir` — каталог
-    этого экземпляра Hyprland (`$XDG_RUNTIME_DIR/hypr/<сигнатура>`). Если после закрытия
-    или сбоя потока событий каталога нет, сеанс закончился: `serve_forever` завершается
-    `ServerError`. Сервис другого сеанса, занявший сокет, заменяется при запуске (`takeover`).
+    `signature` — `HYPRLAND_INSTANCE_SIGNATURE` сеанса сервиса (недопустимая —
+    `ServerError`), `instance_dir` — каталог этого экземпляра Hyprland
+    (`$XDG_RUNTIME_DIR/hypr/<сигнатура>`). Если после закрытия или сбоя потока событий
+    нет каталога, его `hyprland.lock` или `.socket2.sock`, сеанс закончился:
+    `serve_forever` завершается `ServerError`. Сервис другого сеанса, занявший сокет,
+    заменяется при запуске (`takeover`).
     """
 
     def __init__(
@@ -171,9 +180,11 @@ class EngineServer:
         path: Path,
         *,
         reconnect_delay: tuple[float, float] = RECONNECT_DELAY_SECONDS,
-        signature: str | None = None,
+        signature: str,
         instance_dir: Path | None = None,
     ) -> None:
+        if not _valid_signature(signature):
+            raise ServerError(f"invalid Hyprland instance signature {signature!r}")
         self._controller = controller
         self._events = events
         self._path = path
@@ -287,8 +298,8 @@ class EngineServer:
         if monitor is not None and not isinstance(monitor, str):
             raise EngineError("invalid_request", "monitor must be a string")
         signature = params.get("signature")
-        if signature is not None and not isinstance(signature, str):
-            raise EngineError("invalid_request", "signature must be a string")
+        if method == "takeover" and not _valid_signature(signature):
+            raise EngineError("invalid_request", "signature must be a Hyprland instance signature")
         number = 0
         if "number" in allowed:
             try:
@@ -328,8 +339,15 @@ class EngineServer:
         else:
             self._done.set_exception(error)
 
-    def _instance_gone(self) -> bool:
-        return self._instance_dir is not None and not self._instance_dir.is_dir()
+    def _missing_instance_file(self) -> Path | None:
+        """Первый отсутствующий из каталога экземпляра, `hyprland.lock` и `.socket2.sock`."""
+        if self._instance_dir is None:
+            return None
+        if not self._instance_dir.is_dir():
+            return self._instance_dir
+        return next(
+            (self._instance_dir / n for n in _INSTANCE_FILES if not os.path.lexists(self._instance_dir / n)), None
+        )
 
     def _current(self) -> PublicState:
         return self._latest or self._controller.state()
@@ -369,12 +387,9 @@ class EngineServer:
                 problem = "closed"
             except Exception as error:
                 problem = f"failed: {error}"
-            if self._instance_gone():
-                assert self._instance_dir is not None
-                name = self._instance_dir.name
-                self._finish(
-                    ServerError(f"Hyprland instance {name} is gone ({self._instance_dir} no longer exists); stopping")
-                )
+            missing = self._missing_instance_file()
+            if missing is not None:
+                self._finish(ServerError(f"Hyprland instance {self._signature} is gone ({missing} no longer exists); stopping"))
                 return
             log.warning("Hyprland event socket %s; reconnecting in %gs", problem, delay)
             await asyncio.sleep(delay)
@@ -382,7 +397,11 @@ class EngineServer:
             await self._reconcile(_RECONNECTED)
 
 
-async def _claim(path: Path, signature: str | None) -> None:
+def _valid_signature(value: object) -> bool:
+    return isinstance(value, str) and _SIGNATURE.fullmatch(value) is not None
+
+
+async def _claim(path: Path, signature: str) -> None:
     """Готовит каталог `0700` и освобождает путь сокета.
 
     Файл сокета, который никто не слушает, удаляется. Живому сервису отправляется
