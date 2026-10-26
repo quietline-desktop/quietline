@@ -110,8 +110,9 @@ class _Connection:
             self.abort()
 
     def abort(self) -> None:
-        """Закрывает соединение, не дописывая очередь."""
+        """Обрывает соединение сразу, не дописывая очередь и буфер записи."""
         self._task.cancel()
+        self._writer.transport.abort()
 
     async def finish(self) -> None:
         """Дописывает очередь и закрывает соединение; не дольше `CLOSE_TIMEOUT_SECONDS`."""
@@ -126,14 +127,19 @@ class _Connection:
             await asyncio.wait({self._task})
 
     async def _send(self) -> None:
+        """Пишет очередь до `None`, затем закрывает соединение; недописанное за `CLOSE_TIMEOUT_SECONDS` обрывается."""
+        writer = self._writer
         try:
             while (data := await self._queue.get()) is not None:
-                self._writer.write(data)
-                await self._writer.drain()
+                writer.write(data)
+                await writer.drain()
+            writer.close()
+            async with asyncio.timeout(CLOSE_TIMEOUT_SECONDS):
+                await writer.wait_closed()
         except Exception as error:
-            log.debug("IPC client write failed: %s", error)
+            log.debug("IPC client connection closed: %s", error)
         finally:
-            self._writer.close()
+            writer.transport.abort()
 
 
 class EngineServer:

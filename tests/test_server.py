@@ -16,6 +16,7 @@ from pathlib import Path
 import pytest
 from fakes import monitor, snapshot, workspace
 
+from quietline_engine import server as server_module
 from quietline_engine.__main__ import main
 from quietline_engine.controller import WindowController
 from quietline_engine.hyprland import HyprlandError
@@ -338,6 +339,31 @@ def test_resubscribe_after_disconnect(path, env):
             assert (await again.read())["state"] == reply["result"]
             await commands.close()
             await again.close()
+
+    run(scenario())
+
+
+def test_subscriber_that_stops_reading_is_disconnected(path, env, monkeypatch, caplog):
+    monkeypatch.setattr(server_module, "CLIENT_QUEUE_LIMIT", 2)
+    caplog.set_level(logging.WARNING, logger="quietline_engine")
+
+    def dropped():
+        return any("not reading" in r.getMessage() for r in caplog.records)
+
+    async def scenario():
+        async with running(path, controller_for(LiveFake(), env)):
+            stalled = await connect(path)
+            await stalled.call("subscribe")
+            commands = await connect(path)
+            for attempt in range(5000):
+                reply = await commands.call("switch", {"number": 1 + attempt % 2}, id=attempt)
+                assert reply["result"]["error"] is None
+                if dropped():
+                    break
+            assert dropped()
+            assert "result" in await commands.call("state")
+            await commands.close()
+            await stalled.close()
 
     run(scenario())
 
