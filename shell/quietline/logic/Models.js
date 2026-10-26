@@ -2,35 +2,92 @@
 
 // Чистые функции оболочки: проверка состояния движка, кнопки пространств, группы дока,
 // CPU/RAM, закрепления и раскладка клавиатуры. Используются в QML и в тестах Node.
+//
+// Состояние движка — `PublicState.to_json()` из src/quietline_engine/controller.py:
+// `{revision, monitors: [{key, name, focused, active_workspace_id, active_number, mode}],
+// workspaces: [{monitor_key, display_monitor_key, number, workspace_id, mode}], error}`.
+// Протокол сокета описан в docstring src/quietline_engine/server.py.
 
+var MODES = ["windows", "tiles"];
+
+function validNumber(value) { return Number.isInteger(value) && value >= 1 && value <= 10; }
+
+// Состояние целиком соответствует контракту движка; иначе оно не заменяет подтверждённое.
 function validState(state) {
-    if (!state || !Number.isInteger(state.revision) || state.revision < 0
-            || !Array.isArray(state.monitors) || !Array.isArray(state.workspaces)) return false;
-    var keys = {};
+    if (!state || typeof state !== "object" || !Number.isInteger(state.revision) || state.revision < 0
+            || !Array.isArray(state.monitors) || !Array.isArray(state.workspaces)
+            || (state.error !== null && typeof state.error !== "string")) return false;
+    var keys = Object.create(null);
     for (var monitor of state.monitors) {
         if (!monitor || typeof monitor.key !== "string" || typeof monitor.name !== "string"
-                || !Number.isInteger(monitor.active_workspace_id) || keys[monitor.key]) return false;
+                || typeof monitor.focused !== "boolean" || !Number.isInteger(monitor.active_workspace_id)
+                || (monitor.active_number !== null && !validNumber(monitor.active_number))
+                || (monitor.mode !== null && MODES.indexOf(monitor.mode) < 0)
+                || keys[monitor.key]) return false;
         keys[monitor.key] = true;
     }
-    var ids = {};
+    var ids = Object.create(null), places = Object.create(null);
     for (var workspace of state.workspaces) {
-        if (!workspace || typeof workspace.monitor !== "string" || typeof workspace.display_monitor !== "string"
-                || !Number.isInteger(workspace.number) || workspace.number < 1 || workspace.number > 10
-                || !Number.isInteger(workspace.workspace_id) || ids[workspace.workspace_id]
-                || ["windows", "tiles"].indexOf(workspace.mode) < 0) return false;
+        if (!workspace || typeof workspace.monitor_key !== "string" || typeof workspace.display_monitor_key !== "string"
+                || !validNumber(workspace.number) || !Number.isInteger(workspace.workspace_id)
+                || MODES.indexOf(workspace.mode) < 0) return false;
+        var place = workspace.monitor_key + "\n" + workspace.number;
+        if (ids[workspace.workspace_id] || places[place]) return false;
         ids[workspace.workspace_id] = true;
+        places[place] = true;
     }
     return true;
 }
 
+// Текст ошибки ответа движка для панели: по коду из протокола, с подробностью от движка.
+var ERROR_TEXTS = {
+    invalid_number: "Нет такого пространства: номера от 1 до 10",
+    command_failed: "Сервис окон не выполнил команду",
+    invalid_request: "Сервис окон не принял команду",
+    unknown_method: "Сервис окон не знает эту команду",
+    internal_error: "Внутренняя ошибка сервиса окон"
+};
+
+function errorText(error) {
+    var code = error && typeof error.code === "string" ? error.code : "";
+    var detail = error && typeof error.message === "string" ? error.message : "";
+    if (code === "invalid_number") return ERROR_TEXTS.invalid_number;
+    var text = ERROR_TEXTS[code] || "Команда не выполнена";
+    return detail ? text + ": " + detail : text;
+}
+
+// Ошибка последней команды или сверки из подтверждённого состояния.
+function stateError(state) { return state && state.error ? "Ошибка сервиса окон: " + state.error : ""; }
+
+// Разбор одной строки сокета движка. `revision` — ревизия принятого состояния,
+// `freshConnection` — подписка этого соединения ещё не дала состояния: после перезапуска
+// сервиса ревизия начинается заново, поэтому первое состояние соединения принимается
+// при любой ревизии. Результат — `{kind, id, ...}`:
+// - `state` — принять `state`;
+// - `ignore` — устаревшее состояние или неизвестное событие;
+// - `error` — ответ с ошибкой: `code` и `message` для панели;
+// - `invalid` — строка не по протоколу: `message` для панели.
+// Событие `{event: "state", state}` с той же ревизией принимается: оно несёт новый текст ошибки.
+// Ответ `{id, result}` с той же ревизией повторяет уже принятое событие и пропускается.
 function decodeMessage(line, revision, freshConnection) {
     var message;
-    try { message = JSON.parse(line); } catch (_) { return {kind: "invalid", message: "Не удалось прочитать состояние окон"}; }
-    if (!message || typeof message !== "object") return {kind: "invalid", message: "Некорректный ответ сервиса окон"};
-    if (message.error) return {kind: "error", id: message.id, message: String(message.error.message || "Команда не выполнена")};
-    if (!validState(message.result)) return {kind: "invalid", id: message.id, message: "Сервис окон вернул неполное состояние"};
-    if (!freshConnection && message.result.revision <= revision) return {kind: "ignore", id: message.id};
-    return {kind: "state", id: message.id, state: message.result};
+    try { message = JSON.parse(line); } catch (_) { return {kind: "invalid", id: null, message: "Не удалось прочитать ответ сервиса окон"}; }
+    if (!message || typeof message !== "object" || Array.isArray(message))
+        return {kind: "invalid", id: null, message: "Некорректный ответ сервиса окон"};
+    if (message.event !== undefined) {
+        if (message.event !== "state") return {kind: "ignore", id: null};
+        if (!validState(message.state)) return {kind: "invalid", id: null, message: "Сервис окон прислал неполное состояние"};
+        if (!freshConnection && message.state.revision < revision) return {kind: "ignore", id: null};
+        return {kind: "state", id: null, state: message.state};
+    }
+    var id = message.id === undefined ? null : message.id;
+    if (message.error !== undefined) {
+        var error = message.error && typeof message.error === "object" ? message.error : {};
+        return {kind: "error", id: id, code: typeof error.code === "string" ? error.code : "", message: errorText(error)};
+    }
+    if (!validState(message.result)) return {kind: "invalid", id: id, message: "Сервис окон вернул неполное состояние"};
+    if (!freshConnection && message.result.revision <= revision) return {kind: "ignore", id: id};
+    return {kind: "state", id: id, state: message.result};
 }
 
 function monitorFor(state, name) {
@@ -38,24 +95,39 @@ function monitorFor(state, name) {
     return state.monitors.find(function(monitor) { return monitor.name === name; }) || null;
 }
 
+// Ключ монитора по имени разъёма или по самому ключу; неизвестный монитор — пустая строка.
+function monitorKey(state, monitor) {
+    if (!state) return "";
+    var found = state.monitors.find(function(item) { return item.name === monitor || item.key === monitor; });
+    return found ? found.key : "";
+}
+
+// Пространство движка, активное на мониторе `name`; чужое пространство — `null`.
 function activeWorkspace(state, name) {
     var monitor = monitorFor(state, name);
     if (!monitor) return null;
     return state.workspaces.find(function(workspace) {
-        return workspace.workspace_id === monitor.active_workspace_id && workspace.display_monitor === monitor.key;
+        return workspace.workspace_id === monitor.active_workspace_id && workspace.display_monitor_key === monitor.key;
     }) || null;
 }
 
+// Подпись монитора по ключу движка: `connector:DP-1` → «DP-1»,
+// `make|model|serial` → «make model», `make|model|serial|DP-1` → «make model (DP-1)».
 function monitorLabel(key) {
     if (key.indexOf("connector:") === 0) return key.slice(10);
-    if (key.indexOf("serial:") === 0) return key.slice(7).split(":").join(" ");
-    return key;
+    var parts = key.split("|");
+    if (parts.length < 3) return key;
+    var label = [parts[0], parts[1]].filter(Boolean).join(" ") || parts[2];
+    return parts.length > 3 ? label + " (" + parts.slice(3).join("|") + ")" : label;
 }
 
+// Кнопки пространств монитора `name`: свои `1`…N (не меньше трёх, на одну больше
+// старшего занятого номера, не больше десяти) и затем пространства отключённых мониторов,
+// которые сейчас показаны на этом мониторе.
 function workspaceItems(state, name) {
     var monitor = monitorFor(state, name);
     if (!monitor) return [];
-    var own = state.workspaces.filter(function(workspace) { return workspace.monitor === monitor.key; });
+    var own = state.workspaces.filter(function(workspace) { return workspace.monitor_key === monitor.key; });
     var highest = Math.min(10, Math.max(3, own.reduce(function(maximum, workspace) { return Math.max(maximum, workspace.number + 1); }, 0)));
     var result = [];
     for (var number = 1; number <= highest; number++) {
@@ -65,9 +137,9 @@ function workspaceItems(state, name) {
                     active: !!ref && ref.workspace_id === monitor.active_workspace_id});
     }
     for (var ref of state.workspaces) {
-        if (ref.monitor !== monitor.key && ref.display_monitor === monitor.key)
-            result.push({number: ref.number, monitor: ref.monitor, workspace_id: ref.workspace_id,
-                        label: ref.number + " · " + monitorLabel(ref.monitor), migrated: true,
+        if (ref.monitor_key !== monitor.key && ref.display_monitor_key === monitor.key)
+            result.push({number: ref.number, monitor: ref.monitor_key, workspace_id: ref.workspace_id,
+                        label: ref.number + " · " + monitorLabel(ref.monitor_key), migrated: true,
                         active: ref.workspace_id === monitor.active_workspace_id});
     }
     return result;

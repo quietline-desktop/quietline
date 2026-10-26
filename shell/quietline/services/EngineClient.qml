@@ -4,6 +4,9 @@ import Quickshell.Io
 import "../logic/Models.js" as Models
 
 // Клиент IPC движка: подписка на подтверждённое состояние, команды switch и toggle, переподключение.
+// Каждое новое соединение подписывается заново и принимает первое состояние при любой
+// ревизии: после перезапуска сервиса ревизия начинается заново. Команда одна за раз,
+// с ID и таймаутом; `monitor` в командах — ключ монитора движка.
 Scope {
     id: root
     property var state: null
@@ -50,7 +53,7 @@ Scope {
             freshConnection = false;
             subscriptionTimeout.stop();
             ready = true;
-            errorMessage = state.error || "";
+            errorMessage = Models.stateError(state);
         } else if (response.kind === "error" || response.kind === "invalid") {
             commandError = response.message;
         }

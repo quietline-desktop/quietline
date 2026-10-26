@@ -1,0 +1,270 @@
+{
+  "lines": [
+    {
+      "id": 1,
+      "result": {
+        "revision": 4,
+        "monitors": [
+          {
+            "key": "Dell Inc.|U2723QE|SN1",
+            "name": "DP-1",
+            "focused": true,
+            "active_workspace_id": 1,
+            "active_number": 1,
+            "mode": "windows"
+          },
+          {
+            "key": "connector:HDMI-A-1",
+            "name": "HDMI-A-1",
+            "focused": false,
+            "active_workspace_id": 1002,
+            "active_number": 2,
+            "mode": "tiles"
+          },
+          {
+            "key": "connector:eDP-1",
+            "name": "eDP-1",
+            "focused": false,
+            "active_workspace_id": 7,
+            "active_number": null,
+            "mode": null
+          }
+        ],
+        "workspaces": [
+          {
+            "monitor_key": "Dell Inc.|U2723QE|SN1",
+            "display_monitor_key": "Dell Inc.|U2723QE|SN1",
+            "number": 1,
+            "workspace_id": 1,
+            "mode": "windows"
+          },
+          {
+            "monitor_key": "connector:HDMI-A-1",
+            "display_monitor_key": "connector:HDMI-A-1",
+            "number": 1,
+            "workspace_id": 1001,
+            "mode": "windows"
+          },
+          {
+            "monitor_key": "connector:HDMI-A-1",
+            "display_monitor_key": "connector:HDMI-A-1",
+            "number": 2,
+            "workspace_id": 1002,
+            "mode": "tiles"
+          },
+          {
+            "monitor_key": "Dell Inc.|U2723QE|SN2",
+            "display_monitor_key": "Dell Inc.|U2723QE|SN1",
+            "number": 3,
+            "workspace_id": 1003,
+            "mode": "tiles"
+          }
+        ],
+        "error": null
+      }
+    },
+    {
+      "id": 2,
+      "error": {
+        "code": "invalid_number",
+        "message": "workspace number must be an integer from 1 to 10, got 11"
+      }
+    },
+    {
+      "event": "state",
+      "state": {
+        "revision": 4,
+        "monitors": [
+          {
+            "key": "Dell Inc.|U2723QE|SN1",
+            "name": "DP-1",
+            "focused": true,
+            "active_workspace_id": 1,
+            "active_number": 1,
+            "mode": "windows"
+          },
+          {
+            "key": "connector:HDMI-A-1",
+            "name": "HDMI-A-1",
+            "focused": false,
+            "active_workspace_id": 1002,
+            "active_number": 2,
+            "mode": "tiles"
+          },
+          {
+            "key": "connector:eDP-1",
+            "name": "eDP-1",
+            "focused": false,
+            "active_workspace_id": 7,
+            "active_number": null,
+            "mode": null
+          }
+        ],
+        "workspaces": [
+          {
+            "monitor_key": "Dell Inc.|U2723QE|SN1",
+            "display_monitor_key": "Dell Inc.|U2723QE|SN1",
+            "number": 1,
+            "workspace_id": 1,
+            "mode": "windows"
+          },
+          {
+            "monitor_key": "connector:HDMI-A-1",
+            "display_monitor_key": "connector:HDMI-A-1",
+            "number": 1,
+            "workspace_id": 1001,
+            "mode": "windows"
+          },
+          {
+            "monitor_key": "connector:HDMI-A-1",
+            "display_monitor_key": "connector:HDMI-A-1",
+            "number": 2,
+            "workspace_id": 1002,
+            "mode": "tiles"
+          },
+          {
+            "monitor_key": "Dell Inc.|U2723QE|SN2",
+            "display_monitor_key": "Dell Inc.|U2723QE|SN1",
+            "number": 3,
+            "workspace_id": 1003,
+            "mode": "tiles"
+          }
+        ],
+        "error": "mode switch failed: hyprctl eval failed: error: window not found"
+      }
+    },
+    {
+      "id": 3,
+      "error": {
+        "code": "command_failed",
+        "message": "mode switch failed: hyprctl eval failed: error: window not found"
+      }
+    },
+    {
+      "event": "state",
+      "state": {
+        "revision": 5,
+        "monitors": [
+          {
+            "key": "Dell Inc.|U2723QE|SN1",
+            "name": "DP-1",
+            "focused": true,
+            "active_workspace_id": 1003,
+            "active_number": 3,
+            "mode": "tiles"
+          },
+          {
+            "key": "connector:HDMI-A-1",
+            "name": "HDMI-A-1",
+            "focused": false,
+            "active_workspace_id": 1002,
+            "active_number": 2,
+            "mode": "tiles"
+          },
+          {
+            "key": "connector:eDP-1",
+            "name": "eDP-1",
+            "focused": false,
+            "active_workspace_id": 7,
+            "active_number": null,
+            "mode": null
+          }
+        ],
+        "workspaces": [
+          {
+            "monitor_key": "Dell Inc.|U2723QE|SN1",
+            "display_monitor_key": "Dell Inc.|U2723QE|SN1",
+            "number": 1,
+            "workspace_id": 1,
+            "mode": "windows"
+          },
+          {
+            "monitor_key": "connector:HDMI-A-1",
+            "display_monitor_key": "connector:HDMI-A-1",
+            "number": 1,
+            "workspace_id": 1001,
+            "mode": "windows"
+          },
+          {
+            "monitor_key": "connector:HDMI-A-1",
+            "display_monitor_key": "connector:HDMI-A-1",
+            "number": 2,
+            "workspace_id": 1002,
+            "mode": "tiles"
+          },
+          {
+            "monitor_key": "Dell Inc.|U2723QE|SN2",
+            "display_monitor_key": "Dell Inc.|U2723QE|SN1",
+            "number": 3,
+            "workspace_id": 1003,
+            "mode": "tiles"
+          }
+        ],
+        "error": null
+      }
+    },
+    {
+      "id": 4,
+      "result": {
+        "revision": 5,
+        "monitors": [
+          {
+            "key": "Dell Inc.|U2723QE|SN1",
+            "name": "DP-1",
+            "focused": true,
+            "active_workspace_id": 1003,
+            "active_number": 3,
+            "mode": "tiles"
+          },
+          {
+            "key": "connector:HDMI-A-1",
+            "name": "HDMI-A-1",
+            "focused": false,
+            "active_workspace_id": 1002,
+            "active_number": 2,
+            "mode": "tiles"
+          },
+          {
+            "key": "connector:eDP-1",
+            "name": "eDP-1",
+            "focused": false,
+            "active_workspace_id": 7,
+            "active_number": null,
+            "mode": null
+          }
+        ],
+        "workspaces": [
+          {
+            "monitor_key": "Dell Inc.|U2723QE|SN1",
+            "display_monitor_key": "Dell Inc.|U2723QE|SN1",
+            "number": 1,
+            "workspace_id": 1,
+            "mode": "windows"
+          },
+          {
+            "monitor_key": "connector:HDMI-A-1",
+            "display_monitor_key": "connector:HDMI-A-1",
+            "number": 1,
+            "workspace_id": 1001,
+            "mode": "windows"
+          },
+          {
+            "monitor_key": "connector:HDMI-A-1",
+            "display_monitor_key": "connector:HDMI-A-1",
+            "number": 2,
+            "workspace_id": 1002,
+            "mode": "tiles"
+          },
+          {
+            "monitor_key": "Dell Inc.|U2723QE|SN2",
+            "display_monitor_key": "Dell Inc.|U2723QE|SN1",
+            "number": 3,
+            "workspace_id": 1003,
+            "mode": "tiles"
+          }
+        ],
+        "error": null
+      }
+    }
+  ]
+}

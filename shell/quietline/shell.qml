@@ -4,6 +4,7 @@ import Quickshell.Io
 import Quickshell.Hyprland
 import "services"
 import "components"
+import "logic/Models.js" as Models
 
 // Корень оболочки Quietline: панель и док на каждом экране, IPC `quietline` для клавиш и проверок.
 ShellRoot {
@@ -44,7 +45,11 @@ ShellRoot {
             var item = root.surfaces.find(item => item.bar.monitorName === name) || root.surfaces[0];
             if (item) item.dock.focusDock();
         }
-        function toggle(monitor: string): void { windowEngine.toggle(monitor); }
+        // `monitor` — имя разъёма или ключ монитора движка.
+        function toggle(monitor: string): void {
+            var key = Models.monitorKey(windowEngine.state, monitor);
+            if (key) windowEngine.toggle(key);
+        }
         function showApplications(monitor: string): void {
             var item = root.surfaces.find(item => item.bar.monitorName === monitor);
             if (item) item.bar.openApplications();
