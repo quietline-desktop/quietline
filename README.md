@@ -24,6 +24,7 @@
 
 - Что делает окружение: [спека первой версии](docs/superpowers/specs/2026-10-19-quietline-desktop-design.md) — режимы окон, мониторы, оболочка, сочетания клавиш, приложения, установка и проверка готовности.
 - Как выглядит оболочка: [макет «Тихая линия»](docs/design/quiet-line-a.html) — открыть в браузере.
+- Визуальный контракт оболочки — палитра, шрифты, размеры, движения и какой компонент за что отвечает: [DESIGN.md](DESIGN.md).
 - Первый этап: [план движка пространств и окон](docs/superpowers/plans/2026-10-19-window-engine.md).
 - Живая проверка движка: [scripts/smoke-window-engine.md](scripts/smoke-window-engine.md); что ещё не подтверждено — [docs/backlog.md](docs/backlog.md).
 - Изменения для пользователя окружения: [CHANGELOG.md](CHANGELOG.md).

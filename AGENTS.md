@@ -27,7 +27,7 @@ Quietline ставится поверх **Arch Linux** после Archinstall Mi
 |---|---|
 | Любая задача по поведению окружения | `docs/superpowers/specs/2026-10-19-quietline-desktop-design.md` — что делает Quietline и критерии готовности первой версии |
 | Движок пространств и окон | `docs/superpowers/plans/2026-10-19-window-engine.md` — файловая карта, контракт IPC, шаги и проверки |
-| Внешний вид панели, дока, сетевой панели | `docs/design/quiet-line-a.html` — утверждённый макет варианта A |
+| Внешний вид панели, дока, всплывающих окон | `DESIGN.md` — визуальный контракт оболочки: токены, размеры, движения, владельцы компонентов; `docs/design/quiet-line-a.html` — утверждённый макет варианта A (в том числе сетевой панели) |
 | Задача с активной спекой или планом | `docs/superpowers/specs` и `plans` — статус в шапке файла; читать только относящиеся к задаче |
 | Устройство репозитория для человека | `README.md` |
 | Что изменилось для пользователя окружения | `CHANGELOG.md` |
@@ -46,6 +46,7 @@ src/quietline_shell/      — Python-пакет `quietline-shell`: закреп�
 tests/engine/             — модульные тесты движка (pytest, без Hyprland)
 tests/shell/              — тесты `quietline-shell` (pytest)
 pyproject.toml            — пакет `quietline-engine` (CLI `quietline-engine` и `quietline-shell`), Python ≥ 3.14, тестовая зависимость pytest
+DESIGN.md                 — визуальный контракт оболочки; runtime-токены — `shell/quietline/Theme.qml`
 LICENSE                   — GPL-3.0
 ```
 
