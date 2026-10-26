@@ -1,4 +1,4 @@
-"""Расчёт переходов пространства между режимами «Окна» и «Тайлы».
+"""Расчёт переходов пространства между режимами «Окна» и «Тайлы» и сверки его окон.
 
 Планировщик чистый: по записи пространства и снимку Hyprland он возвращает действия,
 обратный план и новые данные записи, ничего не выполняя. Данные записи (`WorkspaceRef.extra`):
@@ -10,13 +10,15 @@
 - `geometry` — `{адрес: {"at": [x, y], "size": [w, h]}}`, геометрия плавающих окон
   на момент последнего перехода в «Тайлы»;
 - `columns` — `[{"addresses": [...], "width": доля}]`, колонки на момент последнего
-  перехода в «Окна».
+  перехода в «Окна»;
+- `work_area` — `[x, y, ширина, высота]`, рабочая область монитора показа на момент
+  последней сверки окон.
 
 Переход меняет только управляемые окна, которые видимы, не закреплены и не в
 полноэкранном режиме.
 """
 
-from collections.abc import Iterable, Mapping
+from collections.abc import Iterable, Mapping, Sequence
 from dataclasses import dataclass
 from typing import Any
 
@@ -38,6 +40,7 @@ MANAGED = "managed"
 DIALOGS = "dialogs"
 GEOMETRY = "geometry"
 COLUMNS = "columns"
+WORK_AREA = "work_area"
 # Доля рабочей области по каждой оси для окна без сохранённой геометрии.
 DEFAULT_SIZE_FRACTION = 0.6
 
@@ -74,8 +77,48 @@ class TransitionPlan:
     extra: dict[str, Any]
 
 
+@dataclass(frozen=True, slots=True)
+class WorkspaceUpdate:
+    """Сверка окон пространства: группы действий (по одной на окно) и новые данные записи."""
+
+    workspace: WorkspaceRef
+    actions: tuple[tuple[HyprAction, ...], ...]
+    extra: dict[str, Any]
+
+
 class LayoutPlanner:
-    """Планы переходов «Окна ↔ Тайлы» для одного пространства."""
+    """Планы переходов «Окна ↔ Тайлы» и сверки окон пространств."""
+
+    def reconcile(
+        self,
+        workspaces: Sequence[WorkspaceRef],
+        snapshot: CompositorSnapshot,
+        removed: Sequence[WorkspaceRef] = (),
+    ) -> tuple[WorkspaceUpdate, ...]:
+        """Сверка окон назначенных пространств, которые есть в снимке.
+
+        `removed` — записи, удалённые из реестра этой же сверкой: их управляемые окна и
+        диалоги по-прежнему считаются перенесёнными, а не новыми. Возвращает только
+        пространства, где нужны действия или меняются данные записи. Пространство,
+        монитор которого не найден в снимке, пропускается.
+        """
+        owners: dict[str, tuple[WorkspaceRef, str]] = {}
+        for ref in (*workspaces, *removed):
+            for role in (MANAGED, DIALOGS):
+                for address in _addresses(ref.extra.get(role)):
+                    owners.setdefault(address, (ref, role))
+        present = {w.id for w in snapshot.workspaces}
+        updates = []
+        for ref in workspaces:
+            if ref.workspace_id not in present:
+                continue
+            try:
+                update = _reconcile_workspace(ref, snapshot, owners)
+            except LayoutError:
+                continue
+            if update.actions or update.extra != ref.extra:
+                updates.append(update)
+        return tuple(updates)
 
     def to_tiles(self, workspace: WorkspaceRef, snapshot: CompositorSnapshot) -> TransitionPlan:
         """Переход в «Тайлы»: управляемые плавающие окна возвращаются в раскладку.
@@ -275,6 +318,121 @@ def _refloat(windows: list[Window], active: str | None) -> tuple[HyprAction, ...
     if actions and active is not None:
         actions.append(FocusWindow(active))
     return tuple(actions)
+
+
+def _reconcile_workspace(
+    ref: WorkspaceRef, snapshot: CompositorSnapshot, owners: Mapping[str, tuple[WorkspaceRef, str]]
+) -> WorkspaceUpdate:
+    """Сверка окон одного пространства.
+
+    Если рабочая область монитора показа изменилась с прошлой сверки, сохранённая
+    геометрия сдвигается на разницу начал областей и ограничивается новой областью;
+    в «Окнах» так же ставятся плавающие управляемые окна (окно, уже стоящее вне прежней
+    области, только ограничивается).
+
+    Окно, которого нет в списках пространства, распределяется, когда оно видимо и не в
+    полноэкранном режиме. Управляемое окно другого пространства остаётся управляемым и
+    подчиняется режиму этого: в «Окнах» становится плавающим в сохранённой геометрии
+    (сдвинутой и ограниченной) или по центру, уже плавающее только ограничивается;
+    в «Тайлах» возвращается в раскладку, а его геометрия сохраняется. Диалог другого
+    пространства остаётся диалогом. Новое плавающее окно — диалог; новое тайловое —
+    управляемое и в «Окнах» становится плавающим по центру. Окна, которых больше нет
+    на пространстве, убираются из данных записи.
+    """
+    monitor = _workspace_monitor(snapshot, ref.workspace_id)
+    area = _work_area(monitor)
+    windows = {w.address: w for w in snapshot.windows if w.workspace_id == ref.workspace_id}
+    managed = [a for a in _addresses(ref.extra.get(MANAGED)) if a in windows]
+    dialogs = [a for a in _addresses(ref.extra.get(DIALOGS)) if a in windows and a not in managed]
+    geometry = {a: g for a, g in _saved_geometry(ref.extra).items() if a in managed}
+    groups: list[tuple[HyprAction, ...]] = []
+
+    previous = _saved_area(ref.extra)
+    if previous is not None and previous != area:
+        geometry = {a: _clamp(_translate(g, previous, area), monitor) for a, g in geometry.items()}
+        if ref.mode == "windows":
+            for window in _movable(windows, managed):
+                if not window.floating:
+                    continue
+                current = Geometry(window.at, window.size)
+                moved = _translate(current, previous, area) if _inside(window.at, previous) else current
+                placed = _clamp(moved, monitor)
+                if placed != current:
+                    groups.append(_place(window.address, placed))
+
+    for address, window in windows.items():
+        if address in managed or address in dialogs:
+            continue
+        if not window.mapped or window.hidden or window.fullscreen != 0:
+            continue
+        owner = owners.get(address)
+        if (owner is not None and owner[1] == DIALOGS) or (owner is None and window.floating):
+            dialogs.append(address)
+            continue
+        managed.append(address)
+        saved = None
+        if owner is not None:
+            source = _saved_geometry(owner[0].extra).get(address)
+            if source is not None:
+                source_area = _saved_area(owner[0].extra)
+                if source_area is not None:
+                    source = _translate(source, source_area, area)
+                saved = _clamp(source, monitor)
+                geometry[address] = saved
+        if window.pinned:
+            continue
+        current = Geometry(window.at, window.size)
+        if ref.mode == "windows":
+            if window.floating:
+                placed = _clamp(current, monitor)
+                if placed != current:
+                    groups.append(_place(address, placed))
+            else:
+                placed = saved if saved is not None else _centered(monitor)
+                groups.append((SetFloating(address, True), *_place(address, placed)))
+        elif window.floating:
+            geometry[address] = current
+            groups.append((SetFloating(address, False),))
+
+    extra = {
+        **ref.extra,
+        MANAGED: managed,
+        DIALOGS: dialogs,
+        GEOMETRY: {a: g.to_json() for a, g in geometry.items()},
+        WORK_AREA: list(area),
+    }
+    if COLUMNS in ref.extra:
+        extra[COLUMNS] = [
+            {"addresses": kept, "width": c.width}
+            for c in _saved_columns(ref.extra)
+            if (kept := [a for a in c.addresses if a in managed])
+        ]
+    return WorkspaceUpdate(ref, tuple(groups), extra)
+
+
+def _saved_area(extra: Mapping[str, Any]) -> tuple[int, int, int, int] | None:
+    """Сохранённая рабочая область; повреждённая запись — `None`."""
+    value = extra.get(WORK_AREA)
+    if isinstance(value, list) and len(value) == 4 and all(type(v) is int for v in value):
+        x, y, width, height = value
+        if width > 0 and height > 0:
+            return (x, y, width, height)
+    return None
+
+
+def _inside(point: tuple[int, int], area: tuple[int, int, int, int]) -> bool:
+    x0, y0, width, height = area
+    return x0 <= point[0] < x0 + width and y0 <= point[1] < y0 + height
+
+
+def _translate(geometry: Geometry, source: tuple[int, int, int, int], target: tuple[int, int, int, int]) -> Geometry:
+    """Геометрия, сдвинутая на разницу начал рабочих областей `source` → `target`."""
+    dx, dy = target[0] - source[0], target[1] - source[1]
+    return Geometry((geometry.at[0] + dx, geometry.at[1] + dy), geometry.size)
+
+
+def _place(address: str, geometry: Geometry) -> tuple[HyprAction, ...]:
+    return (MoveWindow(address, *geometry.at), ResizeWindow(address, *geometry.size))
 
 
 def _workspace_monitor(snapshot: CompositorSnapshot, workspace_id: int) -> Monitor:

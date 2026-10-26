@@ -2,11 +2,11 @@
 
 import asyncio
 from collections.abc import Coroutine, Sequence
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from typing import Any, Protocol
 
 from quietline_engine.layout import LayoutError, LayoutPlanner, TransitionPlan
-from quietline_engine.types import CompositorSnapshot, HyprAction
+from quietline_engine.types import CompositorSnapshot, HyprAction, HyprEvent
 from quietline_engine.workspaces import Mode, WorkspaceError, WorkspaceRef, WorkspaceRegistry
 
 
@@ -49,8 +49,8 @@ class WorkspaceState:
 class PublicState:
     """Подтверждённое состояние для клиентов.
 
-    `revision` растёт на 1 после каждого подтверждённого изменения; `error` —
-    сообщение об ошибке последней команды, при ошибке состояние остаётся прежним.
+    `revision` растёт на 1, когда мониторы или пространства отличаются от последнего
+    опубликованного состояния; `error` — сообщение об ошибке последней команды.
     """
 
     revision: int
@@ -88,10 +88,13 @@ class PublicState:
 
 
 class WindowController:
-    """Выполняет команды по одной под общей блокировкой.
+    """Выполняет команды и сверки по одной под общей блокировкой.
 
     Адаптер синхронный и вызывается через `asyncio.to_thread`. Состояние публикуется
     только после того, как повторно прочитанный снимок Hyprland подтвердил результат.
+    Перед каждой командой и сверкой реестр сверяется со снимком (см.
+    `WorkspaceRegistry.reconcile`): активные пространства мониторов зарегистрированы,
+    закрытые пустые удалены. Ошибки возвращаются в `PublicState.error`, а не исключением.
     """
 
     def __init__(self, adapter: Adapter, registry: WorkspaceRegistry, planner: LayoutPlanner | None = None) -> None:
@@ -101,6 +104,20 @@ class WindowController:
         self._lock = asyncio.Lock()
         self._revision = 0
         self._snapshot: CompositorSnapshot | None = None
+        self._published: tuple[tuple[MonitorState, ...], tuple[WorkspaceState, ...]] | None = None
+
+    async def reconcile(self, event: HyprEvent) -> PublicState | None:
+        """Сверяет движок с полным снимком Hyprland после события `event`.
+
+        Событие — только сигнал: его содержимое не используется, поскольку очередь событий
+        может пропустить промежуточное изменение. Порядок: сверка реестра; если вернулся
+        монитор-владелец — перенос его пространств назад и повторное чтение снимка; сверка
+        окон (см. `LayoutPlanner.reconcile`). Возвращает состояние с увеличенным `revision`,
+        если мониторы или пространства изменились, иначе `None`; при ошибке — состояние
+        с `error`. Выполняется до конца под блокировкой, как `toggle`.
+        """
+        async with self._lock:
+            return await _run_to_completion(self._reconcile())
 
     async def toggle(self, monitor_key: str | None = None) -> PublicState:
         """Меняет режим активного пространства монитора `monitor_key` (без него — монитора с фокусом).
@@ -108,8 +125,8 @@ class WindowController:
         Успех: план применён, новый снимок подтверждает состояние `floating` изменённых окон,
         режим и снимки раскладки сохранены, `revision` увеличен. Неудача (Hyprland отклонил
         действие, окно закрылось посреди перехода, снимок не совпал): обратный план
-        применяется по одному действию, снимок перечитывается, режим и `revision` остаются
-        прежними, `error` содержит причину. Неудачей считается любое исключение после начала
+        применяется по одному действию, снимок перечитывается, режим остаётся прежним,
+        `error` содержит причину. Неудачей считается любое исключение после начала
         применения плана; если часть обратных действий отклонена, `error` это сообщает.
 
         Переход выполняется до конца под блокировкой даже при отмене вызывающего:
@@ -122,27 +139,90 @@ class WindowController:
     async def _toggle(self, monitor_key: str | None) -> PublicState:
         try:
             snapshot = await self._read()
+            self._sync(snapshot)
             ref = self._active_workspace(snapshot, monitor_key)
             plan = self._plan(ref, snapshot)
         except CommandError as error:
-            return self._state(str(error))
+            return self._publish(str(error))
         try:
             await self._run(ref, plan)
         except Exception as error:
-            message = f"mode switch failed: {str(error) or type(error).__name__}"
+            message = f"mode switch failed: {_reason(error)}"
             if not await self._rollback(plan):
                 message += "; rollback incomplete"
-            return self._state(message)
-        self._revision += 1
-        return self._state()
+            return self._publish(message)
+        return self._publish()
+
+    async def _reconcile(self) -> PublicState | None:
+        revision = self._revision
+        known = self._registry.workspaces()
+        try:
+            snapshot = await self._read()
+            moves = self._sync(snapshot)
+            if moves:
+                await self._apply(moves, "cannot return workspaces to their monitor")
+                snapshot = await self._read()
+                self._sync(snapshot)
+            await self._converge(snapshot, known)
+        except CommandError as error:
+            return self._publish(str(error))
+        state = self._publish()
+        return state if state.revision != revision else None
 
     async def _read(self) -> CompositorSnapshot:
+        """Снимок Hyprland; первый прочитанный снимок задаёт исходное опубликованное состояние."""
         try:
             snapshot = await asyncio.to_thread(self._adapter.snapshot)
         except Exception as error:
             raise CommandError(f"cannot read compositor state: {error}") from error
         self._snapshot = snapshot
+        if self._published is None:
+            state = self._state()
+            self._published = (state.monitors, state.workspaces)
         return snapshot
+
+    def _sync(self, snapshot: CompositorSnapshot) -> list[HyprAction]:
+        """Сверка реестра со снимком; возвращает переносы пространств к вернувшимся мониторам."""
+        try:
+            return self._registry.reconcile(snapshot)
+        except Exception as error:
+            raise CommandError(f"cannot update workspaces: {_reason(error)}") from error
+
+    async def _apply(self, actions: Sequence[HyprAction], failure: str) -> None:
+        """Применяет действия одним вызовом; при отказе перечитывает снимок и сообщает `failure`."""
+        try:
+            await asyncio.to_thread(self._adapter.apply, actions)
+        except Exception as error:
+            try:
+                self._sync(await self._read())
+            except CommandError:
+                pass
+            raise CommandError(f"{failure}: {_reason(error)}") from error
+
+    async def _converge(self, snapshot: CompositorSnapshot, known: Sequence[WorkspaceRef]) -> None:
+        """Сверка окон по снимку; `known` — записи реестра до сверки.
+
+        Данные записей сохраняются до действий. Действия каждого окна применяются
+        отдельным вызовом: отказ одного окна не мешает остальным и сообщается после всех.
+        """
+        current = self._registry.workspaces()
+        ids = {r.workspace_id for r in current}
+        updates = self._planner.reconcile(current, snapshot, [r for r in known if r.workspace_id not in ids])
+        try:
+            for update in updates:
+                if update.extra != update.workspace.extra:
+                    self._registry.update(update.workspace, extra=update.extra)
+        except Exception as error:
+            raise CommandError(f"cannot save workspace state: {_reason(error)}") from error
+        failures = []
+        for update in updates:
+            for group in update.actions:
+                try:
+                    await asyncio.to_thread(self._adapter.apply, group)
+                except Exception as error:
+                    failures.append(_reason(error))
+        if failures:
+            raise CommandError(f"window update failed: {'; '.join(failures)}")
 
     def _active_workspace(self, snapshot: CompositorSnapshot, monitor_key: str | None) -> WorkspaceRef:
         """Запись активного пространства выбранного монитора."""
@@ -207,6 +287,16 @@ class WindowController:
     def _ref_by_id(self, workspace_id: int) -> WorkspaceRef | None:
         return next((r for r in self._registry.workspaces() if r.workspace_id == workspace_id), None)
 
+    def _publish(self, error: str | None = None) -> PublicState:
+        """Текущее состояние; `revision` растёт, если мониторы или пространства изменились с прошлой публикации."""
+        state = self._state(error)
+        content = (state.monitors, state.workspaces)
+        if self._published is not None and content != self._published:
+            self._revision += 1
+            state = replace(state, revision=self._revision)
+        self._published = content
+        return state
+
     def _state(self, error: str | None = None) -> PublicState:
         """Состояние по последнему прочитанному снимку и реестру."""
         refs = self._registry.workspaces()
@@ -231,6 +321,10 @@ class WindowController:
                 for m in snapshot.monitors
             )
         return PublicState(self._revision, monitors, workspaces, error)
+
+
+def _reason(error: BaseException) -> str:
+    return str(error) or type(error).__name__
 
 
 async def _run_to_completion[T](coroutine: Coroutine[Any, Any, T]) -> T:

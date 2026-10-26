@@ -65,7 +65,7 @@ class WorkspaceRef:
         return cls(
             monitor_key=str(monitor_key),
             display_monitor_key=str(data.get("display_monitor_key", monitor_key)),
-            number=_checked_number(data["number"]),
+            number=check_number(data["number"]),
             workspace_id=_checked_int(data["workspace_id"]),
             mode=mode,
             extra={k: v for k, v in data.items() if k not in _KNOWN_FIELDS},
@@ -78,7 +78,8 @@ def _checked_int(value: object) -> int:
     return value
 
 
-def _checked_number(value: object) -> int:
+def check_number(value: object) -> int:
+    """Номер локального пространства; не целое число от 1 до 10 — `InvalidWorkspaceNumber`."""
     if type(value) is not int or not MIN_NUMBER <= value <= MAX_NUMBER:
         raise InvalidWorkspaceNumber(f"workspace number must be an integer from {MIN_NUMBER} to {MAX_NUMBER}, got {value!r}")
     return value
@@ -269,10 +270,10 @@ class WorkspaceRegistry:
         """Пространство `number` монитора `monitor_key`; новое получает ID из `1001+`.
 
         Номер вне `1`–`10` отвергается без изменения состояния. Перед выделением нового ID
-        активные пространства подключённых мониторов, у которых ещё нет локального `1`,
-        принимаются как их локальные `1`.
+        незарегистрированные активные пространства подключённых мониторов принимаются
+        как их локальные (см. `reconcile`).
         """
-        _checked_number(number)
+        check_number(number)
         keys = self.monitor_keys(snapshot)
         if monitor_key not in keys.values() and monitor_key not in self._identities.values():
             raise WorkspaceError(f"unknown monitor {monitor_key!r}")
@@ -289,36 +290,57 @@ class WorkspaceRegistry:
     def reconcile(self, snapshot: CompositorSnapshot) -> list[HyprAction]:
         """Сверяет реестр со снимком и возвращает действия, не выполняя их.
 
-        Активные пространства подключённых мониторов принимаются как локальные `1`.
-        Пространство, показанное не на том мониторе, куда оно назначено, возвращается
-        действием `MoveWorkspaceToMonitor`; пространства отключённых мониторов не трогаются.
+        Запись пространства, которого нет в снимке и которое не активно ни на одном
+        мониторе, удаляется вместе с сохранёнными снимками раскладки. Затем активные
+        пространства подключённых мониторов принимаются как их локальные. У каждой записи
+        `display_monitor_key` становится монитором, на котором Hyprland показывает
+        пространство; `monitor_key` и `workspace_id` не меняются. Пространство, показанное
+        не на подключённом мониторе-владельце, возвращается к нему действием
+        `MoveWorkspaceToMonitor`; пространства отключённых мониторов не трогаются.
         """
         keys = self.monitor_keys(snapshot)
-        if self._adopt_active_workspaces(snapshot, keys):
-            self._save()
+        shown_on = {w.id: w.monitor for w in snapshot.workspaces}
+        for monitor in snapshot.monitors:
+            shown_on.setdefault(monitor.active_workspace_id, monitor.name)
+
+        changed = False
+        for slot, ref in list(self._refs.items()):
+            if ref.workspace_id not in shown_on:
+                del self._refs[slot]
+                changed = True
+        changed |= self._adopt_active_workspaces(snapshot, keys)
 
         connector_by_key = {key: name for name, key in keys.items()}
-        shown_on = {w.id: w.monitor for w in snapshot.workspaces}
         actions: list[HyprAction] = []
-        for ref in self._refs.values():
-            target = connector_by_key.get(ref.display_monitor_key)
-            current = shown_on.get(ref.workspace_id)
-            if target is not None and current is not None and current != target:
-                actions.append(MoveWorkspaceToMonitor(workspace_id=ref.workspace_id, monitor=target))
+        for slot, ref in list(self._refs.items()):
+            current = shown_on[ref.workspace_id]
+            display = keys.get(current)
+            if display is not None and display != ref.display_monitor_key:
+                self._refs[slot] = replace(ref, display_monitor_key=display)
+                changed = True
+            owner = connector_by_key.get(ref.monitor_key)
+            if owner is not None and current != owner:
+                actions.append(MoveWorkspaceToMonitor(workspace_id=ref.workspace_id, monitor=owner))
+        if changed:
+            self._save()
         return actions
 
     def _adopt_active_workspaces(self, snapshot: CompositorSnapshot, keys: Mapping[str, str]) -> bool:
-        """Активное пространство монитора как его локальное `1`, если `1` не назначено, а ID свободен.
+        """Незарегистрированное активное пространство монитора — его наименьший свободный локальный номер.
 
+        Пространство с ID ≤ 0 и монитор без свободных номеров пропускаются.
         Возвращает `True`, если реестр изменился.
         """
         changed = False
         for monitor in snapshot.monitors:
             key = keys[monitor.name]
             workspace_id = monitor.active_workspace_id
-            if (key, 1) in self._refs or workspace_id <= 0 or workspace_id in self._assigned_ids():
+            if workspace_id <= 0 or workspace_id in self._assigned_ids():
                 continue
-            self._refs[(key, 1)] = WorkspaceRef(key, key, 1, workspace_id)
+            number = next((n for n in range(MIN_NUMBER, MAX_NUMBER + 1) if (key, n) not in self._refs), None)
+            if number is None:
+                continue
+            self._refs[(key, number)] = WorkspaceRef(key, key, number, workspace_id)
             changed = True
         return changed
 
