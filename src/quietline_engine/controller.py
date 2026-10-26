@@ -6,8 +6,16 @@ from dataclasses import dataclass, replace
 from typing import Any, Protocol
 
 from quietline_engine.layout import LayoutError, LayoutPlanner, TransitionPlan
-from quietline_engine.types import CompositorSnapshot, HyprAction, HyprEvent
-from quietline_engine.workspaces import Mode, WorkspaceError, WorkspaceRef, WorkspaceRegistry
+from quietline_engine.types import (
+    CompositorSnapshot,
+    FocusMonitor,
+    FocusWorkspace,
+    HyprAction,
+    HyprEvent,
+    MoveWindowToWorkspace,
+    Window,
+)
+from quietline_engine.workspaces import Mode, WorkspaceError, WorkspaceRef, WorkspaceRegistry, check_number
 
 
 class Adapter(Protocol):
@@ -119,6 +127,28 @@ class WindowController:
         async with self._lock:
             return await _run_to_completion(self._reconcile())
 
+    async def switch(self, number: int, monitor_key: str | None = None) -> PublicState:
+        """Открывает локальное пространство `number` монитора `monitor_key` (без него — монитора с фокусом).
+
+        Номер вне `1`–`10` отвергается без обращения к Hyprland. Подключённый монитор
+        получает фокус, затем пространство открывается на нём; новое пространство получает
+        ID из `1001+` и режим «Окна». Пространство отключённого монитора открывается на
+        мониторе фокуса, а несуществующее не создаётся. Результат подтверждается
+        повторным снимком. Выполняется до конца под блокировкой, как `toggle`.
+        """
+        async with self._lock:
+            return await _run_to_completion(self._switch(number, monitor_key))
+
+    async def move(self, number: int) -> PublicState:
+        """Переносит активное окно на локальное пространство `number` монитора с фокусом и переходит за ним.
+
+        Номер вне `1`–`10` и отсутствие активного окна — ошибка без действий Hyprland.
+        Перенесённое окно подчиняется режиму пространства назначения (см.
+        `LayoutPlanner.reconcile`). Выполняется до конца под блокировкой, как `toggle`.
+        """
+        async with self._lock:
+            return await _run_to_completion(self._move(number))
+
     async def toggle(self, monitor_key: str | None = None) -> PublicState:
         """Меняет режим активного пространства монитора `monitor_key` (без него — монитора с фокусом).
 
@@ -168,6 +198,63 @@ class WindowController:
             return self._publish(str(error))
         state = self._publish()
         return state if state.revision != revision else None
+
+    async def _switch(self, number: int, monitor_key: str | None) -> PublicState:
+        try:
+            check_number(number)
+            snapshot = await self._read()
+            self._sync(snapshot)
+            keys = self._registry.monitor_keys(snapshot)
+            key = self._registry.focused_monitor(snapshot) if monitor_key is None else monitor_key
+            connector = next((name for name, k in keys.items() if k == key), None)
+            if connector is None:
+                ref = self._registry.get(key, number)
+                if ref is None:
+                    raise CommandError(f"workspace {number} of monitor {key!r} does not exist")
+                actions: list[HyprAction] = [FocusWorkspace(ref.workspace_id)]
+            else:
+                ref = self._registry.resolve(number, key, snapshot)
+                actions = [FocusMonitor(connector), FocusWorkspace(ref.workspace_id)]
+        except Exception as error:
+            return self._publish(_reason(error))
+        try:
+            await self._apply(actions, "workspace switch failed")
+            snapshot = await self._read()
+            self._sync(snapshot)
+        except CommandError as error:
+            return self._publish(str(error))
+        shown = [m for m in snapshot.monitors if connector is None or m.name == connector]
+        if all(m.active_workspace_id != ref.workspace_id for m in shown):
+            return self._publish(f"workspace {number} did not open")
+        return self._publish()
+
+    async def _move(self, number: int) -> PublicState:
+        known = self._registry.workspaces()
+        try:
+            check_number(number)
+            snapshot = await self._read()
+            self._sync(snapshot)
+            window = _active_window(snapshot)
+            if window is None:
+                raise CommandError("no active window to move")
+            ref = self._registry.resolve(number, self._registry.focused_monitor(snapshot), snapshot)
+        except Exception as error:
+            return self._publish(_reason(error))
+        if window.workspace_id == ref.workspace_id:
+            return self._publish()
+        try:
+            await self._apply(
+                [MoveWindowToWorkspace(window.address, ref.workspace_id, follow=True)], "window move failed"
+            )
+            snapshot = await self._read()
+            self._sync(snapshot)
+            moved = next((w for w in snapshot.windows if w.address == window.address), None)
+            if moved is None or moved.workspace_id != ref.workspace_id:
+                raise CommandError(f"window {window.address} did not move to workspace {number}")
+            await self._converge(snapshot, known)
+        except CommandError as error:
+            return self._publish(str(error))
+        return self._publish()
 
     async def _read(self) -> CompositorSnapshot:
         """Снимок Hyprland; первый прочитанный снимок задаёт исходное опубликованное состояние."""
@@ -325,6 +412,14 @@ class WindowController:
 
 def _reason(error: BaseException) -> str:
     return str(error) or type(error).__name__
+
+
+def _active_window(snapshot: CompositorSnapshot) -> Window | None:
+    """Активное окно из списка окон снимка; `None`, если его нет."""
+    active = snapshot.active_window
+    if active is None:
+        return None
+    return next((w for w in snapshot.windows if w.address == active.address), None)
 
 
 async def _run_to_completion[T](coroutine: Coroutine[Any, Any, T]) -> T:
