@@ -5,7 +5,7 @@ build-backend = "hatchling.build"
 [project]
 name = "quietline-engine"
 version = "0.1.0"
-description = "Движок пространств и окон Quietline для Hyprland"
+description = "Движок пространств и окон Quietline для Hyprland и CLI настроек оболочки"
 requires-python = ">=3.14"
 license = "GPL-3.0-only"
 license-files = ["LICENSE"]
@@ -13,12 +13,13 @@ dependencies = []
 
 [project.scripts]
 quietline-engine = "quietline_engine.__main__:main"
+quietline-shell = "quietline_shell.__main__:main"
 
 [dependency-groups]
 dev = ["pytest>=8"]
 
 [tool.hatch.build.targets.wheel]
-packages = ["src/quietline_engine"]
+packages = ["src/quietline_engine", "src/quietline_shell"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
