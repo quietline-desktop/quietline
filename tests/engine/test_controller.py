@@ -3,12 +3,13 @@
 import asyncio
 import json
 import threading
+from dataclasses import replace
 
 import pytest
 from fakes import FakeAdapter, monitor, snapshot, window, workspace
 
 from quietline_engine.controller import PublicState, WindowController
-from quietline_engine.types import FocusWindow, MoveWindow, ResizeWindow, SetFloating
+from quietline_engine.types import FocusWindow, HyprEvent, MoveWindow, ResizeWindow, SetFloating
 from quietline_engine.workspaces import WorkspaceRegistry
 
 KEY = "Dell Inc.|U2723QE|SN1"
@@ -93,6 +94,32 @@ def test_toggle_confirms_mode_and_persists_snapshots(registry, tmp_path):
         "0xb": {"at": [1000, 300], "size": [900, 700]},
     }
     assert restored.extra["dialogs"] == ["0xd"]
+
+
+def test_managed_window_shown_again_with_native_float_tag_still_tiles(registry):
+    # Hyprland ставит quietline-native-float каждому окну, показанному плавающим, в том
+    # числе управляемому окну «Окон», которое приложение спрятало и показало снова.
+    first = floating_snapshot()
+    prepare(registry, first)
+    shown = snapshot(
+        first.monitors,
+        first.workspaces,
+        [
+            replace(w, tags=("quietline-native-float",)) if w.address in ("0xa", "0xd") else w
+            for w in first.windows
+        ],
+        active="0xb",
+    )
+    adapter = FakeAdapter([shown, shown, tiled_snapshot("0xa", "0xb")])
+    controller = WindowController(adapter, registry)
+
+    assert run(controller.reconcile(HyprEvent("openwindow", "a,1,telegram,Telegram"))) is None
+    assert registry.get(KEY, 1).extra["managed"] == ["0xa", "0xb"]
+
+    state = run(controller.toggle())
+
+    assert state.error is None
+    assert adapter.applied == [[SetFloating("0xa", False), SetFloating("0xb", False), FocusWindow("0xb")]]
 
 
 def test_toggle_back_restores_saved_geometry(registry):

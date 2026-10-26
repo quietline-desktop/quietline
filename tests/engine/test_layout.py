@@ -187,11 +187,11 @@ def test_dialog_and_fullscreen_not_rearranged():
     assert to_windows.extra["managed"] == ["0xa", "0xf", "0xp", "0xe"]
 
 
-def test_tagged_dialogs_are_never_managed():
+def test_dialog_tags_classify_only_unknown_windows():
     mon = monitor()
     windows = [
-        # Управляемое окно, получившее тег диалога, становится диалогом.
-        window("0xa", at=(100, 100), floating=True, tags=("quietline-modal*",)),
+        # Управляемое окно с тегом остаётся управляемым.
+        window("0xa", at=(100, 100), floating=True, tags=("quietline-native-float", "quietline-modal*")),
         window("0xb", at=(900, 100), floating=True),
         # Впервые увиденное тайловое окно с тегом — диалог, а не управляемое.
         window("0xt", at=(0, 0), size=(1280, 1440), tags=("quietline-native-float",)),
@@ -200,23 +200,9 @@ def test_tagged_dialogs_are_never_managed():
 
     to_tiles = LayoutPlanner().to_tiles(ref(managed=["0xa", "0xb"]), snap)
 
-    assert to_tiles.actions == (SetFloating("0xb", False), FocusWindow("0xb"))
-    assert to_tiles.extra["managed"] == ["0xb"]
-    assert to_tiles.extra["dialogs"] == ["0xa", "0xt"]
-    assert set(to_tiles.extra["geometry"]) == {"0xb"}
-
-    tiled = [
-        window("0xa", at=(100, 100), floating=True, tags=("quietline-modal*",)),
-        window("0xb", at=(0, 0), size=(1280, 1440)),
-        window("0xt", at=(1280, 0), size=(1280, 1440), tags=("quietline-native-float",)),
-    ]
-    snap = snapshot([mon], [workspace(1, mon)], tiled, active="0xb")
-
-    to_windows = LayoutPlanner().to_windows(ref("tiles", **to_tiles.extra), snap)
-
-    assert {getattr(action, "address", None) for action in to_windows.actions} == {"0xb"}
-    assert to_windows.expected_floating == {"0xb": True}
-    assert to_windows.extra["dialogs"] == ["0xa", "0xt"]
+    assert to_tiles.actions == (SetFloating("0xa", False), SetFloating("0xb", False), FocusWindow("0xb"))
+    assert to_tiles.extra["managed"] == ["0xa", "0xb"]
+    assert to_tiles.extra["dialogs"] == ["0xt"]
 
 
 def test_active_window_missing_from_windows_is_not_refocused():

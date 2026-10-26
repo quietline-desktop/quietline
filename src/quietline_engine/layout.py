@@ -5,10 +5,12 @@
 
 - `managed` — адреса окон, которыми управляет движок: окно становится управляемым, если
   при первой встрече на пространстве оно было в раскладке (не плавающим);
-- `dialogs` — адреса окон, которые при первой встрече уже были плавающими, и окон с тегом
+- `dialogs` — адреса окон, которые при первой встрече уже были плавающими или несли тег
   диалога (`Window.dialog_tagged`) — диалоги и служебные окна; они не меняются массово ни
-  в одном режиме. Окно с тегом диалога не бывает управляемым: получив тег, управляемое окно
-  становится диалогом;
+  в одном режиме. Тег классифицирует только окна, которых нет ни в одном списке: окно,
+  уже записанное управляемым, остаётся управляемым с любым тегом, в том числе
+  `quietline-modal` (управляемое окно модальным не становится, а `quietline-native-float`
+  Hyprland ставит и плавающему управляемому окну, когда оно снова показывается);
 - `geometry` — `{адрес: {"at": [x, y], "size": [w, h]}}`, геометрия плавающих окон
   на момент последнего перехода в «Тайлы»;
 - `columns` — `[{"addresses": [...], "width": доля}]`, колонки на момент последнего
@@ -269,7 +271,7 @@ def _classify(workspace: WorkspaceRef, snapshot: CompositorSnapshot) -> tuple[di
     """Окна пространства и списки управляемых окон и диалогов без закрытых окон.
 
     Окно, которого нет ни в одном списке, впервые увидено сейчас: плавающее или с тегом
-    диалога — диалог, иначе управляемое. Управляемое окно с тегом диалога становится диалогом.
+    диалога — диалог, иначе управляемое. Тег не меняет роль окна, уже записанного в список.
     """
     windows = {w.address: w for w in snapshot.windows if w.workspace_id == workspace.workspace_id}
     managed, dialogs = _roles(workspace, windows)
@@ -280,11 +282,8 @@ def _classify(workspace: WorkspaceRef, snapshot: CompositorSnapshot) -> tuple[di
 
 
 def _roles(workspace: WorkspaceRef, windows: Mapping[str, Window]) -> tuple[list[str], list[str]]:
-    """Сохранённые управляемые окна и диалоги, которые есть на пространстве.
-
-    Управляемое окно с тегом диалога в список управляемых не попадает.
-    """
-    managed = [a for a in _addresses(workspace.extra.get(MANAGED)) if a in windows and not windows[a].dialog_tagged]
+    """Сохранённые управляемые окна и диалоги, которые есть на пространстве; теги не учитываются."""
+    managed = [a for a in _addresses(workspace.extra.get(MANAGED)) if a in windows]
     dialogs = [a for a in _addresses(workspace.extra.get(DIALOGS)) if a in windows and a not in managed]
     return managed, dialogs
 
@@ -389,8 +388,8 @@ def _reconcile_workspace(
     в этой геометрии или по центру, плавающее ограничивается рабочей областью; в «Тайлах»
     плавающее возвращается в раскладку, а его геометрия сохраняется. Диалог другого
     пространства остаётся диалогом. Новое плавающее окно — диалог; новое тайловое —
-    управляемое и подчиняется режиму так же. Окно с тегом диалога — диалог при любом
-    состоянии, в том числе бывшее управляемое.
+    управляемое и подчиняется режиму так же. Новое окно с тегом диалога — диалог; тег
+    не меняет роль окна, записанного управляемым на этом или другом пространстве.
 
     Если рабочая область монитора показа отличается от `work_area`, сохранённая геометрия
     и цели `pending` сдвигаются на разницу начал областей и ограничиваются новой
@@ -422,13 +421,10 @@ def _reconcile_workspace(
     for address, window in windows.items():
         if address in managed or address in dialogs:
             continue
-        if window.dialog_tagged:
-            dialogs.append(address)
-            continue
         if not window.mapped or window.hidden or window.fullscreen != 0:
             continue
         owner = owners.get(address)
-        if (owner is not None and owner[1] == DIALOGS) or (owner is None and window.floating):
+        if (owner is not None and owner[1] == DIALOGS) or (owner is None and (window.floating or window.dialog_tagged)):
             dialogs.append(address)
             continue
         managed.append(address)

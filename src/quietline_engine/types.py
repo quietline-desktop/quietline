@@ -86,7 +86,11 @@ class Window:
 
     @property
     def dialog_tagged(self) -> bool:
-        """Окно помечено тегом из `DIALOG_TAGS` (с `*` правила окна или без него)."""
+        """Окно помечено тегом из `DIALOG_TAGS` (с `*` правила окна или без него).
+
+        Тег делает диалогом только окно, которого движок ещё не записал управляемым
+        (см. `quietline_engine.layout`).
+        """
         return any(tag.removesuffix("*") in DIALOG_TAGS for tag in self.tags)
 
 
