@@ -14,7 +14,7 @@
 | `docs/superpowers/specs/` | спеки: что делает Quietline и критерии готовности первой версии   |
 | `docs/superpowers/plans/` | планы реализации по этапам                                        |
 | `scripts/`                | сценарии проверки в живом сеансе и запуск оболочки из репозитория |
-| `config/hyprland/`        | Hyprland: раскладка `scrolling`, запуск движка и его клавиши      |
+| `config/hyprland/`        | Hyprland: раскладка `scrolling`, запуск движка и оболочки, клавиши, теги диалогов |
 | `shell/quietline/`        | оболочка Quickshell: верхняя панель, док, трей и показатели       |
 | `src/quietline_engine/`   | Python-пакет движка пространств и окон                            |
 | `src/quietline_shell/`    | Python-пакет `quietline-shell`: закрепления дока и данные панели   |

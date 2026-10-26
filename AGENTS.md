@@ -39,7 +39,7 @@ docs/backlog.md           — что не подтверждено в живом
 docs/design/              — утверждённые визуальные макеты (HTML)
 docs/superpowers/specs/   — спеки: что строим и почему
 docs/superpowers/plans/   — планы реализации по шагам
-config/hyprland/          — Lua-конфигурация Hyprland: раскладка, запуск сервиса и клавиши движка
+config/hyprland/          — Lua-конфигурация Hyprland: раскладка, запуск сервиса и оболочки, клавиши, теги диалогов
 scripts/                  — сценарии проверки в живом сеансе (`smoke-window-engine.md`), запуск оболочки из репозитория `run-shell`
 shell/quietline/          — конфигурация Quickshell (`qs -c quietline`): `shell.qml`, тема `Theme.qml`, стенд IPC `IpcHarness.qml`
 shell/quietline/components/ — кнопки, всплывающие окна, верхняя панель и док

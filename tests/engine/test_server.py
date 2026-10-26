@@ -642,11 +642,32 @@ def test_shortcuts_target_expected_cli_calls():
         expected[f"SUPER + SHIFT + {key}"] = f"quietline-engine move {number}"
     expected["SUPER + M"] = "quietline-engine toggle"
     expected["SUPER + Return"] = "ghostty"
+    expected["SUPER + Space"] = "qs -c quietline ipc call quietline launcher"
     assert dict(binds) == expected
 
-    assert re.search(r'hl\.config\(\{\s*general\s*=\s*\{\s*layout\s*=\s*"scrolling"\s*\}\s*\}\)', text)
+    config = re.search(r"hl\.config\(\{(.*?)\n\}\)", text, re.S)
+    assert config
+    assert re.search(r'general\s*=\s*\{\s*layout\s*=\s*"scrolling"\s*\}', config.group(1))
     assert re.search(
-        r'hl\.on\("hyprland\.start",\s*function\s*\(\)\s*hl\.exec_cmd\("quietline-engine serve"\)\s*end\)', text
+        r"scrolling\s*=\s*\{\s*column_width\s*=\s*0\.5,\s*fullscreen_on_one_column\s*=\s*false\s*\}", config.group(1)
+    )
+
+    # Движок стартует первым, оболочка — отдельной командой после него.
+    start = re.search(r'hl\.on\("hyprland\.start",\s*function\s*\(\)(.*?)\nend\)', text, re.S)
+    assert start
+    assert re.findall(r'hl\.exec_cmd\("([^"]+)"\)', start.group(1)) == ["quietline-engine serve", "qs -c quietline"]
+
+    modals = re.search(r"hl\.window_rule\(\{(.*?)\n\}\)", text, re.S)
+    assert modals
+    assert re.search(r"match\s*=\s*\{\s*modal\s*=\s*true\s*\}", modals.group(1))
+    assert re.search(r"float\s*=\s*true", modals.group(1))
+    assert re.search(r'tag\s*=\s*"\+quietline-modal"', modals.group(1))
+    opened = re.search(r'hl\.on\("window\.open",\s*function\s*\(window\)(.*?)\nend\)', text, re.S)
+    assert opened
+    assert "if window.floating then" in opened.group(1)
+    assert re.search(
+        r'hl\.dsp\.window\.tag\(\{\s*window\s*=\s*"address:"\s*\.\.\s*window\.address,\s*tag\s*=\s*"\+quietline-native-float",?\s*\}\)',
+        opened.group(1),
     )
     comments = [line.split("--", 1)[1] for line in text.splitlines() if "--" in line]
     assert comments and all(re.search("[а-яё]", c, re.IGNORECASE) for c in comments if c.strip())
