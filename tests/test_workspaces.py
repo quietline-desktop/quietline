@@ -351,3 +351,40 @@ def test_adoption_does_not_orphan_original_active_workspace(state_path):
     one = registry.resolve(1, key, switched)
     assert one.workspace_id == 1
     assert registry.resolve(2, key, switched).workspace_id == allocated.workspace_id
+
+
+def test_unique_serial_monitor_keeps_key_when_moved_to_another_connector(state_path):
+    on_first = snapshot([monitor(0, "DP-1", 0, 1, serial="AAA")])
+    on_second = snapshot([monitor(0, "DP-2", 0, 1, serial="AAA")])
+    registry = WorkspaceRegistry(state_path, "sig-1")
+    key = registry.monitor_keys(on_first)["DP-1"]
+    workspace_id = registry.resolve(2, key, on_first).workspace_id
+
+    assert registry.monitor_keys(on_second) == {"DP-2": key}
+    assert registry.resolve(2, key, on_second).workspace_id == workspace_id
+
+    restarted = WorkspaceRegistry(state_path, "sig-1")
+    assert restarted.monitor_keys(on_second) == {"DP-2": key}
+    assert restarted.get(key, 2).workspace_id == workspace_id
+
+
+def test_twin_moved_to_another_connector_keeps_its_key(state_path):
+    first = monitor(0, "DP-1", 0, 1, serial="SAME")
+    second = monitor(1, "DP-2", 1920, 2, serial="SAME")
+    registry = WorkspaceRegistry(state_path, "sig-1")
+    keys = registry.monitor_keys(snapshot([first, second]))
+
+    moved = monitor(1, "DP-3", 1920, 2, serial="SAME")
+    assert registry.monitor_keys(snapshot([first, moved])) == {"DP-1": keys["DP-1"], "DP-3": keys["DP-2"]}
+
+
+def test_state_without_monitors_list_keeps_workspaces(state_path):
+    snap = snapshot([monitor(0, "DP-1", 0, 1, serial="AAA")])
+    registry = WorkspaceRegistry(state_path, "sig-1")
+    key = registry.monitor_keys(snap)["DP-1"]
+    registry.resolve(2, key, snap)
+    saved = json.loads(state_path.read_text())
+    del saved["monitors"]
+    state_path.write_text(json.dumps(saved))
+
+    assert WorkspaceRegistry(state_path, "sig-1").get(key, 2).workspace_id == 1001

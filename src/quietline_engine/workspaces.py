@@ -88,7 +88,7 @@ type MonitorIdentity = tuple[str, str, str, str]
 
 
 def _identity(monitor: Monitor) -> MonitorIdentity:
-    """Физический монитор: производитель, модель, серийный номер и разъём; без номера — только разъём."""
+    """Монитор на разъёме: производитель, модель, серийный номер и имя разъёма; без номера — только разъём."""
     if monitor.serial:
         return (monitor.make, monitor.model, monitor.serial, monitor.name)
     return ("", "", "", monitor.name)
@@ -103,31 +103,46 @@ def _base_key(monitor: Monitor) -> str:
 def _derive_keys(
     monitors: tuple[Monitor, ...], assigned: Mapping[MonitorIdentity, str]
 ) -> tuple[dict[str, str], dict[MonitorIdentity, str]]:
-    """Ключи мониторов: имя разъёма → ключ и новые назначения `identity → key`.
+    """Ключи мониторов: имя разъёма → ключ и обновлённые назначения `identity → key`.
 
-    Монитор с уже назначенным ключом сохраняет его. Новый получает ключ из производителя,
-    модели и серийного номера (без номера — из имени разъёма); к ключу добавляется имя
-    разъёма, если тот же ключ уже назначен другому монитору или повторяется среди новых.
+    Монитор с тем же производителем, моделью, серийным номером и разъёмом сохраняет ключ.
+    Монитор с известным серийным номером на другом разъёме забирает ключ записи, чей
+    разъём больше не занят монитором с этим номером. Остальные получают ключ из
+    производителя, модели и серийного номера (без номера — из имени разъёма); к ключу
+    добавляется имя разъёма, если тот же ключ уже назначен другому монитору или
+    повторяется среди новых.
     """
+    result = dict(assigned)
     keys: dict[str, str] = {}
-    fresh: list[Monitor] = []
+    unmatched: list[Monitor] = []
     for monitor in monitors:
         key = assigned.get(_identity(monitor))
         if key is None:
-            fresh.append(monitor)
+            unmatched.append(monitor)
         else:
             keys[monitor.name] = key
-    taken = set(assigned.values())
+    connected = {_identity(m) for m in monitors}
+
+    fresh: list[Monitor] = []
+    for monitor in unmatched:
+        identity = _identity(monitor)
+        previous = None
+        if monitor.serial:
+            previous = next((i for i in result if i[:3] == identity[:3] and i not in connected), None)
+        if previous is None:
+            fresh.append(monitor)
+        else:
+            keys[monitor.name] = result[identity] = result.pop(previous)
+
+    taken = set(result.values())
     counts: dict[str, int] = {}
     for monitor in fresh:
         counts[_base_key(monitor)] = counts.get(_base_key(monitor), 0) + 1
-    new: dict[MonitorIdentity, str] = {}
     for monitor in fresh:
         base = _base_key(monitor)
         key = base if counts[base] == 1 and base not in taken else f"{base}|{monitor.name}"
-        keys[monitor.name] = key
-        new[_identity(monitor)] = key
-    return keys, new
+        keys[monitor.name] = result[_identity(monitor)] = key
+    return keys, result
 
 
 def monitor_keys(snapshot: CompositorSnapshot) -> dict[str, str]:
@@ -203,9 +218,9 @@ class WorkspaceRegistry:
 
     def monitor_keys(self, snapshot: CompositorSnapshot) -> dict[str, str]:
         """Устойчивые ключи мониторов снимка: имя разъёма → ключ; новые назначения сохраняются."""
-        keys, new = _derive_keys(snapshot.monitors, self._identities)
-        if new:
-            self._identities.update(new)
+        keys, identities = _derive_keys(snapshot.monitors, self._identities)
+        if identities != self._identities:
+            self._identities = identities
             self._save()
         return keys
 
@@ -293,7 +308,7 @@ class WorkspaceRegistry:
             refs = [WorkspaceRef.from_json(item) for item in data["workspaces"]]
             identities = {
                 (str(m["make"]), str(m["model"]), str(m["serial"]), str(m["connector"])): str(m["key"])
-                for m in data["monitors"]
+                for m in data.get("monitors", [])
             }
         except (OSError, ValueError, KeyError, TypeError, AttributeError, WorkspaceError):
             return
