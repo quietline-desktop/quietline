@@ -34,7 +34,7 @@ cp <путь из предыдущей команды> ~/.config/hypr/hyprland.l
 cp ~/quietline/config/hyprland/quietline.lua ~/.config/hypr/quietline.lua
 ```
 
-В `~/.config/hypr/hyprland.lua` удалить привязку `mainMod .. " + M"` (в примере это выход из Hyprland), цикл `for i = 1, 10` с привязками пространств и строку `layout = "dwindle"`; в конец добавить `require("quietline")`. Войти в Hyprland заново.
+В `~/.config/hypr/hyprland.lua` удалить привязку `mainMod .. " + M"` (в примере это выход из Hyprland), цикл `for i = 1, 10` с привязками `SUPER + 1…0` и `SUPER + SHIFT + 1…0` и строку `layout = "dwindle"`; в конец добавить `require("quietline")`. Пока стандартные привязки не удалены, `Super+M` закрывает Hyprland, а цифровые клавиши конфликтуют с клавишами движка — об этом же предупреждает шапка `quietline.lua`. Войти в Hyprland заново.
 
 Вспомогательные команды:
 
