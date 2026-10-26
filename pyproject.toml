@@ -11,6 +11,9 @@ license = "GPL-3.0-only"
 license-files = ["LICENSE"]
 dependencies = []
 
+[project.scripts]
+quietline-engine = "quietline_engine.__main__:main"
+
 [dependency-groups]
 dev = ["pytest>=8"]
 

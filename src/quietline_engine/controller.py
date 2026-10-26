@@ -113,6 +113,11 @@ class WindowController:
         self._revision = 0
         self._snapshot: CompositorSnapshot | None = None
         self._published: tuple[tuple[MonitorState, ...], tuple[WorkspaceState, ...]] | None = None
+        self._current: PublicState | None = None
+
+    def state(self) -> PublicState:
+        """Последнее опубликованное состояние без `error`; до первого снимка — пустое."""
+        return self._current or PublicState(self._revision, (), ())
 
     async def reconcile(self, event: HyprEvent) -> PublicState | None:
         """Сверяет движок с полным снимком Hyprland после события `event`.
@@ -266,6 +271,7 @@ class WindowController:
         if self._published is None:
             state = self._state()
             self._published = (state.monitors, state.workspaces)
+            self._current = state
         return snapshot
 
     def _sync(self, snapshot: CompositorSnapshot) -> list[HyprAction]:
@@ -386,6 +392,7 @@ class WindowController:
             self._revision += 1
             state = replace(state, revision=self._revision)
         self._published = content
+        self._current = replace(state, error=None)
         return state
 
     def _state(self, error: str | None = None) -> PublicState:
