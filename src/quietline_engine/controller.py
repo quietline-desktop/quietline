@@ -289,25 +289,29 @@ class WindowController:
     async def _converge(self, snapshot: CompositorSnapshot, known: Sequence[WorkspaceRef]) -> None:
         """Сверка окон по снимку; `known` — записи реестра до сверки.
 
-        Данные записей сохраняются до действий. Действия каждого окна применяются
-        отдельным вызовом: отказ одного окна не мешает остальным и сообщается после всех.
+        Действия каждого окна применяются отдельным вызовом: отказ одного окна не мешает
+        остальным и сообщается после всех. Данные записи пространства сохраняются после
+        его действий: `extra`, если все приняты, иначе `retry_extra`. Окно, действие
+        которого отклонено, приводится к режиму пространства следующей сверкой.
         """
         current = self._registry.workspaces()
         ids = {r.workspace_id for r in current}
         updates = self._planner.reconcile(current, snapshot, [r for r in known if r.workspace_id not in ids])
-        try:
-            for update in updates:
-                if update.extra != update.workspace.extra:
-                    self._registry.update(update.workspace, extra=update.extra)
-        except Exception as error:
-            raise CommandError(f"cannot save workspace state: {_reason(error)}") from error
         failures = []
         for update in updates:
+            rejected = False
             for group in update.actions:
                 try:
                     await asyncio.to_thread(self._adapter.apply, group)
                 except Exception as error:
                     failures.append(_reason(error))
+                    rejected = True
+            extra = update.retry_extra if rejected else update.extra
+            if extra != update.workspace.extra:
+                try:
+                    self._registry.update(update.workspace, extra=extra)
+                except Exception as error:
+                    raise CommandError(f"cannot save workspace state: {_reason(error)}") from error
         if failures:
             raise CommandError(f"window update failed: {'; '.join(failures)}")
 

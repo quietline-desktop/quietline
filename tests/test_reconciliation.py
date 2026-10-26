@@ -477,3 +477,85 @@ def test_rejected_window_update_reports_error_and_keeps_others(registry):
     assert state is not None and state.error is not None and "window update failed" in state.error
     assert [group[0] for group in adapter.applied] == [SetFloating("0xn", True), SetFloating("0xm", True)]
     assert registry.get(KEY, 1).extra["managed"] == ["0xn", "0xm"]
+
+    # Следующая сверка повторяет отклонённое действие и больше ничего не трогает.
+    centered = (MoveWindow("0xn", 512, 288), ResizeWindow("0xn", 1536, 864))
+    partly = snapshot(
+        [mon],
+        [workspace(1, mon)],
+        [window("0xn", 1), window("0xm", 1, at=(512, 288), size=(1536, 864), floating=True)],
+    )
+    adapter.snapshots = [partly]
+    assert run(controller.reconcile(EVENT)) is None
+    assert adapter.applied[2:] == [[SetFloating("0xn", True), *centered]]
+
+    floated = snapshot(
+        [mon],
+        [workspace(1, mon)],
+        [
+            window("0xn", 1, at=(512, 288), size=(1536, 864), floating=True),
+            window("0xm", 1, at=(512, 288), size=(1536, 864), floating=True),
+        ],
+    )
+    adapter.snapshots = [floated]
+    assert run(controller.reconcile(EVENT)) is None
+    assert len(adapter.applied) == 3
+
+
+def test_rejected_translate_is_retried(registry):
+    left, right = monitor(), second()
+    bare = snapshot([left, right], [workspace(1, left), workspace(2, right)], [])
+    ref = registry.resolve(1, SECOND_KEY, bare)
+    registry.update(ref, extra={"managed": ["0xw"], "dialogs": []})
+    connected = snapshot(
+        [left, right],
+        [workspace(1, left), workspace(2, right)],
+        [window("0xw", 2, monitor_id=1, at=(4000, 900), size=(1000, 500), floating=True)],
+    )
+    alone = snapshot(
+        [left],
+        [workspace(1, left), workspace(2, left)],
+        [window("0xw", 2, at=(4000, 900), size=(1000, 500), floating=True)],
+    )
+    adapter = FakeAdapter([connected], fail_on=[0])
+    controller = WindowController(adapter, registry)
+    run(controller.reconcile(EVENT))
+    assert adapter.applied == []
+
+    adapter.snapshots = [alone]
+    state = run(controller.reconcile(HyprEvent("monitorremoved", "HDMI-A-1")))
+
+    translate = [MoveWindow("0xw", 1440, 900), ResizeWindow("0xw", 1000, 500)]
+    assert state.error is not None and "window update failed" in state.error
+    assert adapter.applied == [translate]
+    # Рабочая область не продвинута: следующая сверка повторяет сдвиг.
+    assert registry.get(SECOND_KEY, 1).extra["work_area"] == [2560, 0, 2560, 1440]
+
+    assert run(controller.reconcile(EVENT)) is None
+    assert adapter.applied == [translate, translate]
+    assert registry.get(SECOND_KEY, 1).extra["work_area"] == [0, 0, 2560, 1440]
+
+    moved = snapshot(
+        [left],
+        alone.workspaces,
+        [window("0xw", 2, at=(1440, 900), size=(1000, 500), floating=True)],
+    )
+    adapter.snapshots = [moved]
+    assert run(controller.reconcile(EVENT)) is None
+    assert len(adapter.applied) == 2
+
+
+def test_managed_window_follows_mode_on_every_reconcile(registry):
+    mon = monitor()
+    base = snapshot([mon], [workspace(1, mon)], [])
+    ref = registry.resolve(1, KEY, base)
+    registry.update(ref, mode="tiles", extra={"managed": ["0xa"], "dialogs": []})
+    # Управляемое окно стало плавающим в «Тайлах» (например, после неполного отката).
+    floating = snapshot([mon], [workspace(1, mon)], [window("0xa", 1, at=(100, 140), floating=True)])
+    adapter = FakeAdapter([floating])
+    controller = WindowController(adapter, registry)
+
+    assert run(controller.reconcile(EVENT)) is None
+
+    assert adapter.applied == [[SetFloating("0xa", False)]]
+    assert registry.get(KEY, 1).extra["geometry"] == {"0xa": {"at": [100, 140], "size": [800, 600]}}

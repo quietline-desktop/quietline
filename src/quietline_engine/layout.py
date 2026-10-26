@@ -11,8 +11,8 @@
   на момент последнего перехода в «Тайлы»;
 - `columns` — `[{"addresses": [...], "width": доля}]`, колонки на момент последнего
   перехода в «Окна»;
-- `work_area` — `[x, y, ширина, высота]`, рабочая область монитора показа на момент
-  последней сверки окон.
+- `work_area` — `[x, y, ширина, высота]`, рабочая область монитора показа, в координатах
+  которой записана `geometry` и расставлены плавающие окна последней успешной сверки.
 
 Переход меняет только управляемые окна, которые видимы, не закреплены и не в
 полноэкранном режиме.
@@ -79,11 +79,17 @@ class TransitionPlan:
 
 @dataclass(frozen=True, slots=True)
 class WorkspaceUpdate:
-    """Сверка окон пространства: группы действий (по одной на окно) и новые данные записи."""
+    """Сверка окон пространства: группы действий (по одной на окно) и новые данные записи.
+
+    `extra` сохраняется, если все группы применены. `retry_extra` — если хотя бы одна
+    отклонена: состав окон тот же, а `work_area` и `geometry` остаются в координатах
+    прежней рабочей области, чтобы следующая сверка повторила сдвиг окон.
+    """
 
     workspace: WorkspaceRef
     actions: tuple[tuple[HyprAction, ...], ...]
     extra: dict[str, Any]
+    retry_extra: dict[str, Any]
 
 
 class LayoutPlanner:
@@ -323,21 +329,24 @@ def _refloat(windows: list[Window], active: str | None) -> tuple[HyprAction, ...
 def _reconcile_workspace(
     ref: WorkspaceRef, snapshot: CompositorSnapshot, owners: Mapping[str, tuple[WorkspaceRef, str]]
 ) -> WorkspaceUpdate:
-    """Сверка окон одного пространства.
-
-    Если рабочая область монитора показа изменилась с прошлой сверки, сохранённая
-    геометрия сдвигается на разницу начал областей и ограничивается новой областью;
-    в «Окнах» так же ставятся плавающие управляемые окна (окно, уже стоящее вне прежней
-    области, только ограничивается).
+    """Сверка окон одного пространства по снимку, независимо от прошлых сверок.
 
     Окно, которого нет в списках пространства, распределяется, когда оно видимо и не в
     полноэкранном режиме. Управляемое окно другого пространства остаётся управляемым и
-    подчиняется режиму этого: в «Окнах» становится плавающим в сохранённой геометрии
-    (сдвинутой и ограниченной) или по центру, уже плавающее только ограничивается;
-    в «Тайлах» возвращается в раскладку, а его геометрия сохраняется. Диалог другого
-    пространства остаётся диалогом. Новое плавающее окно — диалог; новое тайловое —
-    управляемое и в «Окнах» становится плавающим по центру. Окна, которых больше нет
-    на пространстве, убираются из данных записи.
+    получает свою сохранённую геометрию, сдвинутую в рабочую область этого и ограниченную
+    ею; диалог другого пространства остаётся диалогом. Новое плавающее окно — диалог,
+    новое тайловое — управляемое. Окна, которых больше нет на пространстве, убираются
+    из данных записи.
+
+    Если рабочая область монитора показа отличается от `work_area`, сохранённая геометрия
+    сдвигается на разницу начал областей и ограничивается новой областью.
+
+    Затем каждое управляемое окно, которое можно менять (см. `_movable`), приводится к
+    режиму пространства. В «Окнах» тайловое становится плавающим в сохранённой геометрии
+    или по центру; плавающее при смене рабочей области сдвигается так же, как геометрия
+    (окно, уже стоящее вне прежней области, не сдвигается), и ограничивается новой
+    областью, а без смены — ограничивается, только если целиком вне области. В «Тайлах»
+    плавающее возвращается в раскладку, а его геометрия сохраняется.
     """
     monitor = _workspace_monitor(snapshot, ref.workspace_id)
     area = _work_area(monitor)
@@ -345,20 +354,11 @@ def _reconcile_workspace(
     managed = [a for a in _addresses(ref.extra.get(MANAGED)) if a in windows]
     dialogs = [a for a in _addresses(ref.extra.get(DIALOGS)) if a in windows and a not in managed]
     geometry = {a: g for a, g in _saved_geometry(ref.extra).items() if a in managed}
-    groups: list[tuple[HyprAction, ...]] = []
 
     previous = _saved_area(ref.extra)
-    if previous is not None and previous != area:
+    area_changed = previous is not None and previous != area
+    if area_changed:
         geometry = {a: _clamp(_translate(g, previous, area), monitor) for a, g in geometry.items()}
-        if ref.mode == "windows":
-            for window in _movable(windows, managed):
-                if not window.floating:
-                    continue
-                current = Geometry(window.at, window.size)
-                moved = _translate(current, previous, area) if _inside(window.at, previous) else current
-                placed = _clamp(moved, monitor)
-                if placed != current:
-                    groups.append(_place(window.address, placed))
 
     for address, window in windows.items():
         if address in managed or address in dialogs:
@@ -370,26 +370,32 @@ def _reconcile_workspace(
             dialogs.append(address)
             continue
         managed.append(address)
-        saved = None
-        if owner is not None:
-            source = _saved_geometry(owner[0].extra).get(address)
-            if source is not None:
-                source_area = _saved_area(owner[0].extra)
-                if source_area is not None:
-                    source = _translate(source, source_area, area)
-                saved = _clamp(source, monitor)
-                geometry[address] = saved
-        if window.pinned:
-            continue
+        source = _saved_geometry(owner[0].extra).get(address) if owner is not None else None
+        if source is not None:
+            source_area = _saved_area(owner[0].extra)
+            if source_area is not None:
+                source = _translate(source, source_area, area)
+            geometry[address] = _clamp(source, monitor)
+
+    groups: list[tuple[HyprAction, ...]] = []
+    for window in _movable(windows, managed):
+        address = window.address
         current = Geometry(window.at, window.size)
         if ref.mode == "windows":
-            if window.floating:
-                placed = _clamp(current, monitor)
-                if placed != current:
-                    groups.append(_place(address, placed))
-            else:
-                placed = saved if saved is not None else _centered(monitor)
+            if not window.floating:
+                saved = geometry.get(address)
+                placed = _clamp(saved, monitor) if saved is not None else _centered(monitor)
                 groups.append((SetFloating(address, True), *_place(address, placed)))
+                continue
+            if area_changed:
+                moved = _translate(current, previous, area) if _inside(window.at, previous) else current
+                placed = _clamp(moved, monitor)
+            elif not _intersects(current, area):
+                placed = _clamp(current, monitor)
+            else:
+                placed = current
+            if placed != current:
+                groups.append(_place(address, placed))
         elif window.floating:
             geometry[address] = current
             groups.append((SetFloating(address, False),))
@@ -407,7 +413,14 @@ def _reconcile_workspace(
             for c in _saved_columns(ref.extra)
             if (kept := [a for a in c.addresses if a in managed])
         ]
-    return WorkspaceUpdate(ref, tuple(groups), extra)
+    retry_extra = extra
+    if area_changed:
+        retry_extra = {
+            **extra,
+            GEOMETRY: {a: _translate(g, area, previous).to_json() for a, g in geometry.items()},
+            WORK_AREA: list(previous),
+        }
+    return WorkspaceUpdate(ref, tuple(groups), extra, retry_extra)
 
 
 def _saved_area(extra: Mapping[str, Any]) -> tuple[int, int, int, int] | None:
@@ -423,6 +436,14 @@ def _saved_area(extra: Mapping[str, Any]) -> tuple[int, int, int, int] | None:
 def _inside(point: tuple[int, int], area: tuple[int, int, int, int]) -> bool:
     x0, y0, width, height = area
     return x0 <= point[0] < x0 + width and y0 <= point[1] < y0 + height
+
+
+def _intersects(geometry: Geometry, area: tuple[int, int, int, int]) -> bool:
+    """Окно хотя бы частично в рабочей области."""
+    x0, y0, width, height = area
+    x, y = geometry.at
+    w, h = geometry.size
+    return x < x0 + width and x0 < x + w and y < y0 + height and y0 < y + h
 
 
 def _translate(geometry: Geometry, source: tuple[int, int, int, int], target: tuple[int, int, int, int]) -> Geometry:
