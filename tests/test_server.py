@@ -143,8 +143,8 @@ async def wait_until(condition):
 
 
 @contextlib.asynccontextmanager
-async def running(path, controller, events=None):
-    server = EngineServer(controller, events or FakeEvents(), path, reconnect_delay=(0.01, 0.05))
+async def running(path, controller, events=None, **options):
+    server = EngineServer(controller, events or FakeEvents(), path, reconnect_delay=(0.01, 0.05), **options)
     await server.start()
     try:
         yield server
@@ -449,13 +449,19 @@ def test_start_refuses_a_path_that_is_not_a_socket(path, env):
     assert path.read_text() == "keep me"
 
 
+def instance_dir(env):
+    """Каталог экземпляра Hyprland `$XDG_RUNTIME_DIR/hypr/<сигнатура>`."""
+    return Path(env["XDG_RUNTIME_DIR"]) / "hypr" / env["HYPRLAND_INSTANCE_SIGNATURE"]
+
+
 def test_serve_reconnects_to_event_socket(path, env, caplog):
     fake = LiveFake()
     events = FakeEvents(failures=1)
     caplog.set_level(logging.INFO, logger="quietline_engine")
+    instance_dir(env).mkdir(parents=True)
 
     async def scenario():
-        async with running(path, controller_for(fake, env), events):
+        async with running(path, controller_for(fake, env), events, instance_dir=instance_dir(env)):
             await wait_until(lambda: events.queue is not None)
             assert events.connections == 2
             events.close()
@@ -472,6 +478,86 @@ def test_serve_reconnects_to_event_socket(path, env, caplog):
     messages = [r.getMessage() for r in caplog.records]
     assert any("Hyprland event socket failed" in m and "reconnecting" in m for m in messages)
     assert any("Hyprland event socket closed" in m and "reconnecting" in m for m in messages)
+
+
+def test_serve_exits_when_its_hyprland_instance_is_gone_at_start(path, env):
+    async def scenario():
+        server = EngineServer(
+            controller_for(LiveFake(), env),
+            FakeEvents(failures=1),
+            path,
+            reconnect_delay=(0.01, 0.05),
+            instance_dir=instance_dir(env),
+        )
+        with pytest.raises(ServerError, match="is gone"):
+            await asyncio.wait_for(server.serve_forever(), TIMEOUT)
+
+    run(scenario())
+    assert not path.exists()
+
+
+def test_serve_exits_when_hyprland_closes_and_its_instance_is_gone(path, env):
+    events = FakeEvents()
+    instance_dir(env).mkdir(parents=True)
+
+    async def scenario():
+        server = EngineServer(
+            controller_for(LiveFake(), env), events, path, reconnect_delay=(0.01, 0.05), instance_dir=instance_dir(env)
+        )
+        serving = asyncio.create_task(server.serve_forever())
+        await wait_until(lambda: events.queue is not None)
+        client = await connect(path)
+        assert "result" in await client.call("state")
+        shutil.rmtree(instance_dir(env))
+        events.close()
+        with pytest.raises(ServerError, match="is gone"):
+            await asyncio.wait_for(serving, TIMEOUT)
+        assert await asyncio.wait_for(client.reader.read(), TIMEOUT) == b""
+        await client.close()
+
+    run(scenario())
+    assert not path.exists()
+
+
+def test_new_session_replaces_service_of_previous_session(path, env):
+    old_env = {**env, "HYPRLAND_INSTANCE_SIGNATURE": "old"}
+
+    async def scenario():
+        old = EngineServer(controller_for(LiveFake(), old_env), FakeEvents(), path, signature="old")
+        serving = asyncio.create_task(old.serve_forever())
+        await wait_until(path.exists)
+        async with running(path, controller_for(LiveFake(), env), signature="sig"):
+            await asyncio.wait_for(serving, TIMEOUT)
+            assert serving.exception() is None
+            client = await connect(path)
+            assert "result" in await client.call("state")
+            await client.close()
+
+    run(scenario())
+
+
+def test_same_session_service_is_not_replaced(path, env):
+    async def scenario():
+        async with running(path, controller_for(LiveFake(), env), signature="sig"):
+            second = EngineServer(controller_for(LiveFake(), env), FakeEvents(), path, signature="sig")
+            with pytest.raises(ServerError, match="already running"):
+                await second.start()
+            client = await connect(path)
+            assert "result" in await client.call("state")
+            reply = await client.call("takeover", {"signature": "sig"}, id=2)
+            assert reply["error"]["code"] == "already_running"
+            assert "result" in await client.call("state", id=3)
+            await client.close()
+
+    run(scenario())
+
+
+def test_cli_serve_fails_when_hyprland_instance_is_gone(env, monkeypatch, capsys):
+    for name, value in env.items():
+        monkeypatch.setenv(name, value)
+
+    assert main(["serve"]) == 1
+    assert "Hyprland instance sig is gone" in capsys.readouterr().err
 
 
 def test_cli_prints_results_and_fails_on_errors(path, env, monkeypatch, capsys):

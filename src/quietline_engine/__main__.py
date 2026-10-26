@@ -9,9 +9,11 @@ import asyncio
 import contextlib
 import json
 import logging
+import os
 import signal
 import sys
 from collections.abc import Sequence
+from pathlib import Path
 from typing import Any
 
 from quietline_engine.controller import WindowController
@@ -81,11 +83,18 @@ def _mode_line(state: dict[str, Any], key: str | None) -> str:
 
 
 def _serve() -> int:
-    """Запускает сервис до SIGINT или SIGTERM; журнал — в stderr."""
+    """Запускает сервис до SIGINT, SIGTERM, замены сервисом нового сеанса или конца сеанса Hyprland.
+
+    Журнал — в stderr; конец сеанса — `ServerError` (код выхода 1).
+    """
     logging.basicConfig(level=logging.INFO, format="quietline-engine: %(message)s")
     adapter = Hyprland()
     controller = WindowController(adapter, WorkspaceRegistry.from_environment())
-    server = EngineServer(controller, adapter.events, socket_path())
+    signature = os.environ["HYPRLAND_INSTANCE_SIGNATURE"]
+    instance_dir = Path(os.environ["XDG_RUNTIME_DIR"]) / "hypr" / signature
+    server = EngineServer(
+        controller, adapter.events, socket_path(), signature=signature, instance_dir=instance_dir
+    )
     asyncio.run(_run(server))
     return 0
 

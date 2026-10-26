@@ -9,17 +9,21 @@
 - `state {}` — последнее опубликованное состояние с ошибкой последней команды или сверки;
 - `subscribe {}` — `result` — то же полное состояние; затем по этому соединению приходят
   события `{"event": "state", "state": {...}}`, когда `revision` растёт или меняется
-  текст `error`. `revision` событий не убывает и не меньше `revision` из `result`.
+  текст `error`. `revision` событий не убывает и не меньше `revision` из `result`;
+- `takeover {signature}` — служебный: запуск `serve` другого сеанса Hyprland. Если
+  `signature` отличается от сигнатуры сеанса этого сервиса, `result` — `{}`, и сервис
+  завершается; та же сигнатура — ошибка `already_running`.
 
 Коды ошибок:
 
 - `invalid_request` — строка не JSON-объект; нет `id` или он не строка и не целое число
   (тогда в ответе `id` равен `null`); `method` не строка; `params` не объект; лишний
-  параметр; `monitor` не строка;
+  параметр; `monitor` или `signature` не строка;
 - `unknown_method` — метода нет в списке выше;
 - `invalid_number` — номер пространства не целое число от 1 до 10; Hyprland не вызывается;
 - `command_failed` — команда не выполнена: `message` — текст `error` подтверждённого
   состояния; само состояние с ошибкой получают подписчики;
+- `already_running` — `takeover` из того же сеанса Hyprland;
 - `internal_error` — непредвиденный сбой обработки запроса.
 
 Запросы одного соединения обрабатываются по порядку. Незавершённая строка в конце потока
@@ -51,6 +55,8 @@ REQUEST_LINE_LIMIT = 64 * 1024
 CLIENT_QUEUE_LIMIT = 256
 CLOSE_TIMEOUT_SECONDS = 5.0
 CLIENT_TIMEOUT_SECONDS = 60.0
+# Сколько новый сервис ждёт ответа и остановки сервиса другого сеанса Hyprland.
+TAKEOVER_TIMEOUT_SECONDS = 5.0
 # Первая и наибольшая пауза перед повторным подключением к событиям Hyprland.
 RECONNECT_DELAY_SECONDS = (0.5, 10.0)
 
@@ -61,6 +67,7 @@ _METHODS: dict[str, frozenset[str]] = {
     "toggle": frozenset({"monitor"}),
     "state": frozenset(),
     "subscribe": frozenset(),
+    "takeover": frozenset({"signature"}),
 }
 
 # Сигналы сверки, не пришедшие из сокета событий.
@@ -150,6 +157,11 @@ class EngineServer:
     закрытый или недоступный поток открывается снова с паузой от `reconnect_delay[0]`
     до `reconnect_delay[1]` секунд, удваивающейся при каждой неудаче подряд. IPC-клиенты
     обслуживаются всё это время.
+
+    `signature` — `HYPRLAND_INSTANCE_SIGNATURE` сеанса сервиса, `instance_dir` — каталог
+    этого экземпляра Hyprland (`$XDG_RUNTIME_DIR/hypr/<сигнатура>`). Если после закрытия
+    или сбоя потока событий каталога нет, сеанс закончился: `serve_forever` завершается
+    `ServerError`. Сервис другого сеанса, занявший сокет, заменяется при запуске (`takeover`).
     """
 
     def __init__(
@@ -159,11 +171,16 @@ class EngineServer:
         path: Path,
         *,
         reconnect_delay: tuple[float, float] = RECONNECT_DELAY_SECONDS,
+        signature: str | None = None,
+        instance_dir: Path | None = None,
     ) -> None:
         self._controller = controller
         self._events = events
         self._path = path
         self._delay = reconnect_delay
+        self._signature = signature
+        self._instance_dir = instance_dir
+        self._done: asyncio.Future[None] | None = None
         self._latest: PublicState | None = None
         self._connections: set[_Connection] = set()
         self._server: asyncio.Server | None = None
@@ -173,9 +190,11 @@ class EngineServer:
         """Занимает сокет, сверяет состояние и начинает принимать клиентов и события.
 
         Каталог сокета получает права `0700`, сокет — `0600`. Файл сокета, который никто
-        не слушает, заменяется; живой сокет означает запущенный экземпляр — `ServerError`.
+        не слушает, заменяется. Живой сервис другого сеанса Hyprland получает `takeover`
+        и завершается; живой сервис того же сеанса — `ServerError`.
         """
-        _claim(self._path)
+        self._done = asyncio.get_running_loop().create_future()
+        await _claim(self._path, self._signature)
         try:
             self._server = await asyncio.start_unix_server(
                 self._serve_client, path=str(self._path), limit=REQUEST_LINE_LIMIT, start_serving=False
@@ -193,23 +212,26 @@ class EngineServer:
         log.info("listening on %s", self._path)
 
     async def serve_forever(self) -> None:
-        """`start`, затем работа до отмены; при выходе сокет удаляется."""
+        """`start`, затем работа до отмены или `takeover`; при выходе сокет удаляется.
+
+        Конец сеанса Hyprland — `ServerError`.
+        """
         await self.start()
+        assert self._done is not None
         try:
-            await asyncio.Event().wait()
+            await self._done
         finally:
             await self.close()
 
     async def close(self) -> None:
-        """Останавливает события, закрывает клиентов и удаляет файл сокета."""
+        """Останавливает события, дописывает и закрывает клиентов, удаляет файл сокета."""
         if self._events_task is not None:
             self._events_task.cancel()
             await asyncio.wait({self._events_task})
             self._events_task = None
         if self._server is not None:
             self._server.close()
-            for connection in list(self._connections):
-                connection.abort()
+            await asyncio.gather(*(connection.finish() for connection in list(self._connections)))
             await self._server.wait_closed()
             self._server = None
 
@@ -264,6 +286,9 @@ class EngineServer:
         monitor = params.get("monitor")
         if monitor is not None and not isinstance(monitor, str):
             raise EngineError("invalid_request", "monitor must be a string")
+        signature = params.get("signature")
+        if signature is not None and not isinstance(signature, str):
+            raise EngineError("invalid_request", "signature must be a string")
         number = 0
         if "number" in allowed:
             try:
@@ -277,6 +302,12 @@ class EngineServer:
             case "subscribe":
                 connection.subscribed = True
                 return self._current().to_json()
+            case "takeover":
+                if signature == self._signature:
+                    raise EngineError("already_running", "quietline-engine of this Hyprland session is already running")
+                log.info("replaced by quietline-engine of another Hyprland session; stopping")
+                asyncio.get_running_loop().call_soon(self._finish, None)
+                return {}
             case "switch":
                 state = await self._controller.switch(number, monitor)
             case "move":
@@ -287,6 +318,18 @@ class EngineServer:
         if state.error is not None:
             raise EngineError("command_failed", state.error)
         return state.to_json()
+
+    def _finish(self, error: ServerError | None) -> None:
+        """Завершает `serve_forever`: без ошибки или с `error`."""
+        if self._done is None or self._done.done():
+            return
+        if error is None:
+            self._done.set_result(None)
+        else:
+            self._done.set_exception(error)
+
+    def _instance_gone(self) -> bool:
+        return self._instance_dir is not None and not self._instance_dir.is_dir()
 
     def _current(self) -> PublicState:
         return self._latest or self._controller.state()
@@ -323,16 +366,30 @@ class EngineServer:
                     async for event in stream:
                         delay = low
                         await self._reconcile(event)
-                log.warning("Hyprland event socket closed; reconnecting in %gs", delay)
+                problem = "closed"
             except Exception as error:
-                log.warning("Hyprland event socket failed: %s; reconnecting in %gs", error, delay)
+                problem = f"failed: {error}"
+            if self._instance_gone():
+                assert self._instance_dir is not None
+                name = self._instance_dir.name
+                self._finish(
+                    ServerError(f"Hyprland instance {name} is gone ({self._instance_dir} no longer exists); stopping")
+                )
+                return
+            log.warning("Hyprland event socket %s; reconnecting in %gs", problem, delay)
             await asyncio.sleep(delay)
             delay = min(delay * 2, high)
             await self._reconcile(_RECONNECTED)
 
 
-def _claim(path: Path) -> None:
-    """Готовит каталог `0700` и убирает файл сокета, который никто не слушает."""
+async def _claim(path: Path, signature: str | None) -> None:
+    """Готовит каталог `0700` и освобождает путь сокета.
+
+    Файл сокета, который никто не слушает, удаляется. Живому сервису отправляется
+    `takeover`: сервис другого сеанса Hyprland завершается и удаляет свой файл сокета;
+    файл, оставшийся дольше `TAKEOVER_TIMEOUT_SECONDS`, удаляется, если его никто не
+    слушает. Сервис того же сеанса, не ответивший или не остановившийся — `ServerError`.
+    """
     directory = path.parent
     try:
         directory.mkdir(mode=0o700, parents=True, exist_ok=True)
@@ -344,21 +401,43 @@ def _claim(path: Path) -> None:
         raise ServerError(f"cannot prepare {directory}: {error}") from error
     if not stat.S_ISSOCK(info.st_mode):
         raise ServerError(f"{path} exists and is not a socket")
+    if not _listening(path):
+        path.unlink(missing_ok=True)
+        log.info("removed stale socket %s", path)
+        return
+    try:
+        await asyncio.to_thread(
+            request, path, "takeover", {"signature": signature}, timeout=TAKEOVER_TIMEOUT_SECONDS
+        )
+    except EngineError as error:
+        if error.code == "already_running":
+            raise ServerError(f"another quietline-engine is already running on {path}") from error
+        raise ServerError(f"another quietline-engine on {path} did not answer: {error}") from error
+    # Остановленный сервис сам удаляет свой файл сокета.
+    for _ in range(int(TAKEOVER_TIMEOUT_SECONDS / 0.05)):
+        if not os.path.lexists(path):
+            break
+        await asyncio.sleep(0.05)
+    else:
+        if _listening(path):
+            raise ServerError(f"quietline-engine of another Hyprland session on {path} did not stop")
+        path.unlink(missing_ok=True)
+    log.info("replaced quietline-engine of another Hyprland session on %s", path)
+
+
+def _listening(path: Path) -> bool:
+    """Принимает ли кто-то соединения на сокете `path`."""
     probe = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
     probe.settimeout(1.0)
     try:
         probe.connect(str(path))
-    except ConnectionRefusedError:
-        path.unlink(missing_ok=True)
-        log.info("removed stale socket %s", path)
-        return
-    except FileNotFoundError:
-        return
+    except (ConnectionRefusedError, FileNotFoundError):
+        return False
     except OSError as error:
         raise ServerError(f"cannot check {path}: {error}") from error
     finally:
         probe.close()
-    raise ServerError(f"another quietline-engine is already running on {path}")
+    return True
 
 
 def _decode(line: bytes) -> dict[str, Any]:
@@ -394,14 +473,16 @@ def _error_reply(request_id: str | int | None, code: str, message: str) -> dict[
     return {"id": request_id, "error": {"code": code, "message": message}}
 
 
-def request(path: Path, method: str, params: Mapping[str, Any] | None = None) -> dict[str, Any]:
+def request(
+    path: Path, method: str, params: Mapping[str, Any] | None = None, *, timeout: float = CLIENT_TIMEOUT_SECONDS
+) -> dict[str, Any]:
     """Отправляет один запрос и возвращает `result`.
 
     Ответ `error` — `EngineError` с его кодом; нет связи с сервисом — код `unavailable`.
     """
     line = json.dumps({"id": 1, "method": method, "params": dict(params or {})}).encode() + b"\n"
     with socket.socket(socket.AF_UNIX, socket.SOCK_STREAM) as sock:
-        sock.settimeout(CLIENT_TIMEOUT_SECONDS)
+        sock.settimeout(timeout)
         try:
             sock.connect(str(path))
         except OSError as error:
