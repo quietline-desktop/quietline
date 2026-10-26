@@ -125,9 +125,11 @@ class WindowController:
         Событие — только сигнал: его содержимое не используется, поскольку очередь событий
         может пропустить промежуточное изменение. Порядок: сверка реестра; если вернулся
         монитор-владелец — перенос его пространств назад и повторное чтение снимка; сверка
-        окон (см. `LayoutPlanner.reconcile`). Возвращает состояние с увеличенным `revision`,
-        если мониторы или пространства изменились, иначе `None`; при ошибке — состояние
-        с `error`. Выполняется до конца под блокировкой, как `toggle`.
+        окон (см. `LayoutPlanner.reconcile`). Отказ Hyprland в переносе пространств не
+        отменяет сверку окон: она выполняется по перечитанному снимку, а ошибки обоих шагов
+        возвращаются вместе. Возвращает состояние с увеличенным `revision`, если мониторы
+        или пространства изменились, иначе `None`; при ошибке — состояние с `error`.
+        Выполняется до конца под блокировкой, как `toggle`.
         """
         async with self._lock:
             return await _run_to_completion(self._reconcile())
@@ -191,16 +193,22 @@ class WindowController:
     async def _reconcile(self) -> PublicState | None:
         revision = self._revision
         known = self._registry.workspaces()
+        errors: list[str] = []
         try:
             snapshot = await self._read()
             moves = self._sync(snapshot)
             if moves:
-                await self._apply(moves, "cannot return workspaces to their monitor")
+                try:
+                    await self._apply(moves, "cannot return workspaces to their monitor")
+                except CommandError as error:
+                    errors.append(str(error))
                 snapshot = await self._read()
                 self._sync(snapshot)
             await self._converge(snapshot, known)
         except CommandError as error:
-            return self._publish(str(error))
+            errors.append(str(error))
+        if errors:
+            return self._publish("; ".join(errors))
         state = self._publish()
         return state if state.revision != revision else None
 

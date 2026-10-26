@@ -641,3 +641,28 @@ def test_pending_target_follows_work_area_change(registry):
     # Отложенная цель сдвинута вместе с рабочей областью и ограничена ею.
     assert adapter.applied == [[SetFloating("0xn", True), MoveWindow("0xn", 512, 328), ResizeWindow("0xn", 1536, 864)]]
     assert "pending" not in registry.get(KEY, 1).extra
+
+
+def test_refused_workspace_return_does_not_stop_window_reconciliation(registry):
+    left, right = monitor(), second()
+    bare = snapshot([left, right], [workspace(1, left), workspace(2, right)], [])
+    registry.resolve(1, KEY, bare)
+    registry.resolve(1, SECOND_KEY, bare)
+    # Пространство правого монитора показано на левом, на «Окнах» левого — новое тайловое окно.
+    opened = snapshot(
+        [left, second(active=3)],
+        [workspace(1, left), workspace(2, left), workspace(3, right)],
+        [window("0xn", 1)],
+    )
+    adapter = FakeAdapter([opened], fail_on=[0])
+    controller = WindowController(adapter, registry)
+
+    state = run(controller.reconcile(EVENT))
+
+    assert state is not None and state.error is not None
+    assert "cannot return workspaces to their monitor" in state.error
+    assert adapter.applied == [
+        [MoveWorkspaceToMonitor(2, "HDMI-A-1")],
+        [SetFloating("0xn", True), MoveWindow("0xn", 512, 288), ResizeWindow("0xn", 1536, 864)],
+    ]
+    assert registry.get(KEY, 1).extra["managed"] == ["0xn"]
