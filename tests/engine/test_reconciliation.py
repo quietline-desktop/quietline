@@ -90,6 +90,32 @@ def test_new_window_floats_only_on_windows_workspace(registry):
     assert len(adapter.applied) == 1
 
 
+def test_tagged_windows_are_left_alone_by_reconciliation(registry):
+    mon = monitor(reserved=(0, 40, 0, 0))
+    base = snapshot([mon], [workspace(1, mon)], [])
+    one = registry.resolve(1, KEY, base)
+    registry.update(one, extra={"managed": ["0xm"], "dialogs": []})
+    opened = snapshot(
+        [mon],
+        [workspace(1, mon)],
+        [
+            # Новое тайловое окно с тегом в «Окнах» не становится плавающим.
+            window("0xn", 1, at=(0, 40), size=(2560, 1400), tags=("quietline-native-float",)),
+            # Управляемое окно, получившее тег, переходит в диалоги и не двигается.
+            window("0xm", 1, at=(5000, 40), size=(800, 600), floating=True, tags=("quietline-modal*",)),
+            window("0xh", 1, at=(0, 40), size=(800, 600), hidden=True, tags=("quietline-modal*",)),
+        ],
+    )
+    adapter = FakeAdapter([opened])
+    controller = WindowController(adapter, registry)
+
+    assert run(controller.reconcile(EVENT)) is None
+
+    assert adapter.applied == []
+    assert registry.get(KEY, 1).extra["managed"] == []
+    assert registry.get(KEY, 1).extra["dialogs"] == ["0xn", "0xm", "0xh"]
+
+
 def test_moved_window_obeys_destination_mode(registry):
     mon = monitor()
     base = snapshot([mon], [workspace(1, mon)], [])

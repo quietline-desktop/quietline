@@ -3,6 +3,9 @@
 from dataclasses import dataclass
 from typing import Literal
 
+# Теги диалогов и служебных окон, которые ставит config/hyprland/quietline.lua.
+DIALOG_TAGS = frozenset({"quietline-modal", "quietline-native-float"})
+
 
 @dataclass(frozen=True, slots=True)
 class Monitor:
@@ -62,7 +65,8 @@ class Workspace:
 class Window:
     """Окно из `hyprctl -j clients`; `at` и `size` — глобальные координаты макета.
 
-    `pinned` — окно закреплено поверх всех пространств монитора.
+    `pinned` — окно закреплено поверх всех пространств монитора. `tags` — теги окна;
+    тег, поставленный правилом окна, Hyprland показывает с `*` в конце.
     """
 
     address: str
@@ -78,6 +82,12 @@ class Window:
     mapped: bool
     hidden: bool
     pinned: bool = False
+    tags: tuple[str, ...] = ()
+
+    @property
+    def dialog_tagged(self) -> bool:
+        """Окно помечено тегом из `DIALOG_TAGS` (с `*` правила окна или без него)."""
+        return any(tag.removesuffix("*") in DIALOG_TAGS for tag in self.tags)
 
 
 @dataclass(frozen=True, slots=True)

@@ -5,8 +5,10 @@
 
 - `managed` — адреса окон, которыми управляет движок: окно становится управляемым, если
   при первой встрече на пространстве оно было в раскладке (не плавающим);
-- `dialogs` — адреса окон, которые при первой встрече уже были плавающими (диалоги и
-  служебные окна); они не меняются массово ни в одном режиме;
+- `dialogs` — адреса окон, которые при первой встрече уже были плавающими, и окон с тегом
+  диалога (`Window.dialog_tagged`) — диалоги и служебные окна; они не меняются массово ни
+  в одном режиме. Окно с тегом диалога не бывает управляемым: получив тег, управляемое окно
+  становится диалогом;
 - `geometry` — `{адрес: {"at": [x, y], "size": [w, h]}}`, геометрия плавающих окон
   на момент последнего перехода в «Тайлы»;
 - `columns` — `[{"addresses": [...], "width": доля}]`, колонки на момент последнего
@@ -266,16 +268,25 @@ class LayoutPlanner:
 def _classify(workspace: WorkspaceRef, snapshot: CompositorSnapshot) -> tuple[dict[str, Window], list[str], list[str]]:
     """Окна пространства и списки управляемых окон и диалогов без закрытых окон.
 
-    Окно, которого нет ни в одном списке, впервые увидено сейчас: плавающее — диалог,
-    иначе управляемое.
+    Окно, которого нет ни в одном списке, впервые увидено сейчас: плавающее или с тегом
+    диалога — диалог, иначе управляемое. Управляемое окно с тегом диалога становится диалогом.
     """
     windows = {w.address: w for w in snapshot.windows if w.workspace_id == workspace.workspace_id}
-    managed = [a for a in _addresses(workspace.extra.get(MANAGED)) if a in windows]
-    dialogs = [a for a in _addresses(workspace.extra.get(DIALOGS)) if a in windows and a not in managed]
+    managed, dialogs = _roles(workspace, windows)
     for address, window in windows.items():
         if address not in managed and address not in dialogs:
-            (dialogs if window.floating else managed).append(address)
+            (dialogs if window.floating or window.dialog_tagged else managed).append(address)
     return windows, managed, dialogs
+
+
+def _roles(workspace: WorkspaceRef, windows: Mapping[str, Window]) -> tuple[list[str], list[str]]:
+    """Сохранённые управляемые окна и диалоги, которые есть на пространстве.
+
+    Управляемое окно с тегом диалога в список управляемых не попадает.
+    """
+    managed = [a for a in _addresses(workspace.extra.get(MANAGED)) if a in windows and not windows[a].dialog_tagged]
+    dialogs = [a for a in _addresses(workspace.extra.get(DIALOGS)) if a in windows and a not in managed]
+    return managed, dialogs
 
 
 def _movable(windows: Mapping[str, Window], managed: Iterable[str]) -> list[Window]:
@@ -378,7 +389,8 @@ def _reconcile_workspace(
     в этой геометрии или по центру, плавающее ограничивается рабочей областью; в «Тайлах»
     плавающее возвращается в раскладку, а его геометрия сохраняется. Диалог другого
     пространства остаётся диалогом. Новое плавающее окно — диалог; новое тайловое —
-    управляемое и подчиняется режиму так же.
+    управляемое и подчиняется режиму так же. Окно с тегом диалога — диалог при любом
+    состоянии, в том числе бывшее управляемое.
 
     Если рабочая область монитора показа отличается от `work_area`, сохранённая геометрия
     и цели `pending` сдвигаются на разницу начал областей и ограничиваются новой
@@ -393,8 +405,7 @@ def _reconcile_workspace(
     monitor = _workspace_monitor(snapshot, ref.workspace_id)
     area = _work_area(monitor)
     windows = {w.address: w for w in snapshot.windows if w.workspace_id == ref.workspace_id}
-    managed = [a for a in _addresses(ref.extra.get(MANAGED)) if a in windows]
-    dialogs = [a for a in _addresses(ref.extra.get(DIALOGS)) if a in windows and a not in managed]
+    managed, dialogs = _roles(ref, windows)
     geometry = {a: g for a, g in _saved_geometry(ref.extra).items() if a in managed}
     pending = {a: t for a, t in _saved_targets(ref.extra).items() if a in managed}
 
@@ -410,6 +421,9 @@ def _reconcile_workspace(
     arrived: list[str] = []
     for address, window in windows.items():
         if address in managed or address in dialogs:
+            continue
+        if window.dialog_tagged:
+            dialogs.append(address)
             continue
         if not window.mapped or window.hidden or window.fullscreen != 0:
             continue

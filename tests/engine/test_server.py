@@ -21,7 +21,7 @@ from quietline_engine.__main__ import main
 from quietline_engine.controller import WindowController
 from quietline_engine.hyprland import HyprlandError
 from quietline_engine.server import EngineServer, ServerError, socket_path
-from quietline_engine.types import FocusMonitor, FocusWorkspace, HyprEvent
+from quietline_engine.types import DIALOG_TAGS, FocusMonitor, FocusWorkspace, HyprEvent
 from quietline_engine.workspaces import WorkspaceRegistry
 
 KEY = "Dell Inc.|U2723QE|SN1"
@@ -669,5 +669,7 @@ def test_shortcuts_target_expected_cli_calls():
         r'hl\.dsp\.window\.tag\(\{\s*window\s*=\s*"address:"\s*\.\.\s*window\.address,\s*tag\s*=\s*"\+quietline-native-float",?\s*\}\)',
         opened.group(1),
     )
+    # Конфигурация ставит ровно те теги, по которым движок узнаёт диалоги.
+    assert set(re.findall(r'tag\s*=\s*"\+([a-z-]+)"', text)) == DIALOG_TAGS
     comments = [line.split("--", 1)[1] for line in text.splitlines() if "--" in line]
     assert comments and all(re.search("[а-яё]", c, re.IGNORECASE) for c in comments if c.strip())

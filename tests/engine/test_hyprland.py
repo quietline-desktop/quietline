@@ -63,7 +63,7 @@ WORKSPACES = [
 ]
 
 
-def client(address, workspace, monitor, at, size, floating=False, title="t", pinned=False):
+def client(address, workspace, monitor, at, size, floating=False, title="t", pinned=False, tags=()):
     """Запись `hyprctl -j clients` с полями из карты команд."""
     return {
         "address": address,
@@ -79,6 +79,7 @@ def client(address, workspace, monitor, at, size, floating=False, title="t", pin
         "mapped": True,
         "hidden": False,
         "pinned": pinned,
+        "tags": list(tags),
     }
 
 
@@ -150,6 +151,38 @@ def test_snapshot_parses_two_monitors_and_clients():
         ["hyprctl", "-j", "activewindow"],
         ["hyprctl", "-j", "cursorpos"],
     ]
+
+
+def test_snapshot_reads_window_tags_and_dialog_marks():
+    runner = FakeRunner()
+    tagged = [
+        client("0xa1", 1, 0, (10, 36), (1240, 1404), tags=["quietline-native-float"]),
+        client("0xb2", 1, 0, (300, 300), (400, 300), floating=True, tags=["quietline-modal*", "work"]),
+        client("0xc3", 1, 0, (900, 300), (400, 300), tags=["quietline-modal-like", "work*"]),
+    ]
+    runner.replies[("hyprctl", "-j", "clients")] = json.dumps(tagged)
+    snap = Hyprland(runner=runner).snapshot()
+
+    assert [w.tags for w in snap.windows] == [
+        ("quietline-native-float",),
+        ("quietline-modal*", "work"),
+        ("quietline-modal-like", "work*"),
+    ]
+    assert [w.dialog_tagged for w in snap.windows] == [True, True, False]
+    assert snap.active_window is not None and snap.active_window.tags == ()
+
+
+@pytest.mark.parametrize("tags", [None, "quietline-modal", [1], [["quietline-modal"]]])
+def test_snapshot_rejects_malformed_or_missing_tags(tags):
+    runner = FakeRunner()
+    broken = dict(CLIENTS[0])
+    if tags is None:
+        del broken["tags"]
+    else:
+        broken["tags"] = tags
+    runner.replies[("hyprctl", "-j", "clients")] = json.dumps([broken, *CLIENTS[1:]])
+    with pytest.raises(HyprlandError, match="unexpected hyprctl reply shape"):
+        Hyprland(runner=runner).snapshot()
 
 
 def test_snapshot_without_active_window_and_derived_columns():

@@ -190,7 +190,15 @@ def _window(raw: Mapping) -> Window:
         mapped=raw["mapped"],
         hidden=raw["hidden"],
         pinned=raw["pinned"],
+        tags=_tags(raw["tags"]),
     )
+
+
+def _tags(raw: object) -> tuple[str, ...]:
+    """Теги окна: список строк, иначе `TypeError`."""
+    if not isinstance(raw, list) or not all(isinstance(tag, str) for tag in raw):
+        raise TypeError(f"window tags must be a list of strings, got {raw!r}")
+    return tuple(raw)
 
 
 class Hyprland:

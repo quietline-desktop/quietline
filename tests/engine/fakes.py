@@ -55,8 +55,9 @@ def window(
     pinned=False,
     mapped=True,
     hidden=False,
+    tags=(),
 ):
-    """Окно пространства; по умолчанию видимое и тайловое."""
+    """Окно пространства; по умолчанию видимое, тайловое и без тегов."""
     return Window(
         address=address,
         workspace_id=workspace_id,
@@ -71,6 +72,7 @@ def window(
         mapped=mapped,
         hidden=hidden,
         pinned=pinned,
+        tags=tuple(tags),
     )
 
 
