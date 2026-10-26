@@ -6,7 +6,7 @@ Quietline — личное рабочее окружение Linux поверх 
 
 ## Текущее состояние
 
-В репозитории спека, план первого этапа и утверждённый макет. Первый этап — движок пространств и окон на Python по плану `docs/superpowers/plans/2026-10-19-window-engine.md` — реализован: адаптер Hyprland, локальные пространства мониторов, режимы «Окна / Тайлы», сверка по событиям, сервис с IPC и CLI, клавиши Hyprland. Живые проверки не проведены — список в `docs/backlog.md`, порядок проверки — `scripts/smoke-window-engine.md`.
+В репозитории спека, планы первых двух этапов, утверждённый макет и визуальный контракт `DESIGN.md`. Первый этап — движок пространств и окон на Python по плану `docs/superpowers/plans/2026-10-19-window-engine.md` — реализован: адаптер Hyprland, локальные пространства мониторов, режимы «Окна / Тайлы», сверка по событиям, диалоги по тегам, сервис с IPC и CLI, клавиши Hyprland. Второй этап — оболочка Quickshell по плану `docs/superpowers/plans/2026-10-19-quickshell.md` — перенесён на этот движок: верхняя панель, док, трей, показатели, `Super+Space`, CLI `quietline-shell`. Живые проверки не проведены — список в `docs/backlog.md`, порядок проверки — `scripts/smoke-window-engine.md` и `scripts/smoke-quickshell.md`.
 
 ## Базовая система и минимальные версии
 
@@ -27,6 +27,7 @@ Quietline ставится поверх **Arch Linux** после Archinstall Mi
 |---|---|
 | Любая задача по поведению окружения | `docs/superpowers/specs/2026-10-19-quietline-desktop-design.md` — что делает Quietline и критерии готовности первой версии |
 | Движок пространств и окон | `docs/superpowers/plans/2026-10-19-window-engine.md` — файловая карта, контракт IPC, шаги и проверки |
+| Оболочка Quickshell (панель, док, `quietline-shell`) | `docs/superpowers/plans/2026-10-19-quickshell.md` — границы, перенос на новый движок, файлы и проверки; `DESIGN.md` — внешний вид |
 | Внешний вид панели, дока, всплывающих окон | `DESIGN.md` — визуальный контракт оболочки: токены, размеры, движения, владельцы компонентов; `docs/design/quiet-line-a.html` — утверждённый макет варианта A (в том числе сетевой панели) |
 | Задача с активной спекой или планом | `docs/superpowers/specs` и `plans` — статус в шапке файла; читать только относящиеся к задаче |
 | Устройство репозитория для человека | `README.md` |
@@ -40,7 +41,7 @@ docs/design/              — утверждённые визуальные ма
 docs/superpowers/specs/   — спеки: что строим и почему
 docs/superpowers/plans/   — планы реализации по шагам
 config/hyprland/          — Lua-конфигурация Hyprland: раскладка, запуск сервиса и оболочки, клавиши, теги диалогов
-scripts/                  — сценарии проверки в живом сеансе (`smoke-window-engine.md`), запуск оболочки из репозитория `run-shell`
+scripts/                  — сценарии проверки в живом сеансе (`smoke-window-engine.md`, `smoke-quickshell.md`), запуск оболочки из репозитория `run-shell`
 shell/quietline/          — конфигурация Quickshell (`qs -c quietline`): `shell.qml`, тема `Theme.qml`, стенд IPC `IpcHarness.qml`
 shell/quietline/components/ — кнопки, всплывающие окна, верхняя панель и док
 shell/quietline/services/ — клиент IPC движка, окна и приложения, показатели панели
