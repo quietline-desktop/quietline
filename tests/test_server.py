@@ -240,6 +240,22 @@ def test_ipc_rejects_invalid_number_and_survives_client_disconnect(path, env):
     run(scenario())
 
 
+def test_oversized_request_closes_only_that_connection(path, env):
+    async def scenario():
+        async with running(path, controller_for(LiveFake(), env)):
+            other = await connect(path)
+            flood = await connect(path)
+            await flood.send(b"x" * (server_module.REQUEST_LINE_LIMIT + 10))
+            reply = await flood.read()
+            assert reply["id"] is None and reply["error"]["code"] == "invalid_request"
+            assert await asyncio.wait_for(flood.reader.read(), TIMEOUT) == b""
+            await flood.close()
+            assert "result" in await other.call("state")
+            await other.close()
+
+    run(scenario())
+
+
 def test_command_failure_is_an_error_reply(path, env):
     fake = LiveFake()
 
