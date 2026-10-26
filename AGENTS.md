@@ -42,7 +42,7 @@ docs/superpowers/plans/   — планы реализации по шагам
 config/hyprland/          — Lua-конфигурация Hyprland: раскладка, запуск сервиса и клавиши движка
 scripts/                  — сценарии проверки в живом сеансе (`smoke-window-engine.md`)
 src/quietline_engine/     — Python-пакет движка пространств и окон
-tests/                    — модульные тесты движка (pytest, без Hyprland)
+tests/engine/             — модульные тесты движка (pytest, без Hyprland)
 pyproject.toml            — пакет `quietline-engine`, Python ≥ 3.14, тестовая зависимость pytest
 LICENSE                   — GPL-3.0
 ```
@@ -51,7 +51,7 @@ LICENSE                   — GPL-3.0
 
 - Работа ведётся на macOS, окружение запускается только на Linux. Модульные тесты движка работают без Hyprland через поддельный адаптер и гоняются локально; живые проверки (Hyprland, мониторы, Quickshell, установщик) возможны только на Linux-машине.
 - Непроведённая живая проверка не считается пройденной: агент прямо пишет, что не проверено, и заносит пункт в `docs/backlog.md`.
-- Тесты: `uv run --python 3.14 pytest` (на macOS системный Python не используется; зависимости ставятся из `pyproject.toml`). Один файл — `uv run --python 3.14 pytest tests/test_hyprland.py -v`.
+- Тесты: `uv run --python 3.14 pytest` (на macOS системный Python не используется; зависимости ставятся из `pyproject.toml`). Один файл — `uv run --python 3.14 pytest tests/engine/test_hyprland.py -v`.
 - Сервис и CLI движка: `quietline-engine serve` (в сеансе Hyprland; журнал — в stderr), клиентские команды `quietline-engine switch N [--monitor KEY]`, `move N`, `toggle [--monitor KEY]`, `state`. Из репозитория без установки — `uv run --python 3.14 quietline-engine …`. Протокол сокета `$XDG_RUNTIME_DIR/quietline/engine.sock` и коды ошибок — в docstring `src/quietline_engine/server.py`.
 
 ## Общие конвенции

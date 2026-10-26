@@ -53,7 +53,7 @@
 - `src/quietline_engine/server.py` — протокол JSON Lines поверх Unix-сокета, подписки и клиент.
 - `src/quietline_engine/__main__.py` — `quietline-engine serve|switch|move|toggle|state`.
 - `config/hyprland/quietline.lua` — минимальные клавиши движка и независимый запуск терминала.
-- `tests/` — модульные тесты и поддельный адаптер; `scripts/smoke-window-engine.md` — проверка в живом сеансе.
+- `tests/engine/` — модульные тесты и поддельный адаптер; `scripts/smoke-window-engine.md` — проверка в живом сеансе.
 
 ## Контракт между частями
 
@@ -115,60 +115,60 @@
 
 ## Task 1: Совместимый адаптер Hyprland
 
-**Files:** Create `pyproject.toml`, `LICENSE`, `src/quietline_engine/__init__.py`, `src/quietline_engine/types.py`, `src/quietline_engine/hyprland.py`, `tests/test_hyprland.py`.
+**Files:** Create `pyproject.toml`, `LICENSE`, `src/quietline_engine/__init__.py`, `src/quietline_engine/types.py`, `src/quietline_engine/hyprland.py`, `tests/engine/test_hyprland.py`.
 
 **Interfaces:** `Hyprland.snapshot() -> CompositorSnapshot`; `Hyprland.apply(actions: Sequence[HyprAction]) -> None`; `Hyprland.events() -> AsyncIterator[HyprEvent]`. `CompositorSnapshot` содержит `monitors`, `workspaces`, `windows`, `active_window`, `cursor_position`; `HyprAction` задаёт действие без готовой shell-строки. Команды исполняются через `subprocess` со списком аргументов и таймаутом, без `shell=True`.
 
 - [x] Написать `test_snapshot_parses_two_monitors_and_clients`, `test_eval_escapes_only_validated_ids`, `test_hyprctl_failure_raises_without_success_state`: тесты проверяют разобранные поля, безопасные аргументы и ошибку при ненулевом коде.
-- [x] Запустить `python -m pytest tests/test_hyprland.py -v`; ожидается FAIL из-за отсутствующего адаптера.
+- [x] Запустить `python -m pytest tests/engine/test_hyprland.py -v`; ожидается FAIL из-за отсутствующего адаптера.
 - [x] Реализовать типы и адаптер с `hyprctl -j monitors/workspaces/clients/activewindow/cursorpos`, `hyprctl eval` и чтением `$XDG_RUNTIME_DIR/hypr/$HYPRLAND_INSTANCE_SIGNATURE/.socket2.sock`; валидировать адреса окон и числовые ID до генерации Lua. Добавить текст GPL-3.0 в `LICENSE`.
 - [x] Повторить команду теста; ожидается PASS.
 - [x] Зафиксировать файлы коммитом `feat: add Hyprland adapter`.
 
 ## Task 2: Локальные пространства мониторов
 
-**Files:** Create `src/quietline_engine/workspaces.py`, `tests/test_workspaces.py`.
+**Files:** Create `src/quietline_engine/workspaces.py`, `tests/engine/test_workspaces.py`.
 
 **Interfaces:** `WorkspaceRegistry.reconcile(snapshot: CompositorSnapshot) -> list[HyprAction]`; `WorkspaceRegistry.resolve(number: int, monitor_key: str, snapshot: CompositorSnapshot) -> WorkspaceRef`; `focused_monitor(snapshot: CompositorSnapshot) -> str`. `WorkspaceRef` содержит `monitor_key`, `display_monitor_key`, `number`, `workspace_id`, `mode='windows'` при создании. Состояние реестра записывается атомарно в `$XDG_RUNTIME_DIR/quietline/state.json`.
 
 - [x] Написать `test_two_monitors_have_independent_local_one`, `test_duplicate_serial_uses_connector`, `test_pointer_selects_monitor_without_active_window`, `test_switch_rejects_zero_and_eleven`, `test_new_hyprland_instance_discards_old_state`; тесты проверяют ID, ключи, границы и отсутствие состояния прошлого сеанса.
-- [x] Запустить `python -m pytest tests/test_workspaces.py -v`; ожидается FAIL.
+- [x] Запустить `python -m pytest tests/engine/test_workspaces.py -v`; ожидается FAIL.
 - [x] Реализовать ключи мониторов, выделение ID без коллизий, выбор фокуса, локальные номера и атомарное сохранение состояния сеанса.
 - [x] Повторить команду теста; ожидается PASS.
 - [x] Зафиксировать файлы коммитом `feat: add monitor-local workspaces`.
 
 ## Task 3: Переход режимов и восстановление раскладки
 
-**Files:** Create `src/quietline_engine/layout.py`, `src/quietline_engine/controller.py`, `tests/test_layout.py`, `tests/test_controller.py`.
+**Files:** Create `src/quietline_engine/layout.py`, `src/quietline_engine/controller.py`, `tests/engine/test_layout.py`, `tests/engine/test_controller.py`.
 
 **Interfaces:** `LayoutPlanner.to_tiles(workspace: WorkspaceRef, snapshot: CompositorSnapshot) -> TransitionPlan`; `LayoutPlanner.to_windows(workspace: WorkspaceRef, snapshot: CompositorSnapshot) -> TransitionPlan`; `WindowController.toggle(monitor_key: str | None = None) -> PublicState`. `TransitionPlan` хранит список действий и обратный план; `PublicState` имеет `revision`, `monitors`, `workspaces`, `error?`. Служебные окна и диалоги исключаются из массового изменения.
 
 - [x] Написать `test_windows_to_tiles_preserves_floating_geometry`, `test_tiles_to_windows_restores_geometry_clamped_to_work_area`, `test_reenter_tiles_restores_column_order_and_widths`, `test_dialog_and_fullscreen_not_rearranged`, `test_failed_or_interrupted_transition_keeps_old_mode`; проверить последовательность действий и итоговый `PublicState` с поддельным адаптером.
-- [x] Запустить `python -m pytest tests/test_layout.py tests/test_controller.py -v`; ожидается FAIL.
+- [x] Запустить `python -m pytest tests/engine/test_layout.py tests/engine/test_controller.py -v`; ожидается FAIL.
 - [x] Реализовать снимки окон, расчёт переходов и последовательное выполнение под `asyncio.Lock`; после применения читать фактический снимок Hyprland и только затем повышать `revision`. При неудаче применить обратные действия, перечитать снимок и вернуть ошибку.
 - [x] Повторить команду теста; ожидается PASS.
 - [x] Зафиксировать файлы коммитом `feat: switch workspace window modes`.
 
 ## Task 4: События, новые окна и мониторы
 
-**Files:** Modify `src/quietline_engine/controller.py`, `src/quietline_engine/workspaces.py`; Create `tests/test_reconciliation.py`.
+**Files:** Modify `src/quietline_engine/controller.py`, `src/quietline_engine/workspaces.py`; Create `tests/engine/test_reconciliation.py`.
 
 **Interfaces:** `WindowController.reconcile(event: HyprEvent) -> PublicState | None`; `WindowController.switch(number: int, monitor_key: str | None = None) -> PublicState`; `WindowController.move(number: int) -> PublicState`. При событии всегда сверять полный снимок, поскольку очередь событий может пропустить промежуточное изменение.
 
 - [x] Написать `test_new_window_floats_only_on_windows_workspace`, `test_moved_window_obeys_destination_mode`, `test_empty_inactive_workspace_is_removed`, `test_disconnected_workspace_is_accessible_and_returns`, `test_reconnected_smaller_monitor_clamps_geometry`; проверить также сохранение локальных номеров второго монитора.
-- [x] Запустить `python -m pytest tests/test_reconciliation.py -v`; ожидается FAIL.
+- [x] Запустить `python -m pytest tests/engine/test_reconciliation.py -v`; ожидается FAIL.
 - [x] Реализовать обработку открытия/закрытия/переноса окон, смены фокуса и подключения мониторов с повторной сверкой состояния. Для отсутствующего монитора выбрать доступный монитор показа, не меняя исходный `monitor_key` пространства.
 - [x] Повторить команду теста; ожидается PASS.
 - [x] Зафиксировать файлы коммитом `feat: reconcile window and monitor events`.
 
 ## Task 5: IPC, клавиши и проверка на живом сеансе
 
-**Files:** Create `src/quietline_engine/server.py`, `src/quietline_engine/__main__.py`, `config/hyprland/quietline.lua`, `tests/test_server.py`, `scripts/smoke-window-engine.md`; Modify `pyproject.toml`.
+**Files:** Create `src/quietline_engine/server.py`, `src/quietline_engine/__main__.py`, `config/hyprland/quietline.lua`, `tests/engine/test_server.py`, `scripts/smoke-window-engine.md`; Modify `pyproject.toml`.
 
 **Interfaces:** CLI `quietline-engine serve|switch N|move N|toggle|state`; JSON Lines контракт выше. Lua-конфигурация привязывает `Super+1`–`Super+9`/`Super+0`, соответствующие сочетания с `Shift`, `Super+M`; `Super+Enter` запускает Ghostty непосредственно через Hyprland даже при остановленном сервисе и панели.
 
 - [x] Написать `test_ipc_rejects_invalid_number_and_survives_client_disconnect`, `test_subscribe_sends_snapshot_then_revision`, `test_restart_preserves_session_state`, `test_shortcuts_target_expected_cli_calls`; проверить права сокета и повторную подписку после разрыва.
-- [x] Запустить `python -m pytest tests/test_server.py -v`; ожидается FAIL.
+- [x] Запустить `python -m pytest tests/engine/test_server.py -v`; ожидается FAIL.
 - [x] Реализовать сокет, CLI и минимальные привязки, включая глобальную раскладку Hyprland `scrolling` и запуск сервиса. Добавить в `scripts/smoke-window-engine.md` точные команды для Arch VM/живого сеанса с двумя физическими или виртуальными выходами и ожидаемые результаты для каждого пункта проверки.
 - [x] Запустить `python -m pytest -v`; ожидается PASS.
 - [ ] Выполнить живую проверку по `scripts/smoke-window-engine.md` на установленной стабильной версии Hyprland: локальные пространства двух мониторов, `windows ↔ scrolling`, ширина/порядок колонок, диалоги, отключение/возврат монитора и перезапуск сервиса. Записать проверенные версии и результаты в тот же файл. Не выполнено: разработка идёт на macOS, Hyprland не запускался; порядок проверки — `scripts/smoke-window-engine.md`, непроверенные пункты — `docs/backlog.md`.

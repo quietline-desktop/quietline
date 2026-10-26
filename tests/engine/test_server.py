@@ -26,7 +26,7 @@ from quietline_engine.workspaces import WorkspaceRegistry
 
 KEY = "Dell Inc.|U2723QE|SN1"
 SECOND_KEY = "Dell Inc.|U2723QE|SN2"
-LUA_CONFIG = Path(__file__).resolve().parent.parent / "config" / "hyprland" / "quietline.lua"
+LUA_CONFIG = Path(__file__).resolve().parents[2] / "config" / "hyprland" / "quietline.lua"
 TIMEOUT = 2.0
 
 
