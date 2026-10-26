@@ -6,3 +6,8 @@
 .claude/settings.local.json
 .superpowers/
 CLAUDE.local.md
+
+# Окружение и кэши Python
+.venv/
+__pycache__/
+.pytest_cache/
