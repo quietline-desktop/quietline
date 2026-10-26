@@ -4,6 +4,7 @@ import Quickshell
 import Quickshell.Wayland
 import Quickshell.Hyprland
 import ".."
+import "../controls"
 import "../logic/Models.js" as Models
 
 // Док экрана: закреплённые и запущенные на мониторе приложения; виден только в режиме «Окна» без полноэкранного окна.

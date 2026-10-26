@@ -3,7 +3,8 @@ import Quickshell
 import Quickshell.Io
 import Quickshell.Hyprland
 import "services"
-import "components"
+import "bar"
+import "dock"
 import "logic/Models.js" as Models
 
 // Корень оболочки Quietline: панель и док на каждом экране, IPC `quietline` для клавиш и проверок.

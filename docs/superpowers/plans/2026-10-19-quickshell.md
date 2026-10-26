@@ -27,7 +27,7 @@ Quickshell 0.3.2, Qt Quick Controls, стандартная библиотека
 4. **Ключи мониторов.** Подпись перенесённого пространства строится из ключа движка: `connector:DP-1` → «DP-1», `make|model|serial` → «make model», с повторяющимся серийным номером — «make model (разъём)». IPC `toggle` оболочки принимает имя разъёма или ключ.
 5. **Контракт не расходится молча.** `tests/shell/engine-protocol.json` — строки одного соединения подписчика, которые выдаёт настоящий `EngineServer` (`tests/shell/test_engine_protocol.py` сверяет файл с сервером), а `tests/shell/models.test.cjs` прогоняет тот же файл через `Models.decodeMessage`.
 6. **Диалоги.** `config/hyprland/quietline.lua` помечает модальные окна тегом `quietline-modal`, а окна, которые Hyprland открыл плавающими, — `quietline-native-float`; движок считает такие окна диалогами (план движка, «Решения при выполнении», п. 4).
-7. **Раскладка папок.** Python-часть оболочки — отдельный пакет `src/quietline_shell` с CLI `quietline-shell`; тесты разделены на `tests/engine` и `tests/shell`. `shell/quietline/` — корень конфигурации Quickshell, исключение из правила папок `AGENTS.md`; `components/` держит восемь записей и не делится.
+7. **Раскладка папок.** Python-часть оболочки — отдельный пакет `src/quietline_shell` с CLI `quietline-shell`; тесты разделены на `tests/engine` и `tests/shell`. `shell/quietline/` — корень конфигурации Quickshell, исключение из правила папок `AGENTS.md`. Компоненты разделены по тому, что видно на экране: общие элементы `controls/`, верхняя панель `bar/`, док `dock/`.
 
 ## Файлы и интерфейсы
 
@@ -37,7 +37,7 @@ Quickshell 0.3.2, Qt Quick Controls, стандартная библиотека
 - `shell/quietline/services/EngineClient.qml` — Unix-сокет JSON Lines и подтверждённое состояние, `switchWorkspace(number, monitor)`, `toggle(monitor)`; `monitor` — ключ монитора движка.
 - `shell/quietline/services/DesktopModel.qml` — окна, desktop entries, закрепления, действия приложений, fullscreen и локальная раскладка.
 - `shell/quietline/services/Indicators.qml` — CPU/RAM, сеть, Bluetooth, батарея и reduced motion.
-- `shell/quietline/components/` — общие кнопки, подсказки, всплывающие окна, верхняя панель и док.
+- `shell/quietline/controls/` — общие кнопки, пункты меню, подсказки, всплывающие окна и полоса прокрутки; `shell/quietline/bar/TopBar.qml` — верхняя панель; `shell/quietline/dock/Dock.qml` — док.
 - `src/quietline_shell/config.py` — `load_pins(path)`, `save_pins(path, ids)` с проверкой desktop ID, дедупликацией, атомарной записью; `reduced_motion()`, `network_devices()`. `src/quietline_shell/__main__.py` — CLI `quietline-shell pins [--set JSON] [--path PATH]`, `motion`, `network`: одна строка JSON в stdout.
 - `config/hyprland/quietline.lua` — запуск `qs -c quietline` после движка, `Super+Space`, параметры `scrolling`, теги диалогов.
 - `scripts/run-shell` — запуск `quickshell -p <абсолютная папка shell/quietline>`; `scripts/smoke-quickshell.md` — живые сценарии и результаты.

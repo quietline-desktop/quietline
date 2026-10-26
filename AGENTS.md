@@ -43,7 +43,9 @@ docs/superpowers/plans/   — планы реализации по шагам
 config/hyprland/          — Lua-конфигурация Hyprland: раскладка, запуск сервиса и оболочки, клавиши, теги диалогов
 scripts/                  — сценарии проверки в живом сеансе (`smoke-window-engine.md`, `smoke-quickshell.md`), запуск оболочки из репозитория `run-shell`
 shell/quietline/          — конфигурация Quickshell (`qs -c quietline`): `shell.qml`, тема `Theme.qml`, стенд IPC `IpcHarness.qml`
-shell/quietline/components/ — кнопки, всплывающие окна, верхняя панель и док
+shell/quietline/controls/ — общие элементы: кнопки, пункты меню, подсказки, всплывающие окна, полоса прокрутки
+shell/quietline/bar/      — верхняя панель `TopBar.qml`
+shell/quietline/dock/     — док `Dock.qml`
 shell/quietline/services/ — клиент IPC движка, окна и приложения, показатели панели
 shell/quietline/logic/    — чистые функции `Models.js` (общие для QML и тестов Node)
 src/quietline_engine/     — Python-пакет движка пространств и окон

@@ -4,6 +4,7 @@ import QtQuick.Layouts
 import Quickshell
 import Quickshell.Services.SystemTray
 import ".."
+import "../controls"
 import "../logic/Models.js" as Models
 
 // Верхняя панель экрана: меню приложений, пространства, заголовок окна, режим, показатели, трей и часы.
