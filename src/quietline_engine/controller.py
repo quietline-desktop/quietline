@@ -291,22 +291,22 @@ class WindowController:
 
         Действия каждого окна применяются отдельным вызовом: отказ одного окна не мешает
         остальным и сообщается после всех. Данные записи пространства сохраняются после
-        его действий: `extra`, если все приняты, иначе `retry_extra`. Окно, действие
-        которого отклонено, приводится к режиму пространства следующей сверкой.
+        его действий; цель отклонённого окна попадает в `pending` и повторяется следующими
+        сверками (см. `LayoutPlanner.reconcile`).
         """
         current = self._registry.workspaces()
         ids = {r.workspace_id for r in current}
         updates = self._planner.reconcile(current, snapshot, [r for r in known if r.workspace_id not in ids])
         failures = []
         for update in updates:
-            rejected = False
-            for group in update.actions:
+            rejected = []
+            for change in update.changes:
                 try:
-                    await asyncio.to_thread(self._adapter.apply, group)
+                    await asyncio.to_thread(self._adapter.apply, change.actions)
                 except Exception as error:
                     failures.append(_reason(error))
-                    rejected = True
-            extra = update.retry_extra if rejected else update.extra
+                    rejected.append(change.address)
+            extra = update.extra_after(rejected)
             if extra != update.workspace.extra:
                 try:
                     self._registry.update(update.workspace, extra=extra)

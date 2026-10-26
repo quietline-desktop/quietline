@@ -528,12 +528,14 @@ def test_rejected_translate_is_retried(registry):
     translate = [MoveWindow("0xw", 1440, 900), ResizeWindow("0xw", 1000, 500)]
     assert state.error is not None and "window update failed" in state.error
     assert adapter.applied == [translate]
-    # Рабочая область не продвинута: следующая сверка повторяет сдвиг.
-    assert registry.get(SECOND_KEY, 1).extra["work_area"] == [2560, 0, 2560, 1440]
+    # Цель отклонённого сдвига запомнена: следующая сверка повторяет его.
+    extra = registry.get(SECOND_KEY, 1).extra
+    assert extra["work_area"] == [0, 0, 2560, 1440]
+    assert extra["pending"] == {"0xw": {"floating": None, "at": [1440, 900], "size": [1000, 500]}}
 
     assert run(controller.reconcile(EVENT)) is None
     assert adapter.applied == [translate, translate]
-    assert registry.get(SECOND_KEY, 1).extra["work_area"] == [0, 0, 2560, 1440]
+    assert "pending" not in registry.get(SECOND_KEY, 1).extra
 
     moved = snapshot(
         [left],
@@ -545,17 +547,97 @@ def test_rejected_translate_is_retried(registry):
     assert len(adapter.applied) == 2
 
 
-def test_managed_window_follows_mode_on_every_reconcile(registry):
+@pytest.mark.parametrize("mode", ["tiles", "windows"])
+def test_manually_switched_window_is_left_as_set(registry, mode):
     mon = monitor()
     base = snapshot([mon], [workspace(1, mon)], [])
     ref = registry.resolve(1, KEY, base)
-    registry.update(ref, mode="tiles", extra={"managed": ["0xa"], "dialogs": []})
-    # Управляемое окно стало плавающим в «Тайлах» (например, после неполного отката).
-    floating = snapshot([mon], [workspace(1, mon)], [window("0xa", 1, at=(100, 140), floating=True)])
-    adapter = FakeAdapter([floating])
+    registry.update(ref, mode=mode, extra={"managed": ["0xa"], "dialogs": []})
+    floating = mode == "tiles"
+    converged = snapshot([mon], [workspace(1, mon)], [window("0xa", 1, at=(100, 140), floating=not floating)])
+    switched = snapshot([mon], [workspace(1, mon)], [window("0xa", 1, at=(100, 140), floating=floating)])
+    adapter = FakeAdapter([converged])
+    controller = WindowController(adapter, registry)
+    assert run(controller.reconcile(EVENT)) is None
+
+    # Пользователь сам сделал окно плавающим в «Тайлах» или вернул в раскладку в «Окнах».
+    adapter.snapshots = [switched]
+    assert run(controller.reconcile(EVENT)) is None
+    assert run(controller.reconcile(EVENT)) is None
+
+    assert adapter.applied == []
+    assert registry.get(KEY, 1).extra["managed"] == ["0xa"]
+
+
+def test_partial_translate_failure_does_not_shift_moved_windows_twice(registry):
+    mon = monitor()
+    base = snapshot([mon], [workspace(1, mon)], [])
+    ref = registry.resolve(1, KEY, base)
+    registry.update(ref, extra={"managed": ["0xa", "0xb"], "dialogs": []})
+    before = snapshot(
+        [mon],
+        [workspace(1, mon)],
+        [window("0xa", 1, at=(100, 10), floating=True), window("0xb", 1, at=(900, 10), floating=True)],
+    )
+    adapter = FakeAdapter([before])
+    controller = WindowController(adapter, registry)
+    run(controller.reconcile(EVENT))
+    assert adapter.applied == []
+
+    # Появилась панель: начало рабочей области сдвинулось на 40 пикселей вниз.
+    panel = monitor(reserved=(0, 40, 0, 0))
+    shifted = snapshot([panel], [workspace(1, panel)], before.windows)
+    adapter.snapshots = [shifted]
+    adapter.fail_on = {0}
+    state = run(controller.reconcile(EVENT))
+
+    assert state.error is not None
+    assert adapter.applied == [
+        [MoveWindow("0xa", 100, 50), ResizeWindow("0xa", 800, 600)],
+        [MoveWindow("0xb", 900, 50), ResizeWindow("0xb", 800, 600)],
+    ]
+
+    # Повторяется только отклонённое окно; уже сдвинутое не сдвигается второй раз.
+    partly = snapshot(
+        [panel],
+        [workspace(1, panel)],
+        [window("0xa", 1, at=(100, 10), floating=True), window("0xb", 1, at=(900, 50), floating=True)],
+    )
+    adapter.snapshots = [partly]
+    assert run(controller.reconcile(EVENT)) is None
+    assert adapter.applied[2:] == [[MoveWindow("0xa", 100, 50), ResizeWindow("0xa", 800, 600)]]
+
+
+def test_toggle_drops_pending_window_targets(registry):
+    mon = monitor()
+    base = snapshot([mon], [workspace(1, mon)], [])
+    ref = registry.resolve(1, KEY, base)
+    pending = {"0xa": {"floating": True, "at": [0, 0], "size": [800, 600]}}
+    registry.update(ref, extra={"managed": ["0xa"], "dialogs": [], "pending": pending})
+    tiled = snapshot([mon], [workspace(1, mon)], [window("0xa", 1)])
+    controller = WindowController(FakeAdapter([tiled]), registry)
+
+    state = run(controller.toggle())
+
+    assert state.error is None
+    assert registry.get(KEY, 1).mode == "tiles"
+    assert "pending" not in registry.get(KEY, 1).extra
+
+
+def test_pending_target_follows_work_area_change(registry):
+    mon = monitor()
+    base = snapshot([mon], [workspace(1, mon)], [])
+    ref = registry.resolve(1, KEY, base)
+    pending = {"0xn": {"floating": True, "at": [512, 288], "size": [1536, 864]}}
+    registry.update(
+        ref, extra={"managed": ["0xn"], "dialogs": [], "work_area": [0, 0, 2560, 1440], "pending": pending}
+    )
+    panel = monitor(reserved=(0, 40, 0, 0))
+    adapter = FakeAdapter([snapshot([panel], [workspace(1, panel)], [window("0xn", 1)])])
     controller = WindowController(adapter, registry)
 
     assert run(controller.reconcile(EVENT)) is None
 
-    assert adapter.applied == [[SetFloating("0xa", False)]]
-    assert registry.get(KEY, 1).extra["geometry"] == {"0xa": {"at": [100, 140], "size": [800, 600]}}
+    # Отложенная цель сдвинута вместе с рабочей областью и ограничена ею.
+    assert adapter.applied == [[SetFloating("0xn", True), MoveWindow("0xn", 512, 328), ResizeWindow("0xn", 1536, 864)]]
+    assert "pending" not in registry.get(KEY, 1).extra
