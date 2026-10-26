@@ -40,11 +40,15 @@ docs/design/              — утверждённые визуальные ма
 docs/superpowers/specs/   — спеки: что строим и почему
 docs/superpowers/plans/   — планы реализации по шагам
 config/hyprland/          — Lua-конфигурация Hyprland: раскладка, запуск сервиса и клавиши движка
-scripts/                  — сценарии проверки в живом сеансе (`smoke-window-engine.md`)
+scripts/                  — сценарии проверки в живом сеансе (`smoke-window-engine.md`), запуск оболочки из репозитория `run-shell`
+shell/quietline/          — конфигурация Quickshell (`qs -c quietline`): `shell.qml`, тема `Theme.qml`, стенд IPC `IpcHarness.qml`
+shell/quietline/components/ — кнопки, всплывающие окна, верхняя панель и док
+shell/quietline/services/ — клиент IPC движка, окна и приложения, показатели панели
+shell/quietline/logic/    — чистые функции `Models.js` (общие для QML и тестов Node)
 src/quietline_engine/     — Python-пакет движка пространств и окон
 src/quietline_shell/      — Python-пакет `quietline-shell`: закрепления дока, ограничение анимаций, сводка сети
 tests/engine/             — модульные тесты движка (pytest, без Hyprland)
-tests/shell/              — тесты `quietline-shell` (pytest)
+tests/shell/              — тесты `quietline-shell` (pytest) и моделей оболочки (`node --test`)
 pyproject.toml            — пакет `quietline-engine` (CLI `quietline-engine` и `quietline-shell`), Python ≥ 3.14, тестовая зависимость pytest
 DESIGN.md                 — визуальный контракт оболочки; runtime-токены — `shell/quietline/Theme.qml`
 LICENSE                   — GPL-3.0
@@ -55,6 +59,8 @@ LICENSE                   — GPL-3.0
 - Работа ведётся на macOS, окружение запускается только на Linux. Модульные тесты движка работают без Hyprland через поддельный адаптер и гоняются локально; живые проверки (Hyprland, мониторы, Quickshell, установщик) возможны только на Linux-машине.
 - Непроведённая живая проверка не считается пройденной: агент прямо пишет, что не проверено, и заносит пункт в `docs/backlog.md`.
 - Тесты: `uv run --python 3.14 pytest` (на macOS системный Python не используется; зависимости ставятся из `pyproject.toml`). Один файл — `uv run --python 3.14 pytest tests/engine/test_hyprland.py -v`.
+- Тесты моделей оболочки: `node --test 'tests/shell/*.test.cjs'` (Node ≥ 22; шаблон в кавычках разворачивает сам Node, каталог аргументом не принимается). QML без Quickshell не запускается — проверяется только в живом сеансе.
+- Оболочка: ссылка `ln -s "$PWD/shell/quietline" ~/.config/quickshell/quietline`, затем `qs -c quietline`; из репозитория без ссылки — `scripts/run-shell`. Состояние — `qs -c quietline ipc call quietline status`. Нужны Quickshell, шрифты IBM Plex Sans/Mono и JetBrainsMono Nerd Font Mono, `quietline-shell` в `PATH`.
 - Сервис и CLI движка: `quietline-engine serve` (в сеансе Hyprland; журнал — в stderr), клиентские команды `quietline-engine switch N [--monitor KEY]`, `move N`, `toggle [--monitor KEY]`, `state`. Из репозитория без установки — `uv run --python 3.14 quietline-engine …`. Протокол сокета `$XDG_RUNTIME_DIR/quietline/engine.sock` и коды ошибок — в docstring `src/quietline_engine/server.py`.
 - Настройки оболочки: `quietline-shell pins [--set JSON] [--path PATH]`, `motion`, `network` — одна строка JSON в stdout, ошибка — `{"error": …}` и код 1 (docstring `src/quietline_shell/__main__.py`). Закрепления дока — `$XDG_CONFIG_HOME/quietline/pins.json`.
 
@@ -62,7 +68,7 @@ LICENSE                   — GPL-3.0
 
 - **Язык: комментарии — по-русски, вывод в консоль — по-английски.** Комментарии и docstring — по-русски, в том числе в shell-скриптах, Lua- и QML-файлах (коротко и по делу). Всё, что видит пользователь в консоли и журналах (`echo`, сообщения CLI, ошибки установщика), — на простом английском. Документация в `docs/`, `README.md`, `CHANGELOG.md` и сообщения коммитов — по-русски.
 - **Комментарии описывают только то, что код делает сейчас**: назначение, контракт, инвариант, наблюдаемое поведение. Никакой истории — ни исправленных багов, ни ссылок на обсуждение, ни отклонённых альтернатив, ни «почему так, а не иначе» (это в спеку или план).
-- **Папка держит либо файлы, либо папки.** Когда записей больше восьми, папка делится по смыслу. Пустые папки ради сортировки не создаются; общих `helpers`/`utils` нет. Исключения — корень репозитория, `docs/` (держит `backlog.md` рядом с папками) и хронологические реестры `docs/superpowers/specs`, `docs/superpowers/plans`.
+- **Папка держит либо файлы, либо папки.** Когда записей больше восьми, папка делится по смыслу. Пустые папки ради сортировки не создаются; общих `helpers`/`utils` нет. Исключения — корень репозитория, `docs/` (держит `backlog.md` рядом с папками), корень конфигурации Quickshell `shell/quietline/` (Quickshell требует `shell.qml` в корне конфигурации; рядом лежат тема, `qmldir` и папки компонентов) и хронологические реестры `docs/superpowers/specs`, `docs/superpowers/plans`.
 - **Секреты в репозиторий не попадают**: SSH-ключи, пароли Wi-Fi и удалённых соединений, настройки VPN, токены. Профили и примеры конфигураций — без значений секретов.
 
 ## README и CHANGELOG

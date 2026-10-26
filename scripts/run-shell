@@ -1,0 +1,5 @@
+#!/bin/sh
+# Запускает оболочку прямо из репозитория, без ссылки в ~/.config/quickshell.
+set -eu
+script_dir=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
+exec quickshell -p "$script_dir/../shell/quietline" "$@"

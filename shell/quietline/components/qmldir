@@ -1,0 +1,8 @@
+ShellButton 1.0 ShellButton.qml
+ShellScrollBar 1.0 ShellScrollBar.qml
+ShellPopup 1.0 ShellPopup.qml
+TopBar 1.0 TopBar.qml
+Dock 1.0 Dock.qml
+ShellMenuItem 1.0 ShellMenuItem.qml
+singleton PopupState 1.0 PopupState.qml
+HintPopup 1.0 HintPopup.qml

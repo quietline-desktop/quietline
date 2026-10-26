@@ -1,0 +1,58 @@
+import QtQuick
+import Quickshell
+import Quickshell.Io
+import Quickshell.Hyprland
+import "services"
+import "components"
+
+// Корень оболочки Quietline: панель и док на каждом экране, IPC `quietline` для клавиш и проверок.
+ShellRoot {
+    id: root
+    property var surfaces: []
+    EngineClient { id: windowEngine }
+    DesktopModel { id: desktopService }
+    Indicators { id: systemIndicators }
+    Variants {
+        model: Quickshell.screens
+        Scope {
+            id: output
+            required property var modelData
+            TopBar { id: topbar; screen: output.modelData; engine: windowEngine; desktop: desktopService; indicators: systemIndicators }
+            Dock { id: dock; screen: output.modelData; engine: windowEngine; desktop: desktopService; indicators: systemIndicators }
+            Component.onCompleted: root.surfaces = root.surfaces.concat([{owner: output, bar: topbar, dock: dock}])
+            Component.onDestruction: root.surfaces = root.surfaces.filter(item => item.owner !== output)
+        }
+    }
+    IpcHandler {
+        target: "quietline"
+        function status(): string {
+            return JSON.stringify({ready: windowEngine.ready, revision: windowEngine.revision, busy: windowEngine.busy,
+                error: windowEngine.message || desktopService.errorMessage, reducedMotion: systemIndicators.reducedMotion,
+                pinned: desktopService.pinned, windows: desktopService.windows,
+                screens: root.surfaces.map(item => ({name: item.bar.monitorName,
+                    mode: item.dock.workspace ? item.dock.workspace.mode : null,
+                    dockVisible: item.dock.visible, dockReserved: item.dock.exclusiveZone,
+                    barHeight: item.bar.implicitHeight, applicationsOpen: item.bar.applicationsOpen, summaryOpen: item.bar.summaryOpen, apps: item.dock.apps.map(app => ({id:app.id, count:app.windows.length, last:app.lastWindow ? app.lastWindow.address : null}))}))});
+        }
+        function launcher(): void {
+            var name = Hyprland.focusedMonitor ? Hyprland.focusedMonitor.name : "";
+            var item = root.surfaces.find(item => item.bar.monitorName === name) || root.surfaces[0];
+            if (item) item.bar.openApplications();
+        }
+        function focusDock(): void {
+            var name = Hyprland.focusedMonitor ? Hyprland.focusedMonitor.name : "";
+            var item = root.surfaces.find(item => item.bar.monitorName === name) || root.surfaces[0];
+            if (item) item.dock.focusDock();
+        }
+        function toggle(monitor: string): void { windowEngine.toggle(monitor); }
+        function showApplications(monitor: string): void {
+            var item = root.surfaces.find(item => item.bar.monitorName === monitor);
+            if (item) item.bar.openApplications();
+        }
+        function showSummary(monitor: string): void {
+            var item = root.surfaces.find(item => item.bar.monitorName === monitor);
+            if (item) item.bar.openSummary();
+        }
+        function movePin(from: int, to: int): void { desktopService.movePin(from, to); }
+    }
+}
