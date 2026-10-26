@@ -44,6 +44,15 @@ ws() { hyprctl -j workspaces | jq -c '.[] | {id, monitor, windows}'; }
 cl() { hyprctl -j clients | jq -c '.[] | {address, ws: .workspace.id, at, size, floating, class}'; }
 ```
 
+## Журнал сервиса
+
+Сервис пишет журнал в stderr; у сервиса, запущенного Hyprland при входе, журнал никуда не сохраняется. Перед шагами, которые читают журнал (П — замена сервиса другого сеанса и конец сеанса `smoke`, РФ4, Ж6), перезапустить сервис вручную с журналом в файл и читать этот файл:
+
+```sh
+pkill -f 'quietline-engine serve'; sleep 1; quietline-engine serve 2>~/quietline-engine.log &
+tail -f ~/quietline-engine.log                            # в отдельном терминале
+```
+
 ## К. Клавиши и запуск
 
 | Шаг | Ожидается |
@@ -68,8 +77,8 @@ cl() { hyprctl -j clients | jq -c '.[] | {address, ws: .workspace.id, at, size, 
 | `pkill -9 -f 'quietline-engine serve'`, затем `quietline-engine serve &` | сервис стартует (файл сокета от убитого процесса заменён), `st` работает |
 | Запомнить сигнатуру `echo $HYPRLAND_INSTANCE_SIGNATURE` и PID из `pgrep -af 'quietline-engine serve'`, `hyprctl dispatch 'hl.dsp.exit()'`, в TTY через 15 с `pgrep -af 'quietline-engine serve'` и `ls -la "$XDG_RUNTIME_DIR/hypr/<сигнатура>"` | процесса нет: сервис завершился вместе с сеансом; записать, какие файлы остались в каталоге экземпляра (`hyprland.lock`, `.socket2.sock`, `hyprland.log`) |
 | Новый вход в Hyprland, затем `pgrep -af 'quietline-engine serve'` и `st` | один процесс с новым PID; состояние прошлого сеанса не подхвачено: только активные пространства мониторов как локальные `1`; `Super+1`…`Super+M` работают |
-| Замена сервиса другого сеанса: `mkdir -p "$XDG_RUNTIME_DIR/hypr/smoke"; touch "$XDG_RUNTIME_DIR/hypr/smoke/hyprland.lock" "$XDG_RUNTIME_DIR/hypr/smoke/.socket2.sock"; HYPRLAND_INSTANCE_SIGNATURE=smoke quietline-engine serve &` | журнал нового: `replaced quietline-engine of another Hyprland session …`; прежний сервис завершился с `replaced by quietline-engine of another Hyprland session; stopping` |
-| `rm "$XDG_RUNTIME_DIR/hypr/smoke/hyprland.lock"`, через 15 с `pgrep -af 'quietline-engine serve'`, затем `rm -r "$XDG_RUNTIME_DIR/hypr/smoke"; quietline-engine serve &` | сервис `smoke` завершился с `Hyprland instance smoke is gone (…/hyprland.lock no longer exists)`, код `1`; после запуска `st` и клавиши снова работают |
+| Замена сервиса другого сеанса: перезапустить сервис с журналом (раздел «Журнал сервиса»), затем `mkdir -p "$XDG_RUNTIME_DIR/hypr/smoke"; touch "$XDG_RUNTIME_DIR/hypr/smoke/hyprland.lock" "$XDG_RUNTIME_DIR/hypr/smoke/.socket2.sock"; HYPRLAND_INSTANCE_SIGNATURE=smoke quietline-engine serve 2>~/quietline-engine-smoke.log & SMOKE=$!` | в `~/quietline-engine-smoke.log`: `replaced quietline-engine of another Hyprland session …`; в `~/quietline-engine.log` прежний сервис завершился строкой `replaced by quietline-engine of another Hyprland session; stopping` |
+| `rm "$XDG_RUNTIME_DIR/hypr/smoke/hyprland.lock"; wait $SMOKE; echo $?` (ответ в течение ~15 с), затем `rm -r "$XDG_RUNTIME_DIR/hypr/smoke"; quietline-engine serve 2>~/quietline-engine.log &` | код `1`, в `~/quietline-engine-smoke.log` — `Hyprland instance smoke is gone (…/hyprland.lock no longer exists); stopping`; после запуска `st` и клавиши снова работают |
 
 ## Review Focus
 
@@ -98,14 +107,14 @@ quietline-engine toggle; echo $?
 
 Ожидается одно из двух: переход подтверждён (`0`) — или `quietline-engine: mode switch failed: window 0x… closed during the switch` (код `1`), режим прежний, окна в прежнем состоянии. В обоих случаях следующий `toggle` отвечает за секунды. Отказ Hyprland посреди перехода в живом сеансе не вызвать — он проверен модульными тестами.
 
-**РФ4. Клиент IPC оборвал чтение, перезапуск панели.**
+**РФ4. Клиент IPC оборвал чтение, перезапуск панели.** Сервис перезапущен с журналом в `~/quietline-engine.log` (раздел «Журнал сервиса»).
 
 ```sh
 socat - UNIX-CONNECT:"$XDG_RUNTIME_DIR/quietline/engine.sock"
 {"id":1,"method":"subscribe"}
 ```
 
-Ожидается: первая строка — `{"id": 1, "result": {...полное состояние...}}`; после `Super+2`, `Super+M` приходят строки `{"event": "state", "state": {...}}` с растущим `revision`; повтор одной и той же ошибки не присылается. Нажать `Ctrl+C` посреди потока событий, затем `st` и `Super+1`/`Super+M` — сервис и окна работают; новый `socat` с `subscribe` снова получает полный снимок. Отдельно — клиент, который не читает: `(echo '{"id":1,"method":"subscribe"}'; sleep 600) | socat - UNIX-CONNECT:"$XDG_RUNTIME_DIR/quietline/engine.sock" | (sleep 600)`; после десятков переключений `Super+1`/`Super+2` клавиши продолжают работать, в журнале сервиса строка `IPC client is not reading; disconnecting it`.
+Ожидается: первая строка — `{"id": 1, "result": {...полное состояние...}}`; после `Super+2`, `Super+M` приходят строки `{"event": "state", "state": {...}}` с растущим `revision`; повтор одной и той же ошибки не присылается. Нажать `Ctrl+C` посреди потока событий, затем `st` и `Super+1`/`Super+M` — сервис и окна работают; новый `socat` с `subscribe` снова получает полный снимок. Отдельно — клиент, который не читает: `(echo '{"id":1,"method":"subscribe"}'; sleep 600) | socat - UNIX-CONNECT:"$XDG_RUNTIME_DIR/quietline/engine.sock" | (sleep 600)`; в другом терминале — несколько сотен смен состояния: `for i in $(seq 1000); do quietline-engine switch $((i % 2 + 1)); done`. Ожидается: цикл доходит до конца, клавиши продолжают работать, в `~/quietline-engine.log` строка `IPC client is not reading; disconnecting it`.
 
 **РФ5. Монитор отключён и подключён с другим разрешением.** На втором мониторе открыть пространства `1` и `2` с плавающими окнами у правого и нижнего края. Отключить монитор (кабель, вывод VM или `hyprctl output remove QL-2`), затем `st`, `ws`, `cl`. Подключить снова с меньшим разрешением (другой режим монитора; в VM — меньший размер окна вьюера), затем `st`, `ws`, `cl`.
 
@@ -159,9 +168,9 @@ ws; st
 
 Ожидается: пространство `1050` создано на первом мониторе, активное пространство второго не изменилось. То же через `quietline-engine switch 4`: новый ID ≥ 1001, второй монитор не тронут.
 
-**Ж6. Отключение и возврат монитора.** Как в РФ5, плюс `ws` до отключения, после отключения и после подключения.
+**Ж6. Отключение и возврат монитора.** Сервис перезапущен с журналом в `~/quietline-engine.log` (раздел «Журнал сервиса»). Как в РФ5, плюс `ws` до отключения, после отключения и после подключения.
 
-Ожидается: после отключения пространства второго монитора в `ws` числятся на оставшемся; после подключения сервис сам переносит их обратно (`workspace.move`), `ws` показывает их на втором мониторе без ручных команд. Если перенос отклонён — записать ответ `hyprctl eval` из журнала сервиса (стоп-условие).
+Ожидается: после отключения пространства второго монитора в `ws` числятся на оставшемся; после подключения сервис сам переносит их обратно (`workspace.move`), `ws` показывает их на втором мониторе без ручных команд. Если перенос отклонён — записать ответ `hyprctl eval` из `~/quietline-engine.log` или из `quietline-engine state | jq .error` (стоп-условие).
 
 **Ж7. Координаты `move`/`resize` на мониторе с масштабом ≠ 1.** Плавающее окно `A` на мониторе с масштабом `1.5`, `MX`, `MY` — его `x`, `y` из `hyprctl -j monitors`:
 
