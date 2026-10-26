@@ -15,6 +15,7 @@ from quietline_engine.types import (
     Workspace,
 )
 from quietline_engine.workspaces import (
+    InvalidWorkspaceNumber,
     WorkspaceError,
     WorkspaceRegistry,
     focused_monitor,
@@ -162,7 +163,7 @@ def test_switch_rejects_zero_and_eleven(state_path, number):
     key = monitor_keys(snap)["DP-1"]
     registry = WorkspaceRegistry(state_path, "sig-1")
 
-    with pytest.raises(WorkspaceError, match="1 to 10"):
+    with pytest.raises(InvalidWorkspaceNumber, match="1 to 10"):
         registry.resolve(number, key, snap)
 
     assert registry.get(key, number) is None
@@ -174,7 +175,7 @@ def test_resolve_rejects_non_integer_number(state_path, number):
     snap = snapshot([monitor(0, "DP-1", 0, 1, serial="AAA")])
     registry = WorkspaceRegistry(state_path, "sig-1")
 
-    with pytest.raises(WorkspaceError, match="1 to 10"):
+    with pytest.raises(InvalidWorkspaceNumber, match="1 to 10"):
         registry.resolve(number, monitor_keys(snap)["DP-1"], snap)
 
 
@@ -204,7 +205,8 @@ def test_new_hyprland_instance_discards_old_state(state_path):
     fresh.resolve(3, key, snap)
     saved = json.loads(state_path.read_text())
     assert saved["signature"] == "sig-new"
-    assert [(r["number"], r["workspace_id"]) for r in saved["workspaces"]] == [(3, 1001)]
+    # Активное пространство 1 принято как локальное 1, новое 3 получило 1001.
+    assert sorted((r["number"], r["workspace_id"]) for r in saved["workspaces"]) == [(1, 1), (3, 1001)]
 
 
 def test_state_file_is_private_and_atomic(state_path):
@@ -223,14 +225,16 @@ def test_unknown_record_fields_survive_reload(state_path):
     WorkspaceRegistry(state_path, "sig-1").resolve(2, key, snap)
 
     saved = json.loads(state_path.read_text())
-    saved["workspaces"][0]["floating_snapshot"] = {"0xa": [1, 2, 3, 4]}
+    record = next(r for r in saved["workspaces"] if r["number"] == 2)
+    record["floating_snapshot"] = {"0xa": [1, 2, 3, 4]}
     state_path.write_text(json.dumps(saved))
 
     registry = WorkspaceRegistry(state_path, "sig-1")
     assert registry.get(key, 2).extra == {"floating_snapshot": {"0xa": [1, 2, 3, 4]}}
     registry.resolve(3, key, snap)
     resaved = json.loads(state_path.read_text())
-    assert resaved["workspaces"][0]["floating_snapshot"] == {"0xa": [1, 2, 3, 4]}
+    record = next(r for r in resaved["workspaces"] if r["number"] == 2)
+    assert record["floating_snapshot"] == {"0xa": [1, 2, 3, 4]}
 
 
 def test_corrupt_state_file_is_discarded(state_path):
@@ -294,3 +298,56 @@ def test_reconcile_skips_workspaces_of_disconnected_monitor(state_path):
     )
     assert registry.reconcile(alone) == []
     assert registry.get(keys["DP-2"], 2).workspace_id == 1001
+
+
+def test_twin_disconnect_keeps_survivor_key_and_workspaces(state_path):
+    first = monitor(0, "DP-1", 0, 1, serial="SAME")
+    second = monitor(1, "DP-2", 1920, 2, serial="SAME")
+    both = snapshot([first, second])
+    registry = WorkspaceRegistry(state_path, "sig-1")
+    keys = registry.monitor_keys(both)
+    survivor_key = keys["DP-1"]
+    workspace_id = registry.resolve(2, survivor_key, both).workspace_id
+
+    alone = snapshot([first])
+    assert registry.monitor_keys(alone)["DP-1"] == survivor_key
+    assert registry.resolve(2, survivor_key, alone).workspace_id == workspace_id
+
+    # Перезапуск службы при одном мониторе не меняет ключ; второй монитор возвращается со своим ключом.
+    restarted = WorkspaceRegistry(state_path, "sig-1")
+    assert restarted.monitor_keys(alone)["DP-1"] == survivor_key
+    assert restarted.monitor_keys(both) == keys
+    assert restarted.get(survivor_key, 2).workspace_id == workspace_id
+
+
+def test_twin_appearing_later_keeps_first_key(state_path):
+    first = monitor(0, "DP-1", 0, 1, serial="SAME")
+    second = monitor(1, "DP-2", 1920, 2, serial="SAME")
+    alone = snapshot([first])
+    registry = WorkspaceRegistry(state_path, "sig-1")
+    first_key = registry.monitor_keys(alone)["DP-1"]
+    workspace_id = registry.resolve(2, first_key, alone).workspace_id
+
+    both = snapshot([first, second])
+    keys = registry.monitor_keys(both)
+
+    assert keys["DP-1"] == first_key
+    assert keys["DP-2"] != first_key
+    assert "DP-2" in keys["DP-2"]
+    assert registry.resolve(2, first_key, both).workspace_id == workspace_id
+    assert registry.resolve(2, keys["DP-2"], both).workspace_id != workspace_id
+
+
+def test_adoption_does_not_orphan_original_active_workspace(state_path):
+    left = monitor(0, "DP-1", 0, 1, serial="AAA")
+    first = snapshot([left])
+    registry = WorkspaceRegistry(state_path, "sig-1")
+    key = registry.monitor_keys(first)["DP-1"]
+
+    # Локальное 2 запрошено раньше локального 1, затем монитор переключён на выделенное пространство.
+    allocated = registry.resolve(2, key, first)
+    switched = snapshot([monitor(0, "DP-1", 0, allocated.workspace_id, serial="AAA")])
+
+    one = registry.resolve(1, key, switched)
+    assert one.workspace_id == 1
+    assert registry.resolve(2, key, switched).workspace_id == allocated.workspace_id
