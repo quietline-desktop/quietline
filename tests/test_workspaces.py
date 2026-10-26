@@ -17,6 +17,7 @@ from quietline_engine.types import (
 from quietline_engine.workspaces import (
     InvalidWorkspaceNumber,
     WorkspaceError,
+    WorkspaceRef,
     WorkspaceRegistry,
     focused_monitor,
     monitor_keys,
@@ -388,3 +389,44 @@ def test_state_without_monitors_list_keeps_workspaces(state_path):
     state_path.write_text(json.dumps(saved))
 
     assert WorkspaceRegistry(state_path, "sig-1").get(key, 2).workspace_id == 1001
+
+
+def test_update_replaces_record_and_persists(state_path):
+    snap = snapshot([monitor(0, "DP-1", 0, 1, serial="AAA")])
+    registry = WorkspaceRegistry(state_path, "sig-1")
+    key = registry.monitor_keys(snap)["DP-1"]
+    ref = registry.resolve(2, key, snap)
+    extra = {"managed": ["0xa"], "geometry": {"0xa": {"at": [1, 2], "size": [3, 4]}}}
+
+    updated = registry.update(ref, mode="tiles", extra=extra)
+    extra["managed"].append("0xb")
+
+    assert updated.mode == "tiles" and updated.workspace_id == ref.workspace_id
+    assert registry.get(key, 2) == updated
+    assert updated.extra["managed"] == ["0xa"]
+    assert registry.workspaces() == (registry.get(key, 1), updated)
+    restarted = WorkspaceRegistry(state_path, "sig-1").get(key, 2)
+    assert restarted == updated
+
+    kept = registry.update(updated, mode="windows")
+    assert kept.mode == "windows" and kept.extra == updated.extra
+
+
+def test_update_rejects_unknown_record_and_bad_data(state_path):
+    snap = snapshot([monitor(0, "DP-1", 0, 1, serial="AAA")])
+    registry = WorkspaceRegistry(state_path, "sig-1")
+    key = registry.monitor_keys(snap)["DP-1"]
+    ref = registry.resolve(2, key, snap)
+    before = state_path.read_text()
+
+    with pytest.raises(WorkspaceError):
+        registry.update(WorkspaceRef(key, key, 3, 4242))
+    with pytest.raises(ValueError):
+        registry.update(ref, mode="grid")
+    with pytest.raises(ValueError):
+        registry.update(ref, extra={"mode": "tiles"})
+    with pytest.raises(TypeError):
+        registry.update(ref, extra={"bad": object()})
+
+    assert registry.get(key, 2) == ref
+    assert state_path.read_text() == before

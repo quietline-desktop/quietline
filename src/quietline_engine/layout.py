@@ -1,0 +1,316 @@
+"""Расчёт переходов пространства между режимами «Окна» и «Тайлы».
+
+Планировщик чистый: по записи пространства и снимку Hyprland он возвращает действия,
+обратный план и новые данные записи, ничего не выполняя. Данные записи (`WorkspaceRef.extra`):
+
+- `managed` — адреса окон, которыми управляет движок: окно становится управляемым, если
+  при первой встрече на пространстве оно было в раскладке (не плавающим);
+- `dialogs` — адреса окон, которые при первой встрече уже были плавающими (диалоги и
+  служебные окна); они не меняются массово ни в одном режиме;
+- `geometry` — `{адрес: {"at": [x, y], "size": [w, h]}}`, геометрия плавающих окон
+  на момент последнего перехода в «Тайлы»;
+- `columns` — `[{"addresses": [...], "width": доля}]`, колонки на момент последнего
+  перехода в «Окна».
+
+Переход меняет только управляемые окна, которые видимы, не закреплены и не в
+полноэкранном режиме.
+"""
+
+from collections.abc import Iterable, Mapping
+from dataclasses import dataclass
+from typing import Any
+
+from quietline_engine.types import (
+    Column,
+    CompositorSnapshot,
+    FocusWindow,
+    HyprAction,
+    Monitor,
+    MoveWindow,
+    ResizeColumn,
+    ResizeWindow,
+    SetFloating,
+    Window,
+)
+from quietline_engine.workspaces import Mode, WorkspaceRef
+
+MANAGED = "managed"
+DIALOGS = "dialogs"
+GEOMETRY = "geometry"
+COLUMNS = "columns"
+# Доля рабочей области по каждой оси для окна без сохранённой геометрии.
+DEFAULT_SIZE_FRACTION = 0.6
+
+
+class LayoutError(Exception):
+    """Снимок не позволяет рассчитать переход (нет пространства, монитора или рабочей области)."""
+
+
+@dataclass(frozen=True, slots=True)
+class Geometry:
+    """Положение и размер окна в глобальных логических координатах."""
+
+    at: tuple[int, int]
+    size: tuple[int, int]
+
+    def to_json(self) -> dict[str, list[int]]:
+        return {"at": list(self.at), "size": list(self.size)}
+
+
+@dataclass(frozen=True, slots=True)
+class TransitionPlan:
+    """Переход пространства в режим `mode`.
+
+    `actions` выполняются по порядку; `reverse` возвращает окна, которые меняет переход,
+    в состояние снимка до перехода. `expected_floating` — какое состояние `floating`
+    должно быть у этих окон после перехода. `extra` — данные записи пространства,
+    которые сохраняются только после подтверждённого перехода.
+    """
+
+    mode: Mode
+    actions: tuple[HyprAction, ...]
+    reverse: tuple[HyprAction, ...]
+    expected_floating: dict[str, bool]
+    extra: dict[str, Any]
+
+
+class LayoutPlanner:
+    """Планы переходов «Окна ↔ Тайлы» для одного пространства."""
+
+    def to_tiles(self, workspace: WorkspaceRef, snapshot: CompositorSnapshot) -> TransitionPlan:
+        """Переход в «Тайлы»: управляемые плавающие окна возвращаются в раскладку.
+
+        Перед этим запоминается их геометрия. Если есть снимок колонок, окна встают в его
+        порядке, затем каждому через фокус и `ResizeColumn` возвращается ширина его колонки;
+        окна вне снимка встают следом, слева направо и сверху вниз по текущему положению.
+        Известное ограничение: колонка из нескольких окон восстанавливается отдельными
+        колонками в порядке её окон — действия объединения окон в колонку у движка нет.
+        В конце фокус возвращается активному окну.
+        """
+        windows, managed, dialogs = _classify(workspace, snapshot)
+        geometry = {a: g for a, g in _saved_geometry(workspace.extra).items() if a in managed}
+        targets = [w for w in _movable(windows, managed) if w.floating]
+        for window in targets:
+            geometry[window.address] = Geometry(window.at, window.size)
+
+        saved_columns = _saved_columns(workspace.extra)
+        widths = {address: column.width for column in saved_columns for address in column.addresses}
+        by_address = {w.address: w for w in targets}
+        order = [a for column in saved_columns for a in column.addresses if a in by_address]
+        order = list(dict.fromkeys(order))
+        rest = sorted((w for w in targets if w.address not in order), key=lambda w: (w.at[0], w.at[1]))
+        order.extend(w.address for w in rest)
+
+        active = _active_address(snapshot)
+        extra = {
+            **workspace.extra,
+            MANAGED: managed,
+            DIALOGS: dialogs,
+            GEOMETRY: {a: g.to_json() for a, g in geometry.items()},
+        }
+        return TransitionPlan(
+            mode="tiles",
+            actions=_retile(order, widths, active),
+            reverse=_refloat([by_address[a] for a in order], active),
+            expected_floating={a: False for a in order},
+            extra=extra,
+        )
+
+    def to_windows(self, workspace: WorkspaceRef, snapshot: CompositorSnapshot) -> TransitionPlan:
+        """Переход в «Окна»: управляемые окна раскладки становятся плавающими.
+
+        Перед этим запоминаются порядок и ширины их колонок. Окно получает сохранённую
+        геометрию, ограниченную рабочей областью монитора пространства; без сохранённой —
+        `DEFAULT_SIZE_FRACTION` рабочей области по центру. В конце фокус возвращается
+        активному окну.
+        """
+        windows, managed, dialogs = _classify(workspace, snapshot)
+        geometry = {a: g for a, g in _saved_geometry(workspace.extra).items() if a in managed}
+        targets = [w for w in _movable(windows, managed) if not w.floating]
+        by_address = {w.address: w for w in targets}
+
+        columns: list[Column] = []
+        actions: list[HyprAction] = []
+        if targets:
+            monitor = _workspace_monitor(snapshot, workspace.workspace_id)
+            try:
+                current = snapshot.columns(workspace.workspace_id)
+            except ValueError as error:
+                raise LayoutError(str(error)) from error
+            for column in current:
+                addresses = tuple(a for a in column.addresses if a in by_address)
+                if addresses:
+                    columns.append(Column(addresses, column.width))
+            order = [a for column in columns for a in column.addresses]
+            order.extend(w.address for w in targets if w.address not in order)
+            for address in order:
+                saved = geometry.get(address)
+                placed = _clamp(saved, monitor) if saved is not None else _centered(monitor)
+                actions += [
+                    SetFloating(address, True),
+                    MoveWindow(address, *placed.at),
+                    ResizeWindow(address, *placed.size),
+                ]
+        else:
+            order = []
+
+        active = _active_address(snapshot)
+        if actions and active is not None:
+            actions.append(FocusWindow(active))
+        widths = {address: column.width for column in columns for address in column.addresses}
+        extra = {
+            **workspace.extra,
+            MANAGED: managed,
+            DIALOGS: dialogs,
+            GEOMETRY: {a: g.to_json() for a, g in geometry.items()},
+            COLUMNS: [{"addresses": list(c.addresses), "width": c.width} for c in columns],
+        }
+        return TransitionPlan(
+            mode="windows",
+            actions=tuple(actions),
+            reverse=_retile(order, widths, active),
+            expected_floating={a: True for a in order},
+            extra=extra,
+        )
+
+
+def _classify(workspace: WorkspaceRef, snapshot: CompositorSnapshot) -> tuple[dict[str, Window], list[str], list[str]]:
+    """Окна пространства и списки управляемых окон и диалогов без закрытых окон.
+
+    Окно, которого нет ни в одном списке, впервые увидено сейчас: плавающее — диалог,
+    иначе управляемое.
+    """
+    windows = {w.address: w for w in snapshot.windows if w.workspace_id == workspace.workspace_id}
+    managed = [a for a in _addresses(workspace.extra.get(MANAGED)) if a in windows]
+    dialogs = [a for a in _addresses(workspace.extra.get(DIALOGS)) if a in windows and a not in managed]
+    for address, window in windows.items():
+        if address not in managed and address not in dialogs:
+            (dialogs if window.floating else managed).append(address)
+    return windows, managed, dialogs
+
+
+def _movable(windows: Mapping[str, Window], managed: Iterable[str]) -> list[Window]:
+    """Управляемые окна, которые переход может менять: видимые, не закреплённые, не полноэкранные."""
+    result = []
+    for address in managed:
+        window = windows[address]
+        if window.mapped and not window.hidden and not window.pinned and window.fullscreen == 0:
+            result.append(window)
+    return result
+
+
+def _addresses(value: object) -> list[str]:
+    """Уникальные адреса из сохранённого списка; остальное отбрасывается."""
+    if not isinstance(value, list):
+        return []
+    return list(dict.fromkeys(a for a in value if isinstance(a, str)))
+
+
+def _pair(value: object) -> tuple[int, int] | None:
+    if isinstance(value, list) and len(value) == 2 and all(type(v) is int for v in value):
+        return (value[0], value[1])
+    return None
+
+
+def _saved_geometry(extra: Mapping[str, Any]) -> dict[str, Geometry]:
+    """Сохранённая геометрия окон; повреждённые записи пропускаются."""
+    value = extra.get(GEOMETRY)
+    if not isinstance(value, dict):
+        return {}
+    result = {}
+    for address, item in value.items():
+        if not isinstance(address, str) or not isinstance(item, dict):
+            continue
+        at, size = _pair(item.get("at")), _pair(item.get("size"))
+        if at is not None and size is not None and size[0] > 0 and size[1] > 0:
+            result[address] = Geometry(at, size)
+    return result
+
+
+def _saved_columns(extra: Mapping[str, Any]) -> list[Column]:
+    """Сохранённые колонки; ширина приводится к `(0, 1]`, повреждённые записи пропускаются."""
+    value = extra.get(COLUMNS)
+    if not isinstance(value, list):
+        return []
+    result = []
+    for item in value:
+        if not isinstance(item, dict):
+            continue
+        width = item.get("width")
+        addresses = _addresses(item.get("addresses"))
+        if type(width) not in (int, float) or not 0 < width or not addresses:
+            continue
+        result.append(Column(tuple(addresses), min(float(width), 1.0)))
+    return result
+
+
+def _active_address(snapshot: CompositorSnapshot) -> str | None:
+    """Адрес активного окна, если оно есть среди окон снимка."""
+    active = snapshot.active_window
+    if active is None or all(w.address != active.address for w in snapshot.windows):
+        return None
+    return active.address
+
+
+def _retile(order: list[str], widths: Mapping[str, float], active: str | None) -> tuple[HyprAction, ...]:
+    """Вернуть окна в раскладку по порядку, затем задать ширины колонок и вернуть фокус."""
+    actions: list[HyprAction] = [SetFloating(address, False) for address in order]
+    for address in order:
+        if address in widths:
+            actions += [FocusWindow(address), ResizeColumn(float(widths[address]))]
+    if actions and active is not None:
+        actions.append(FocusWindow(active))
+    return tuple(actions)
+
+
+def _refloat(windows: list[Window], active: str | None) -> tuple[HyprAction, ...]:
+    """Сделать окна плавающими в прежней геометрии и вернуть фокус."""
+    actions: list[HyprAction] = []
+    for window in windows:
+        actions += [
+            SetFloating(window.address, True),
+            MoveWindow(window.address, *window.at),
+            ResizeWindow(window.address, *window.size),
+        ]
+    if actions and active is not None:
+        actions.append(FocusWindow(active))
+    return tuple(actions)
+
+
+def _workspace_monitor(snapshot: CompositorSnapshot, workspace_id: int) -> Monitor:
+    workspace = next((w for w in snapshot.workspaces if w.id == workspace_id), None)
+    if workspace is None:
+        raise LayoutError(f"workspace {workspace_id} is missing from the compositor snapshot")
+    monitor = next((m for m in snapshot.monitors if m.id == workspace.monitor_id), None)
+    if monitor is None:
+        raise LayoutError(f"monitor of workspace {workspace_id} is missing from the compositor snapshot")
+    return monitor
+
+
+def _work_area(monitor: Monitor) -> tuple[int, int, int, int]:
+    """Рабочая область монитора в логических координатах: x, y, ширина, высота."""
+    try:
+        width, height = int(monitor.work_area_width), int(monitor.work_area_height)
+    except ValueError as error:
+        raise LayoutError(str(error)) from error
+    return monitor.x + monitor.reserved[0], monitor.y + monitor.reserved[1], width, height
+
+
+def _clamp(geometry: Geometry, monitor: Monitor) -> Geometry:
+    """Геометрия внутри рабочей области.
+
+    Окно, которое помещается, сдвигается внутрь целиком; размер больше области
+    ограничивается ею, и окно встаёт в её начало по этой оси.
+    """
+    x0, y0, width, height = _work_area(monitor)
+    w, h = min(geometry.size[0], width), min(geometry.size[1], height)
+    x = min(max(geometry.at[0], x0), x0 + width - w)
+    y = min(max(geometry.at[1], y0), y0 + height - h)
+    return Geometry((x, y), (w, h))
+
+
+def _centered(monitor: Monitor) -> Geometry:
+    """`DEFAULT_SIZE_FRACTION` рабочей области по центру."""
+    x0, y0, width, height = _work_area(monitor)
+    w, h = round(width * DEFAULT_SIZE_FRACTION), round(height * DEFAULT_SIZE_FRACTION)
+    return Geometry((x0 + (width - w) // 2, y0 + (height - h) // 2), (w, h))

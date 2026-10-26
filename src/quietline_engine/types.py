@@ -35,6 +35,16 @@ class Monitor:
             raise ValueError(f"empty work area of monitor {self.name}")
         return width
 
+    @property
+    def work_area_height(self) -> float:
+        """Логическая высота рабочей области: `height / scale` без отступов сверху и снизу."""
+        if self.scale <= 0:
+            raise ValueError(f"invalid scale {self.scale} of monitor {self.name}")
+        height = self.height / self.scale - self.reserved[1] - self.reserved[3]
+        if height <= 0:
+            raise ValueError(f"empty work area of monitor {self.name}")
+        return height
+
 
 @dataclass(frozen=True, slots=True)
 class Workspace:
@@ -50,7 +60,10 @@ class Workspace:
 
 @dataclass(frozen=True, slots=True)
 class Window:
-    """Окно из `hyprctl -j clients`; `at` и `size` — глобальные координаты макета."""
+    """Окно из `hyprctl -j clients`; `at` и `size` — глобальные координаты макета.
+
+    `pinned` — окно закреплено поверх всех пространств монитора.
+    """
 
     address: str
     workspace_id: int
@@ -64,6 +77,7 @@ class Window:
     pid: int
     mapped: bool
     hidden: bool
+    pinned: bool = False
 
 
 @dataclass(frozen=True, slots=True)

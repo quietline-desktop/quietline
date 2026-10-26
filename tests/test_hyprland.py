@@ -63,7 +63,7 @@ WORKSPACES = [
 ]
 
 
-def client(address, workspace, monitor, at, size, floating=False, title="t"):
+def client(address, workspace, monitor, at, size, floating=False, title="t", pinned=False):
     """Запись `hyprctl -j clients` с полями из карты команд."""
     return {
         "address": address,
@@ -78,6 +78,7 @@ def client(address, workspace, monitor, at, size, floating=False, title="t"):
         "pid": 4242,
         "mapped": True,
         "hidden": False,
+        "pinned": pinned,
     }
 
 
@@ -87,7 +88,7 @@ CLIENTS = [
     client("0xa1", 1, 0, (10, 36), (1240, 1404)),
     client("0xb3", 1, 0, (1290, 736), (1240, 704)),
     client("0xc4", 1001, 1, (2560, 36), (1920, 1044)),
-    client("0xd5", 1, 0, (300, 300), (400, 300), floating=True),
+    client("0xd5", 1, 0, (300, 300), (400, 300), floating=True, pinned=True),
 ]
 
 
@@ -136,7 +137,8 @@ def test_snapshot_parses_two_monitors_and_clients():
     assert (win.workspace_id, win.monitor_id) == (1, 0)
     assert win.at == (10, 36) and win.size == (1240, 1404)
     assert win.floating is False and win.class_name == "kitty" and win.pid == 4242
-    assert snap.windows[4].floating is True
+    assert snap.windows[4].floating is True and snap.windows[4].pinned is True
+    assert win.pinned is False
 
     assert snap.active_window is not None and snap.active_window.address == "0xa1"
     assert snap.cursor_position == (2700, 500)

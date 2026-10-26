@@ -1,10 +1,11 @@
 """Локальные пространства мониторов: ключи мониторов, выделение ID и состояние сеанса."""
 
+import copy
 import json
 import os
 import tempfile
 from collections.abc import Mapping
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 from pathlib import Path
 from typing import Any, Literal
 
@@ -57,7 +58,6 @@ class WorkspaceRef:
     @classmethod
     def from_json(cls, data: Mapping[str, Any]) -> "WorkspaceRef":
         """Запись из файла состояния; неизвестные поля уходят в `extra`."""
-        known = {"monitor_key", "display_monitor_key", "number", "workspace_id", "mode"}
         monitor_key = data["monitor_key"]
         mode = data.get("mode", "windows")
         if mode not in ("windows", "tiles"):
@@ -68,7 +68,7 @@ class WorkspaceRef:
             number=_checked_number(data["number"]),
             workspace_id=_checked_int(data["workspace_id"]),
             mode=mode,
-            extra={k: v for k, v in data.items() if k not in known},
+            extra={k: v for k, v in data.items() if k not in _KNOWN_FIELDS},
         )
 
 
@@ -82,6 +82,9 @@ def _checked_number(value: object) -> int:
     if type(value) is not int or not MIN_NUMBER <= value <= MAX_NUMBER:
         raise InvalidWorkspaceNumber(f"workspace number must be an integer from {MIN_NUMBER} to {MAX_NUMBER}, got {value!r}")
     return value
+
+
+_KNOWN_FIELDS = frozenset({"monitor_key", "display_monitor_key", "number", "workspace_id", "mode"})
 
 
 type MonitorIdentity = tuple[str, str, str, str]
@@ -215,6 +218,40 @@ class WorkspaceRegistry:
     def get(self, monitor_key: str, number: int) -> WorkspaceRef | None:
         """Назначенное пространство или `None`."""
         return self._refs.get((monitor_key, number))
+
+    def workspaces(self) -> tuple[WorkspaceRef, ...]:
+        """Все назначенные пространства по ключу монитора и номеру."""
+        return tuple(ref for _, ref in sorted(self._refs.items()))
+
+    def update(
+        self, ref: WorkspaceRef, *, mode: Mode | None = None, extra: Mapping[str, Any] | None = None
+    ) -> WorkspaceRef:
+        """Заменяет режим и (или) дополнительные данные записи и атомарно сохраняет файл.
+
+        `ref` должен совпадать с назначенной записью по монитору, номеру и ID. `extra`
+        заменяет данные целиком (копируется) и не может содержать имена основных полей.
+        Ошибка проверки или записи оставляет реестр и файл без изменений.
+        """
+        key = (ref.monitor_key, ref.number)
+        current = self._refs.get(key)
+        if current is None or current.workspace_id != ref.workspace_id:
+            raise WorkspaceError(f"workspace {ref.number} of monitor {ref.monitor_key!r} is not assigned")
+        if mode is not None and mode not in ("windows", "tiles"):
+            raise ValueError(f"unknown mode {mode!r}")
+        if extra is not None and not _KNOWN_FIELDS.isdisjoint(extra):
+            raise ValueError(f"extra data must not override record fields: {sorted(_KNOWN_FIELDS & set(extra))}")
+        updated = replace(
+            current,
+            mode=current.mode if mode is None else mode,
+            extra=current.extra if extra is None else copy.deepcopy(dict(extra)),
+        )
+        self._refs[key] = updated
+        try:
+            self._save()
+        except BaseException:
+            self._refs[key] = current
+            raise
+        return updated
 
     def monitor_keys(self, snapshot: CompositorSnapshot) -> dict[str, str]:
         """Устойчивые ключи мониторов снимка: имя разъёма → ключ; новые назначения сохраняются."""

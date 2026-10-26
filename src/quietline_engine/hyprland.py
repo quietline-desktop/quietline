@@ -189,6 +189,7 @@ def _window(raw: Mapping) -> Window:
         pid=raw["pid"],
         mapped=raw["mapped"],
         hidden=raw["hidden"],
+        pinned=raw["pinned"],
     )
 
 

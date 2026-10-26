@@ -73,7 +73,7 @@
 |---|---|---|
 | Мониторы | `hyprctl -j monitors` | `id`, `name`, `make`, `model`, `serial`, `x`, `y`, `width`, `height`, `scale`, `reserved`, `activeWorkspace.id`, `focused` |
 | Пространства | `hyprctl -j workspaces` | `id`, `name`, `monitor`, `monitorID`, `windows`, `tiledLayout` |
-| Окна | `hyprctl -j clients` | `address` (`0x…`), `workspace.id`, `monitor`, `at`, `size`, `floating`, `fullscreen`, `class`, `title`, `pid`, `mapped`, `hidden` |
+| Окна | `hyprctl -j clients` | `address` (`0x…`), `workspace.id`, `monitor`, `at`, `size`, `floating`, `fullscreen`, `class`, `title`, `pid`, `mapped`, `hidden`, `pinned` |
 | Активное окно | `hyprctl -j activewindow` | `{}` при отсутствии окна |
 | Указатель | `hyprctl -j cursorpos` | `x`, `y` |
 
