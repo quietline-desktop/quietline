@@ -87,7 +87,7 @@ def reduced_motion() -> bool:
         "--object-path", "/org/freedesktop/portal/desktop",
         "--method", "org.freedesktop.portal.Settings.ReadOne",
         "org.freedesktop.appearance", "reduced-motion",
-    ]  # fmt: skip
+    ]
     try:
         result = subprocess.run(command, capture_output=True, text=True, timeout=1.5, check=False)
     except (OSError, subprocess.TimeoutExpired):
@@ -104,7 +104,7 @@ def network_devices() -> list[dict[str, Any]]:
         "nmcli", "--terse", "--escape", "no",
         "--fields", "GENERAL.DEVICE,GENERAL.CONNECTION,IP4.ADDRESS,IP6.ADDRESS",
         "device", "show",
-    ]  # fmt: skip
+    ]
     result = subprocess.run(
         command, capture_output=True, text=True, timeout=2, check=False, env={**os.environ, "LC_ALL": "C"}
     )
