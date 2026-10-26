@@ -73,7 +73,12 @@ PanelWindow {
                         hint: "Пространство " + item.number + (item.migrated ? " · " + Models.monitorLabel(item.monitor) : "")
                         implicitWidth: item.migrated ? root.tiny ? 28 : Math.min(110, implicitContentWidth + 12) : root.tiny ? 14 : root.narrow ? 20 : 24
                         enabled: root.engine.ready && !root.engine.busy
-                        onClicked: root.engine.switchWorkspace(item.number, item.monitor)
+                        // Перенесённое пространство открывается на мониторе этой панели:
+                        // фокус переходит на её монитор до команды движку.
+                        onClicked: {
+                            if (item.migrated) root.desktop.focusMonitor(root.monitorName);
+                            root.engine.switchWorkspace(item.number, item.monitor);
+                        }
                         Rectangle {
                             visible: !workspaceButton.item.migrated
                             anchors.centerIn: parent
