@@ -30,6 +30,7 @@
     .tray { display: flex; gap: 6px; align-items: center; padding: 0 2px; color: #b9cbbd; font-size: 12px; }
     .status { color: #d7e5d9; font-weight: 550; white-space: nowrap; }
     .status.net { color: #bddbc1; }
+    .power { display: grid; place-items: center; width: 27px; height: 27px; border-radius: 8px; color: #edb5ad; font-size: 15px; }
     .quick { display: grid; place-items: center; width: 27px; height: 27px; border: 1px solid #758a796f; border-radius: 8px; color: #d9e8dc; background: #33413c; font-size: 15px; }
     .network-panel { position: absolute; z-index: 5; top: 59px; right: 12px; width: 292px; padding: 14px; border: 1px solid #7084769c; border-radius: 14px; background: #202a29f7; box-shadow: 0 20px 42px #000a; }
     .network-title { display: flex; align-items: center; gap: 8px; margin-bottom: 4px; font-size: 14px; font-weight: 650; }
@@ -79,7 +80,7 @@
           <span class="brand">◩</span><div class="sep"></div>
           <span class="dot active"></span><span class="dot"></span><span class="dot"></span>
           <span class="grow"></span><span class="muted app">Файлы</span><span class="grow"></span>
-          <span class="mode">▦ &nbsp; Тайлы</span><span class="metric">CPU <strong>12%</strong></span><span class="metric">RAM <strong>8/32</strong></span><span class="tray" title="Фоновые приложения: Telegram, 1Password, AmneziaVPN">➤ ◆ ◈</span><span class="status net" title="Сеть">◉</span><span class="status" title="Раскладка">RU</span><span class="status bt" title="Bluetooth">ᛒ</span><span class="status battery" title="Батарея">▰ 82%</span><span class="quick" title="Быстрые настройки">☷</span><span class="muted">14:28</span>
+          <span class="mode">▦ &nbsp; Тайлы</span><span class="metric">CPU <strong>12%</strong></span><span class="metric">RAM <strong>8/32</strong></span><span class="tray" title="Фоновые приложения: Telegram, 1Password, AmneziaVPN">➤ ◆ ◈</span><span class="status net" title="Сеть">◉</span><span class="status" title="Раскладка">RU</span><span class="status bt" title="Bluetooth">ᛒ</span><span class="status battery" title="Батарея">▰ 82%</span><span class="quick" title="Быстрые настройки">☷</span><span class="muted">14:28</span><span class="power" title="Питание">⏻</span>
         </div>
         <div class="window tile-left"><div class="window-head"><i></i> Проект</div><div class="window-body"><div class="line short"></div><div class="line medium"></div><div class="line"></div><div class="line medium"></div></div></div>
         <div class="window tile-right"><div class="window-head"><i></i> Терминал</div><div class="window-body"><div class="line medium"></div><div class="line short"></div><div class="line"></div><div class="line medium"></div></div></div>
@@ -92,7 +93,7 @@
           <span class="brand">◩</span><div class="sep"></div>
           <span class="dot"></span><span class="dot active"></span><span class="dot"></span>
           <span class="grow"></span><span class="muted app">Браузер</span><span class="grow"></span>
-          <span class="mode">▢ &nbsp; Окна</span><span class="metric">CPU <strong>12%</strong></span><span class="metric">RAM <strong>8/32</strong></span><span class="tray" title="Фоновые приложения: Telegram, 1Password, AmneziaVPN">➤ ◆ ◈</span><span class="status net" title="Сеть">◉</span><span class="status" title="Раскладка">RU</span><span class="status bt" title="Bluetooth">ᛒ</span><span class="status battery" title="Батарея">▰ 82%</span><span class="quick" title="Быстрые настройки">☷</span><span class="muted">14:28</span>
+          <span class="mode">▢ &nbsp; Окна</span><span class="metric">CPU <strong>12%</strong></span><span class="metric">RAM <strong>8/32</strong></span><span class="tray" title="Фоновые приложения: Telegram, 1Password, AmneziaVPN">➤ ◆ ◈</span><span class="status net" title="Сеть">◉</span><span class="status" title="Раскладка">RU</span><span class="status bt" title="Bluetooth">ᛒ</span><span class="status battery" title="Батарея">▰ 82%</span><span class="quick" title="Быстрые настройки">☷</span><span class="muted">14:28</span><span class="power" title="Питание">⏻</span>
         </div>
         <div class="window float-left"><div class="window-head"><i></i> Файлы · Проекты</div><div class="window-body"><div class="line accent medium"></div><div class="line"></div><div class="line short"></div><div class="line medium"></div></div></div>
         <div class="window float-right"><div class="window-head"><i></i> Браузер</div><div class="window-body"><div class="line accent short"></div><div class="line medium"></div><div class="line"></div><div class="line short"></div></div></div>
@@ -114,7 +115,7 @@
           <span class="brand">◩</span><div class="sep"></div>
           <span class="dot active"></span><span class="dot"></span><span class="dot"></span>
           <span class="grow"></span><span class="muted app">Терминал</span><span class="grow"></span>
-          <span class="mode">▦ &nbsp; Тайлы</span><span class="metric">CPU <strong>12%</strong></span><span class="metric">RAM <strong>8/32</strong></span><span class="tray" title="Фоновые приложения">➤ ◆ ◈</span><span class="status net" title="Ethernet подключён">◉</span><span class="status" title="Раскладка">RU</span><span class="status bt" title="Bluetooth">ᛒ</span><span class="status battery" title="Батарея">▰ 82%</span><span class="quick" title="Быстрые настройки">☷</span><span class="muted">14:28</span>
+          <span class="mode">▦ &nbsp; Тайлы</span><span class="metric">CPU <strong>12%</strong></span><span class="metric">RAM <strong>8/32</strong></span><span class="tray" title="Фоновые приложения">➤ ◆ ◈</span><span class="status net" title="Ethernet подключён">◉</span><span class="status" title="Раскладка">RU</span><span class="status bt" title="Bluetooth">ᛒ</span><span class="status battery" title="Батарея">▰ 82%</span><span class="quick" title="Быстрые настройки">☷</span><span class="muted">14:28</span><span class="power" title="Питание">⏻</span>
         </div>
         <div class="window tile-left"><div class="window-head"><i></i> Терминал</div><div class="window-body"><div class="line short"></div><div class="line medium"></div><div class="line"></div></div></div>
         <div class="window tile-right"><div class="window-head"><i></i> Файлы</div><div class="window-body"><div class="line medium"></div><div class="line short"></div><div class="line"></div></div></div>
