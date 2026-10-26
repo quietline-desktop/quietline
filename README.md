@@ -13,6 +13,7 @@
 | `docs/design/`            | утверждённый макет оболочки, вариант A «Тихая линия»              |
 | `docs/superpowers/specs/` | спеки: что делает Quietline и критерии готовности первой версии   |
 | `docs/superpowers/plans/` | планы реализации по этапам                                        |
+| `config/hyprland/`        | Hyprland: раскладка `scrolling`, запуск движка и его клавиши      |
 | `src/quietline_engine/`   | Python-пакет движка пространств и окон                            |
 | `tests/`                  | модульные тесты движка, запускаются без Hyprland                  |
 

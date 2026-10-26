@@ -1,0 +1,39 @@
+-- Quietline: клавиши движка пространств и окон для Hyprland ≥ 0.55.
+-- Подключается из ~/.config/hypr/hyprland.lua строкой require("quietline").
+
+-- Все пространства в раскладке scrolling: режим «Окна» держит обычные окна плавающими,
+-- режим «Тайлы» возвращает их в колонки.
+hl.config({ general = { layout = "scrolling" } })
+
+-- Сервис движка стартует вместе с Hyprland.
+hl.on("hyprland.start", function () hl.exec_cmd("quietline-engine serve") end)
+
+-- Терминал запускает сам Hyprland: работает без сервиса движка и без панели.
+hl.bind("SUPER + Return", hl.dsp.exec_cmd("ghostty"))
+
+-- Локальные пространства 1–10 монитора с фокусом; клавиша 0 — пространство 10.
+hl.bind("SUPER + 1", hl.dsp.exec_cmd("quietline-engine switch 1"))
+hl.bind("SUPER + 2", hl.dsp.exec_cmd("quietline-engine switch 2"))
+hl.bind("SUPER + 3", hl.dsp.exec_cmd("quietline-engine switch 3"))
+hl.bind("SUPER + 4", hl.dsp.exec_cmd("quietline-engine switch 4"))
+hl.bind("SUPER + 5", hl.dsp.exec_cmd("quietline-engine switch 5"))
+hl.bind("SUPER + 6", hl.dsp.exec_cmd("quietline-engine switch 6"))
+hl.bind("SUPER + 7", hl.dsp.exec_cmd("quietline-engine switch 7"))
+hl.bind("SUPER + 8", hl.dsp.exec_cmd("quietline-engine switch 8"))
+hl.bind("SUPER + 9", hl.dsp.exec_cmd("quietline-engine switch 9"))
+hl.bind("SUPER + 0", hl.dsp.exec_cmd("quietline-engine switch 10"))
+
+-- Активное окно переезжает на локальное пространство того же монитора, фокус — за ним.
+hl.bind("SUPER + SHIFT + 1", hl.dsp.exec_cmd("quietline-engine move 1"))
+hl.bind("SUPER + SHIFT + 2", hl.dsp.exec_cmd("quietline-engine move 2"))
+hl.bind("SUPER + SHIFT + 3", hl.dsp.exec_cmd("quietline-engine move 3"))
+hl.bind("SUPER + SHIFT + 4", hl.dsp.exec_cmd("quietline-engine move 4"))
+hl.bind("SUPER + SHIFT + 5", hl.dsp.exec_cmd("quietline-engine move 5"))
+hl.bind("SUPER + SHIFT + 6", hl.dsp.exec_cmd("quietline-engine move 6"))
+hl.bind("SUPER + SHIFT + 7", hl.dsp.exec_cmd("quietline-engine move 7"))
+hl.bind("SUPER + SHIFT + 8", hl.dsp.exec_cmd("quietline-engine move 8"))
+hl.bind("SUPER + SHIFT + 9", hl.dsp.exec_cmd("quietline-engine move 9"))
+hl.bind("SUPER + SHIFT + 0", hl.dsp.exec_cmd("quietline-engine move 10"))
+
+-- Режим текущего пространства: «Окна» ↔ «Тайлы».
+hl.bind("SUPER + M", hl.dsp.exec_cmd("quietline-engine toggle"))

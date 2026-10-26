@@ -5,6 +5,7 @@ import contextlib
 import json
 import logging
 import os
+import re
 import shutil
 import socket
 import stat
@@ -24,6 +25,7 @@ from quietline_engine.workspaces import WorkspaceRegistry
 
 KEY = "Dell Inc.|U2723QE|SN1"
 SECOND_KEY = "Dell Inc.|U2723QE|SN2"
+LUA_CONFIG = Path(__file__).resolve().parent.parent / "config" / "hyprland" / "quietline.lua"
 TIMEOUT = 2.0
 
 
@@ -455,3 +457,26 @@ def test_cli_prints_results_and_fails_on_errors(path, env, monkeypatch, capsys):
     assert main(["state"]) == 1
     assert "cannot connect to quietline-engine" in capsys.readouterr().err
 
+
+def test_shortcuts_target_expected_cli_calls():
+    text = LUA_CONFIG.read_text(encoding="utf-8")
+    binds = re.findall(r'hl\.bind\("([^"]+)",\s*hl\.dsp\.exec_cmd\("([^"]+)"\)\)', text)
+    assert len(binds) == text.count("hl.bind(")
+    keys = [key for key, _ in binds]
+    assert len(keys) == len(set(keys))
+
+    expected = {}
+    for number in range(1, 11):
+        key = str(number % 10)
+        expected[f"SUPER + {key}"] = f"quietline-engine switch {number}"
+        expected[f"SUPER + SHIFT + {key}"] = f"quietline-engine move {number}"
+    expected["SUPER + M"] = "quietline-engine toggle"
+    expected["SUPER + Return"] = "ghostty"
+    assert dict(binds) == expected
+
+    assert re.search(r'hl\.config\(\{\s*general\s*=\s*\{\s*layout\s*=\s*"scrolling"\s*\}\s*\}\)', text)
+    assert re.search(
+        r'hl\.on\("hyprland\.start",\s*function\s*\(\)\s*hl\.exec_cmd\("quietline-engine serve"\)\s*end\)', text
+    )
+    comments = [line.split("--", 1)[1] for line in text.splitlines() if "--" in line]
+    assert comments and all(re.search("[а-яё]", c, re.IGNORECASE) for c in comments if c.strip())

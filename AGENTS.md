@@ -38,13 +38,14 @@ Quietline ставится поверх **Arch Linux** после Archinstall Mi
 docs/design/              — утверждённые визуальные макеты (HTML)
 docs/superpowers/specs/   — спеки: что строим и почему
 docs/superpowers/plans/   — планы реализации по шагам
+config/hyprland/          — Lua-конфигурация Hyprland: раскладка, запуск сервиса и клавиши движка
 src/quietline_engine/     — Python-пакет движка пространств и окон
 tests/                    — модульные тесты движка (pytest, без Hyprland)
 pyproject.toml            — пакет `quietline-engine`, Python ≥ 3.14, тестовая зависимость pytest
 LICENSE                   — GPL-3.0
 ```
 
-По плану движка появятся `config/hyprland/` и `scripts/`. Раздел обновляется вместе с появлением папок.
+По плану движка появится `scripts/`. Раздел обновляется вместе с появлением папок.
 
 ## Разработка и проверки
 
