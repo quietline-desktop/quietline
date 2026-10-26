@@ -2,6 +2,7 @@
 
 import asyncio
 import json
+import threading
 
 import pytest
 from fakes import FakeAdapter, monitor, snapshot, window, workspace
@@ -181,6 +182,7 @@ def test_rollback_failures_are_tolerated(registry):
     state = run(controller.toggle())
 
     assert state.revision == 0 and state.error is not None
+    assert state.error.endswith("; rollback incomplete")
     assert adapter.calls[-1] == "snapshot"
 
 
@@ -250,3 +252,86 @@ def test_commands_are_serialised(registry):
     assert adapter.calls == ["snapshot", "apply", "snapshot", "snapshot", "apply", "snapshot"]
     assert [s.revision for s in states] == [1, 2]
     assert registry.get(KEY, 1).mode == "windows"
+
+
+class BlockingAdapter(FakeAdapter):
+    """Первый `apply` ждёт `release`; отмечает, если два `apply` выполняются одновременно."""
+
+    def __init__(self, snapshots):
+        super().__init__(snapshots)
+        self.started = threading.Event()
+        self.release = threading.Event()
+        self.overlap = False
+        self._running = 0
+        self._guard = threading.Lock()
+
+    def apply(self, actions):
+        with self._guard:
+            self._running += 1
+            self.overlap |= self._running > 1
+        try:
+            if not self.started.is_set():
+                self.started.set()
+                assert self.release.wait(5)
+            super().apply(actions)
+        finally:
+            with self._guard:
+                self._running -= 1
+
+
+def test_cancelled_toggle_finishes_transition_under_lock(registry):
+    first = floating_snapshot()
+    prepare(registry, first)
+    tiled = tiled_snapshot("0xa", "0xb")
+    adapter = BlockingAdapter([first, tiled, tiled, first])
+    controller = WindowController(adapter, registry)
+
+    async def scenario():
+        cancelled = asyncio.create_task(controller.toggle())
+        await asyncio.to_thread(adapter.started.wait, 5)
+        cancelled.cancel()
+        following = asyncio.create_task(controller.toggle())
+        await asyncio.sleep(0.05)
+        # Отменённый переход ещё держит блокировку: следующая команда не читала снимок.
+        assert adapter.calls == ["snapshot"]
+        adapter.release.set()
+        with pytest.raises(asyncio.CancelledError):
+            await cancelled
+        # Переход подтверждён и сохранён, хотя вызывающий отменён.
+        assert registry.get(KEY, 1).mode == "tiles"
+        return await asyncio.wait_for(following, timeout=5)
+
+    state = run(scenario())
+
+    assert not adapter.overlap
+    assert adapter.calls == ["snapshot", "apply", "snapshot", "snapshot", "apply", "snapshot"]
+    assert state.error is None and state.revision == 2
+    assert registry.get(KEY, 1).mode == "windows"
+
+
+def test_unexpected_failure_after_apply_rolls_back(registry, monkeypatch):
+    first = floating_snapshot()
+    prepare(registry, first)
+    adapter = FakeAdapter([first, tiled_snapshot("0xa", "0xb"), first])
+    controller = WindowController(adapter, registry)
+
+    def broken_update(*args, **kwargs):
+        raise RuntimeError("state store is broken")
+
+    monkeypatch.setattr(registry, "update", broken_update)
+
+    state = run(controller.toggle())
+
+    assert state.revision == 0
+    assert state.error == "mode switch failed: cannot save workspace state: state store is broken"
+    assert adapter.applied[1:] == [
+        [SetFloating("0xa", True)],
+        [MoveWindow("0xa", 100, 140)],
+        [ResizeWindow("0xa", 800, 600)],
+        [SetFloating("0xb", True)],
+        [MoveWindow("0xb", 1000, 300)],
+        [ResizeWindow("0xb", 900, 700)],
+        [FocusWindow("0xb")],
+    ]
+    assert adapter.calls[-1] == "snapshot"
+    assert state.to_json()["workspaces"][0]["mode"] == "windows"

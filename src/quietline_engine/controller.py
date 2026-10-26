@@ -1,7 +1,7 @@
 """Контроллер окон: последовательное выполнение команд и публикация подтверждённого состояния."""
 
 import asyncio
-from collections.abc import Sequence
+from collections.abc import Coroutine, Sequence
 from dataclasses import dataclass
 from typing import Any, Protocol
 
@@ -109,22 +109,32 @@ class WindowController:
         режим и снимки раскладки сохранены, `revision` увеличен. Неудача (Hyprland отклонил
         действие, окно закрылось посреди перехода, снимок не совпал): обратный план
         применяется по одному действию, снимок перечитывается, режим и `revision` остаются
-        прежними, `error` содержит причину.
+        прежними, `error` содержит причину. Неудачей считается любое исключение после начала
+        применения плана; если часть обратных действий отклонена, `error` это сообщает.
+
+        Переход выполняется до конца под блокировкой даже при отмене вызывающего:
+        отменённый вызов дожидается подтверждения или отката и только потом получает
+        `CancelledError`, поэтому действия разных команд не пересекаются.
         """
         async with self._lock:
-            try:
-                snapshot = await self._read()
-                ref = self._active_workspace(snapshot, monitor_key)
-                plan = self._plan(ref, snapshot)
-            except CommandError as error:
-                return self._state(str(error))
-            try:
-                await self._run(ref, plan)
-            except CommandError as error:
-                await self._rollback(plan)
-                return self._state(f"mode switch failed: {error}")
-            self._revision += 1
-            return self._state()
+            return await _run_to_completion(self._toggle(monitor_key))
+
+    async def _toggle(self, monitor_key: str | None) -> PublicState:
+        try:
+            snapshot = await self._read()
+            ref = self._active_workspace(snapshot, monitor_key)
+            plan = self._plan(ref, snapshot)
+        except CommandError as error:
+            return self._state(str(error))
+        try:
+            await self._run(ref, plan)
+        except Exception as error:
+            message = f"mode switch failed: {str(error) or type(error).__name__}"
+            if not await self._rollback(plan):
+                message += "; rollback incomplete"
+            return self._state(message)
+        self._revision += 1
+        return self._state()
 
     async def _read(self) -> CompositorSnapshot:
         try:
@@ -160,11 +170,8 @@ class WindowController:
 
     async def _run(self, ref: WorkspaceRef, plan: TransitionPlan) -> None:
         """Применяет план, проверяет новый снимок и сохраняет режим со снимками раскладки."""
-        try:
-            if plan.actions:
-                await asyncio.to_thread(self._adapter.apply, plan.actions)
-        except Exception as error:
-            raise CommandError(str(error)) from error
+        if plan.actions:
+            await asyncio.to_thread(self._adapter.apply, plan.actions)
         snapshot = await self._read()
         windows = {w.address: w for w in snapshot.windows}
         for address, floating in plan.expected_floating.items():
@@ -176,20 +183,26 @@ class WindowController:
                 raise CommandError(f"window {address} did not become {state}")
         try:
             self._registry.update(ref, mode=plan.mode, extra=plan.extra)
-        except (OSError, ValueError, TypeError, WorkspaceError) as error:
+        except Exception as error:
             raise CommandError(f"cannot save workspace state: {error}") from error
 
-    async def _rollback(self, plan: TransitionPlan) -> None:
-        """Обратный план по одному действию: отказ одного действия не мешает остальным."""
+    async def _rollback(self, plan: TransitionPlan) -> bool:
+        """Обратный план по одному действию, затем повторное чтение снимка.
+
+        Отказ одного действия не мешает остальным. Возвращает `False`, если хотя бы одно
+        действие отклонено.
+        """
+        complete = True
         for action in plan.reverse:
             try:
                 await asyncio.to_thread(self._adapter.apply, [action])
             except Exception:
-                continue
+                complete = False
         try:
             await self._read()
         except CommandError:
             pass
+        return complete
 
     def _ref_by_id(self, workspace_id: int) -> WorkspaceRef | None:
         return next((r for r in self._registry.workspaces() if r.workspace_id == workspace_id), None)
@@ -218,3 +231,23 @@ class WindowController:
                 for m in snapshot.monitors
             )
         return PublicState(self._revision, monitors, workspaces, error)
+
+
+async def _run_to_completion[T](coroutine: Coroutine[Any, Any, T]) -> T:
+    """Выполняет корутину отдельной задачей до конца.
+
+    Отмена вызывающего не прерывает задачу: вызывающий дожидается её завершения
+    и только затем получает `CancelledError`.
+    """
+    task = asyncio.create_task(coroutine)
+    try:
+        return await asyncio.shield(task)
+    except asyncio.CancelledError:
+        while not task.done():
+            try:
+                await asyncio.wait({task})
+            except asyncio.CancelledError:
+                continue
+        if not task.cancelled():
+            task.exception()
+        raise
