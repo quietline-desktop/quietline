@@ -109,6 +109,12 @@ def test_explicit_default_route_is_kept(system):
     ({"name": ""}, "name"),
     ({"name": "x" * 65}, "name"),
     ({"method": "static"}, "method"),
+    ({"address": "10.0.0.5/1"}, "prefix"),
+    ({"address": "10.0.0.5/0"}, "prefix"),
+    ({"address": "10.42.0.0/24"}, "address"),
+    ({"address": "10.42.0.255/24"}, "address"),
+    ({"dns": "8.8.8.8"}, "dns"),
+    ({"dns": [5]}, "dns"),
 ])
 def test_profile_validation_rejects_bad_input(system, changes, field):
     data = {"name": "Щит", "method": "manual", "address": "10.42.0.5/24", "gateway": None, "dns": [], **changes}
@@ -293,3 +299,57 @@ def test_missing_nmcli_is_reported(monkeypatch):
     monkeypatch.setattr(subprocess, "run", missing)
     with pytest.raises(RuntimeError, match="nmcli"):
         network.devices()
+
+
+@pytest.mark.parametrize("address", ["10.42.0.5/8", "10.42.0.5/32", "10.42.0.0/31"])
+def test_narrow_and_point_to_point_prefixes_are_accepted(system, address):
+    profile = network.validate_profile({"name": "Щит", "method": "manual", "address": address})
+    assert profile["address"] == address
+
+
+def test_cli_wrong_dns_type_is_a_form_error(system, capsys, monkeypatch):
+    profile = json.dumps({"name": "x", "method": "manual", "address": "10.0.0.5/24", "dns": 5})
+    code, response = run_cli(capsys, monkeypatch, profile, "network", "profile-save")
+    assert code == 1 and response["field"] == "dns"
+
+
+def test_status_lists_every_pending_checkpoint(system):
+    answer_status(system)
+    system.add([*GDBUS, "org.freedesktop.DBus.Properties.Get"],
+               "(<[objectpath '/org/freedesktop/NetworkManager/Checkpoint/1', '/org/freedesktop/NetworkManager/Checkpoint/2']>,)\n")
+    assert network.status()["pendingCheckpoints"] == [
+        "/org/freedesktop/NetworkManager/Checkpoint/1", "/org/freedesktop/NetworkManager/Checkpoint/2",
+    ]
+
+
+def test_dhcp_helper_profile_is_not_a_site_profile(system):
+    answer_status(system, connections="Quietline DHCP:6666-ffff:802-3-ethernet\n")
+    assert network.status()["profiles"] == []
+
+
+def test_rollback_reports_a_device_that_failed(system):
+    system.add([*GDBUS, NM + "CheckpointRollback"],
+               "({'/org/freedesktop/NetworkManager/Devices/7': uint32 0, '/org/freedesktop/NetworkManager/Devices/8': 1},)\n")
+    with pytest.raises(RuntimeError, match="Devices/8: device not found"):
+        network.rollback(CHECKPOINT)
+
+
+def test_rollback_succeeds_when_every_device_is_restored(system):
+    system.add([*GDBUS, NM + "CheckpointRollback"], "({'/org/freedesktop/NetworkManager/Devices/7': uint32 0},)\n")
+    assert network.rollback(CHECKPOINT) == {"checkpoint": CHECKPOINT, "result": "reverted"}
+
+
+def test_failed_rollback_after_failed_activation_keeps_both_errors(system, config):
+    answer_checkpoint(system)
+    system.add(["nmcli", "--wait", "20", "connection", "up"], code=4, stderr="Error: activation failed\n")
+    system.add([*GDBUS, NM + "CheckpointRollback"], "({'/org/freedesktop/NetworkManager/Devices/7': uint32 3},)\n")
+    with pytest.raises(RuntimeError, match="activation failed.*rollback failed"):
+        network.apply_profile("1111-aaaa", "enx00e04c")
+
+
+def test_checkpoint_reply_without_path_is_an_error(system, config):
+    system.add([*GDBUS, NM + "GetDeviceByIpIface"], "(objectpath '/org/freedesktop/NetworkManager/Devices/7',)\n")
+    system.add([*GDBUS, NM + "CheckpointCreate"], "()\n")
+    with pytest.raises(RuntimeError, match="did not return a checkpoint"):
+        network.apply_profile("1111-aaaa", "enx00e04c")
+    assert not any(command[3:5] == ["connection", "up"] for command in system.commands())

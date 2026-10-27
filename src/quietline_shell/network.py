@@ -55,6 +55,13 @@ NM_PATH = "/org/freedesktop/NetworkManager"
 _ADDED = re.compile(r"\(([0-9a-fA-F-]+)\) successfully added")
 _OBJECT = re.compile(r"objectpath '([^']+)'")
 _CHECKPOINT = re.compile(r"/org/freedesktop/NetworkManager/Checkpoint/\d+")
+# Путь в ответе `gdbus`: пометку `objectpath` получает только первый элемент массива.
+_CHECKPOINT_IN_REPLY = re.compile(r"'(/org/freedesktop/NetworkManager/Checkpoint/\d+)'")
+# Результат `CheckpointRollback` по устройствам: `{'<путь>': uint32 0, '<путь>': 3}`, 0 — успех.
+_ROLLBACK_RESULT = re.compile(r"'(/org/freedesktop/NetworkManager/Devices/\d+)':\s*(?:uint32\s+)?(\d+)")
+_ROLLBACK_ERRORS = {1: "device not found", 2: "device is not managed", 3: "rollback failed"}
+# Префикс сети профиля объекта: шире /8 подсеть увела бы через кабель часть интернета.
+MIN_PREFIX = 8
 _INTERFACE = re.compile(r"[A-Za-z0-9_.:-]{1,15}")
 _UUID = re.compile(r"[0-9a-fA-F-]{1,64}")
 
@@ -236,12 +243,14 @@ def pending_checkpoints() -> list[str]:
                            interface="org.freedesktop.DBus.Properties")
     except RuntimeError:
         return []
-    return [path for path in _OBJECT.findall(output) if _CHECKPOINT.fullmatch(path)]
+    return _CHECKPOINT_IN_REPLY.findall(output)
 
 
 def status() -> dict[str, Any]:
     used = recent()
-    profiles = [_profile(name, uuid, used) for name, uuid, kind in _connections() if kind == ETHERNET]
+    profiles = [
+        _profile(name, uuid, used) for name, uuid, kind in _connections() if kind == ETHERNET and name != DHCP_PROFILE
+    ]
     return {
         "devices": devices(),
         "wifi": {"enabled": wifi_enabled()},
@@ -274,11 +283,17 @@ def _activate(uuid: str, device: str) -> dict[str, Any]:
         device_path = _OBJECT.findall(run_gdbus("GetDeviceByIpIface", device))[0]
     except (RuntimeError, IndexError) as error:
         raise RuntimeError(f"network adapter {device} not found") from error
-    checkpoint = _OBJECT.findall(run_gdbus("CheckpointCreate", f"['{device_path}']", str(ROLLBACK_SECONDS), "0"))[0]
+    created = _CHECKPOINT_IN_REPLY.findall(run_gdbus("CheckpointCreate", f"['{device_path}']", str(ROLLBACK_SECONDS), "0"))
+    if not created:
+        raise RuntimeError("NetworkManager did not return a checkpoint")
+    checkpoint = created[0]
     try:
         run_nmcli(["connection", "up", "uuid", uuid, "ifname", device], wait=ACTIVATION_WAIT)
-    except RuntimeError:
-        run_gdbus("CheckpointRollback", checkpoint)
+    except RuntimeError as error:
+        try:
+            _rollback(checkpoint)
+        except RuntimeError as rollback_error:
+            raise RuntimeError(f"{error}; {rollback_error}") from error
         raise
     run_gdbus("CheckpointAdjustRollbackTimeout", checkpoint, str(ROLLBACK_SECONDS))
     mark_used(uuid)
@@ -309,8 +324,19 @@ def confirm(checkpoint: str) -> dict[str, str]:
     return {"checkpoint": checkpoint, "result": "kept"}
 
 
+def _rollback(checkpoint: str) -> None:
+    """Откатывает контрольную точку; ненулевой результат любого устройства — `RuntimeError`."""
+    output = run_gdbus("CheckpointRollback", checkpoint)
+    failed = [
+        f"{path}: {_ROLLBACK_ERRORS.get(int(code), f'result {code}')}"
+        for path, code in _ROLLBACK_RESULT.findall(output) if int(code)
+    ]
+    if failed:
+        raise RuntimeError("NetworkManager rollback failed for " + ", ".join(failed))
+
+
 def rollback(checkpoint: str) -> dict[str, str]:
-    run_gdbus("CheckpointRollback", _checkpoint_path(checkpoint))
+    _rollback(_checkpoint_path(checkpoint))
     return {"checkpoint": checkpoint, "result": "reverted"}
 
 
@@ -333,18 +359,29 @@ def validate_profile(data: object) -> dict[str, Any]:
         if "/" not in address:
             raise ProfileError("prefix", f"address needs a network prefix, for example 10.42.0.5/24: {address!r}")
         try:
-            address = str(ipaddress.IPv4Interface(address))
+            interface = ipaddress.IPv4Interface(address)
         except ValueError as error:
             raise ProfileError("address", f"invalid IPv4 address: {address!r}") from error
+        network = interface.network
+        if network.prefixlen < MIN_PREFIX:
+            raise ProfileError("prefix", f"network prefix must be /{MIN_PREFIX} to /32: {address!r}")
+        if network.prefixlen < 31 and interface.ip in (network.network_address, network.broadcast_address):
+            raise ProfileError("address", f"address is the network or broadcast address of {network}: {address!r}")
+        address = str(interface)
         if data.get("gateway"):
             try:
                 gateway = str(ipaddress.IPv4Address(str(data["gateway"]).strip()))
             except ValueError as error:
                 raise ProfileError("gateway", f"invalid gateway address: {data['gateway']!r}") from error
+    servers = data.get("dns") or []
+    if not isinstance(servers, list):
+        raise ProfileError("dns", f"DNS servers must be a list of addresses: {servers!r}")
     dns: list[str] = []
-    for item in data.get("dns") or []:
+    for item in servers:
         try:
-            dns.append(str(ipaddress.ip_address(str(item).strip())))
+            if not isinstance(item, str):
+                raise ValueError(item)
+            dns.append(str(ipaddress.ip_address(item.strip())))
         except ValueError as error:
             raise ProfileError("dns", f"invalid DNS server address: {item!r}") from error
     uuid = data.get("uuid")

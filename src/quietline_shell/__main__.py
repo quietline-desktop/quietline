@@ -58,7 +58,7 @@ def main(argv: Sequence[str] | None = None) -> int:
     except network.ProfileError as error:
         print(json.dumps({"error": str(error), "field": error.field}, ensure_ascii=False))
         return 1
-    except (OSError, ValueError, RuntimeError, subprocess.TimeoutExpired) as error:
+    except (OSError, ValueError, TypeError, RuntimeError, subprocess.TimeoutExpired) as error:
         print(json.dumps({"error": str(error)}, ensure_ascii=False))
         return 1
     print(json.dumps(response, ensure_ascii=False))
