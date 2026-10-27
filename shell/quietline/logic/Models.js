@@ -363,3 +363,28 @@ function formatDuration(seconds) {
     var minutes = Math.max(1, Math.round(seconds / 60)), hours = Math.floor(minutes / 60);
     return hours ? hours + " ч " + (minutes % 60) + " мин" : minutes + " мин";
 }
+
+// Биты `modmask` Hyprland в том порядке, в каком модификаторы называют.
+var MODIFIERS = [[64, "Super"], [4, "Ctrl"], [8, "Alt"], [1, "Shift"]];
+
+// Русское описание известной команды привязки; неизвестная остаётся как есть.
+function bindAction(command) {
+    var match;
+    if ((match = /^quietline-engine switch (\d+)$/.exec(command))) return "Открыть пространство " + match[1];
+    if ((match = /^quietline-engine move (\d+)$/.exec(command))) return "Перенести окно на пространство " + match[1];
+    if (command === "quietline-engine toggle") return "Сменить режим «Окна / Тайлы»";
+    if (command === "ghostty") return "Открыть терминал";
+    if (/ipc call quietline launcher$/.test(command)) return "Открыть меню приложений";
+    if (/ipc call quietline settings/.test(command)) return "Открыть окно «Настройки»";
+    return command;
+}
+
+// Памятка сочетаний из `hyprctl binds -j`: `[{keys: "Super+Shift+1", action}]`.
+function describeBinds(binds) {
+    return (binds || []).map(function(bind) {
+        var keys = MODIFIERS.filter(function(item) { return (bind.modmask & item[0]) !== 0; })
+            .map(function(item) { return item[1]; });
+        keys.push(bind.key);
+        return {keys: keys.join("+"), action: bindAction(bind.arg || bind.dispatcher || "")};
+    });
+}

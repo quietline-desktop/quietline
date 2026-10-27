@@ -643,6 +643,7 @@ def test_shortcuts_target_expected_cli_calls():
     expected["SUPER + M"] = "quietline-engine toggle"
     expected["SUPER + Return"] = "ghostty"
     expected["SUPER + Space"] = "qs -c quietline ipc call quietline launcher"
+    expected["SUPER + I"] = "qs -c quietline ipc call quietline settings ''"
     assert dict(binds) == expected
 
     config = re.search(r"hl\.config\(\{(.*?)\n\}\)", text, re.S)

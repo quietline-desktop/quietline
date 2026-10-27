@@ -4,6 +4,7 @@ import Quickshell.Io
 import Quickshell.Hyprland
 import "services"
 import "system"
+import "settings"
 import "bar"
 import "dock"
 import "logic/Models.js" as Models
@@ -22,7 +23,8 @@ ShellRoot {
     PowerService { id: powerService }
     // Системные сервисы, общие для всех панелей, всплывающих окон и окна «Настройки».
     readonly property var services: ({network: networkService, audio: audioService, brightness: brightnessService,
-                                      bluetooth: bluetoothService, power: powerService, settings: null})
+                                      bluetooth: bluetoothService, power: powerService, settings: settingsWindow})
+    SettingsWindow { id: settingsWindow; services: root.services; desktop: desktopService }
     Variants {
         model: Quickshell.screens
         Scope {
@@ -69,5 +71,8 @@ ShellRoot {
             if (item) item.bar.openSummary();
         }
         function movePin(from: int, to: int): void { desktopService.movePin(from, to); }
+        // Окно «Настройки» на разделе `section` (`network`, `audio`, `display`, `bluetooth`,
+        // `power`, `keyboard`, `shortcuts`, `about`); пусто — последний открытый раздел.
+        function settings(section: string): void { settingsWindow.open(section); }
     }
 }

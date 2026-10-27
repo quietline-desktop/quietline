@@ -272,3 +272,18 @@ test('battery time reads in hours and minutes',()=>{
  assert.equal(M.formatDuration(600),'10 мин');
  assert.equal(M.formatDuration(30),'1 мин');
 });
+test('binds are described in Russian with modifier names',()=>{
+ const rows=plain(M.describeBinds([
+  {modmask:64,key:'M',dispatcher:'exec',arg:'quietline-engine toggle'},
+  {modmask:65,key:'1',dispatcher:'exec',arg:'quietline-engine move 1'},
+  {modmask:64,key:'0',dispatcher:'exec',arg:'quietline-engine switch 10'},
+  {modmask:64,key:'I',dispatcher:'exec',arg:"qs -c quietline ipc call quietline settings ''"},
+  {modmask:12,key:'T',dispatcher:'exec',arg:'my-tool --flag'},
+ ]));
+ assert.deepEqual(rows[0],{keys:'Super+M',action:'Сменить режим «Окна / Тайлы»'});
+ assert.deepEqual(rows[1],{keys:'Super+Shift+1',action:'Перенести окно на пространство 1'});
+ assert.deepEqual(rows[2],{keys:'Super+0',action:'Открыть пространство 10'});
+ assert.deepEqual(rows[3],{keys:'Super+I',action:'Открыть окно «Настройки»'});
+ assert.deepEqual(rows[4],{keys:'Ctrl+Alt+T',action:'my-tool --flag'});
+ assert.deepEqual(plain(M.describeBinds(null)),[]);
+});
