@@ -1,0 +1,32 @@
+import QtQuick
+import QtQuick.Layouts
+import ".."
+import "../inputs"
+
+// Ползунок яркости встроенного экрана или сообщение, что яркость не управляется.
+RowLayout {
+    id: root
+    required property var brightness
+    Text {
+        visible: !root.brightness.supported
+        Layout.fillWidth: true
+        text: "Яркость этого экрана не управляется"
+        color: Theme.muted; font.family: Theme.sans; font.pixelSize: Theme.smallFontSize
+    }
+    Text {
+        visible: root.brightness.supported
+        text: ""
+        font.family: Theme.icons; font.pixelSize: Theme.iconFontSize
+        color: Theme.muted
+        Layout.preferredWidth: 28
+        horizontalAlignment: Text.AlignHCenter
+    }
+    ShellSlider {
+        visible: root.brightness.supported
+        Layout.fillWidth: true
+        label: "Яркость"
+        from: 1; to: 100; stepSize: 1
+        value: root.brightness.percent
+        onMoved: root.brightness.set(value)
+    }
+}

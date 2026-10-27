@@ -16,8 +16,13 @@ ShellRoot {
     DesktopModel { id: desktopService }
     Indicators { id: systemIndicators }
     NetworkService { id: networkService }
+    AudioService { id: audioService }
+    BrightnessService { id: brightnessService }
+    BluetoothService { id: bluetoothService }
+    PowerService { id: powerService }
     // Системные сервисы, общие для всех панелей, всплывающих окон и окна «Настройки».
-    readonly property var services: ({network: networkService})
+    readonly property var services: ({network: networkService, audio: audioService, brightness: brightnessService,
+                                      bluetooth: bluetoothService, power: powerService, settings: null})
     Variants {
         model: Quickshell.screens
         Scope {

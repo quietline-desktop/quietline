@@ -1,1 +1,5 @@
 NetworkService 1.0 NetworkService.qml
+AudioService 1.0 AudioService.qml
+BrightnessService 1.0 BrightnessService.qml
+BluetoothService 1.0 BluetoothService.qml
+PowerService 1.0 PowerService.qml

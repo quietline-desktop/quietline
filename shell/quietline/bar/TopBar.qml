@@ -21,11 +21,11 @@ PanelWindow {
     readonly property var workspace: engine.ready ? Models.activeWorkspace(engine.state, monitorName) : null
     readonly property var monitor: engine.ready ? Models.monitorFor(engine.state, monitorName) : null
     readonly property bool applicationsOpen: popout.opened && popout.currentName === "applications"
-    readonly property bool summaryOpen: popout.opened && popout.currentName !== "applications"
+    readonly property bool summaryOpen: popout.opened && popout.currentName === "quick"
     readonly property var hints: hintPopup
     readonly property bool compact: width < 1100
     readonly property bool narrow: width < 820
-    // Уже этой ширины справа остаются только главные элементы, остальное — в сводке.
+    // Уже этой ширины справа остаются только главные элементы, остальное — в быстрых настройках.
     readonly property bool tiny: width < 640
     // 0 — «Окна», 1 — «Тайлы»; анимируется только после подтверждения движком.
     property real modeProgress: workspace && workspace.mode === "tiles" ? 1 : 0
@@ -41,7 +41,7 @@ PanelWindow {
     readonly property string message: errorText || desktop.notice
     anchors { top: true; left: true; right: true }
     function openApplications() { popout.open("applications"); }
-    function openSummary() { popout.open("summary"); }
+    function openSummary() { popout.open("quick"); }
     implicitHeight: Theme.outerMargin + Theme.barHeight + (message.length > 0 ? 28 : 0)
     exclusiveZone: Theme.outerMargin + Theme.barHeight + 12
     color: "transparent"
@@ -192,25 +192,25 @@ PanelWindow {
                 onClicked: root.desktop.switchLayout()
             }
             Text {
-                visible: root.indicators.hasBluetooth && !root.narrow
+                visible: root.services.bluetooth.available && !root.narrow
                 font.family: Theme.icons
                 text: "\uf293"
                 color: Theme.muted; font.pixelSize: Theme.iconFontSize
-                Accessible.name: root.indicators.bluetoothEnabled ? "Bluetooth включён" : "Bluetooth выключен"
+                Accessible.name: root.services.bluetooth.enabled ? "Bluetooth включён" : "Bluetooth выключен"
             }
             Text {
-                visible: root.indicators.hasBattery && !root.tiny
+                visible: root.services.power.hasBattery && !root.tiny
                 Layout.preferredWidth: 58
-                text: "▰ " + Math.round(root.indicators.battery.percentage * 100) + "%"
+                text: (root.services.power.charging ? "↯ " : "▰ ") + root.services.power.percent + "%"
                 color: Theme.text; font.family: Theme.mono; font.pixelSize: Theme.smallFontSize
-                Accessible.name: "Заряд батареи " + Math.round(root.indicators.battery.percentage * 100) + "%"
+                Accessible.name: "Заряд батареи " + root.services.power.percent + "%" + (root.services.power.charging ? ", заряжается" : "")
             }
             ShellButton {
                 id: details
                 font.family: Theme.icons
                 text: "\uf1de"
-                hint: "Состояние системы и фоновые приложения"
-                onClicked: popout.toggle("summary")
+                hint: "Быстрые настройки"
+                onClicked: popout.toggle("quick")
             }
             Text {
                 text: Qt.formatTime(clock.date, "HH:mm")
@@ -226,6 +226,7 @@ PanelWindow {
         id: popout
         readonly property bool showingApplications: currentName === "applications"
         readonly property bool showingNetwork: currentName === "network"
+        readonly property bool showingQuick: currentName === "quick"
         parentPanel: root
         // Сетевая панель держит формы и не закрывается от щелчка в другом окне.
         persistent: showingNetwork
@@ -279,21 +280,29 @@ PanelWindow {
             ColumnLayout {
                 id: content
                 width: summaryScroll.availableWidth; spacing: 12
-                Text { text: popout.showingNetwork ? "Сеть" : "Состояние системы"; color: Theme.text; font.family: Theme.sans; font.pixelSize: Theme.titleFontSize; font.bold: true }
+                Text { visible: popout.showingNetwork; text: "Сеть"; color: Theme.text; font.family: Theme.sans; font.pixelSize: Theme.titleFontSize; font.bold: true }
                 Loader {
                     active: popout.showingNetwork && popout.opened
                     visible: active
                     Layout.fillWidth: true
                     sourceComponent: Component { NetworkControls { network: root.network; compact: true } }
                 }
-                Text { visible: !popout.showingNetwork; text: "CPU  " + root.indicators.cpuText + "\nRAM  " + root.indicators.memoryText + " ГБ"; color: Theme.text; font.family: Theme.mono; font.pixelSize: Theme.fontSize; lineHeight: 1.4 }
-                Text { visible: !popout.showingNetwork && SystemTray.items.values.length > 0; text: "Фоновые приложения"; color: Theme.muted; font.family: Theme.sans; font.pixelSize: Theme.smallFontSize }
+                QuickSettings {
+                    visible: popout.showingQuick
+                    Layout.fillWidth: true
+                    services: root.services
+                    builtinScreen: Models.isBuiltinOutput(root.monitorName)
+                    onNetworkRequested: popout.open("network")
+                    onSettingsRequested: { popout.close(); root.services.settings.open(""); }
+                }
+                // Скрытое с узкой панели остаётся доступным здесь.
+                Text { visible: popout.showingQuick && root.compact; text: "CPU  " + root.indicators.cpuText + "\nRAM  " + root.indicators.memoryText + " ГБ"; color: Theme.text; font.family: Theme.mono; font.pixelSize: Theme.fontSize; lineHeight: 1.4 }
+                Text { visible: popout.showingQuick && root.compact && SystemTray.items.values.length > 0; text: "Фоновые приложения"; color: Theme.muted; font.family: Theme.sans; font.pixelSize: Theme.smallFontSize }
                 Repeater {
-                    model: !popout.showingNetwork ? SystemTray.items : null
+                    model: popout.showingQuick && root.compact ? SystemTray.items : null
                     delegate: ShellButton { required property var modelData; Layout.fillWidth: true; text: modelData.title || modelData.id; onClicked: { modelData.onlyMenu ? modelData.display(root, root.width - 300, 70) : modelData.activate(); } }
                 }
-                Text { visible: !popout.showingNetwork && root.indicators.hasBattery; text: "Батарея " + Math.round(root.indicators.battery.percentage * 100) + "%"; color: Theme.text; font.family: Theme.sans; font.pixelSize: Theme.fontSize }
-                Text { visible: !popout.showingNetwork && root.indicators.hasBluetooth; text: root.indicators.bluetoothEnabled ? "Bluetooth включён" : "Bluetooth выключен"; color: Theme.text; font.family: Theme.sans; font.pixelSize: Theme.fontSize }
+                Text { visible: popout.showingQuick && root.tiny && root.services.power.hasBattery; text: "Батарея " + root.services.power.percent + "%" + (root.services.power.timeText ? " · " + root.services.power.timeText : ""); color: Theme.text; font.family: Theme.sans; font.pixelSize: Theme.fontSize }
             }
         }
     }

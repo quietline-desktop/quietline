@@ -1,1 +1,6 @@
 NetworkControls 1.0 NetworkControls.qml
+AudioControls 1.0 AudioControls.qml
+BrightnessControls 1.0 BrightnessControls.qml
+BluetoothControls 1.0 BluetoothControls.qml
+PowerControls 1.0 PowerControls.qml
+QuickSettings 1.0 QuickSettings.qml

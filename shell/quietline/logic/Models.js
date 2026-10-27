@@ -334,3 +334,32 @@ function networkErrorText(kind, response) {
     var detail = response && typeof response.error === "string" ? response.error : "";
     return detail ? text + ": " + detail : text;
 }
+
+// Подсветка из `brightnessctl -m -c backlight`: строки `устройство,класс,текущее,процент%,максимум`.
+// Без устройства класса `backlight` — `null`.
+function parseBrightness(text) {
+    for (var line of String(text || "").split("\n")) {
+        var fields = line.split(",");
+        if (fields.length >= 5 && fields[1] === "backlight")
+            return {device: fields[0], percent: parseInt(fields[3], 10) || 0};
+    }
+    return null;
+}
+
+// Аргументы записи яркости; без устройства или с процентом меньше 1 — `null`.
+function brightnessArgs(device, percent) {
+    if (!device || !(percent >= 1)) return null;
+    return ["brightnessctl", "-c", "backlight", "-d", device, "set", Math.min(100, Math.round(percent)) + "%"];
+}
+
+// Подсветка принадлежит встроенному экрану; панели внешних выходов ползунка не получают.
+function isBuiltinOutput(name) { return /^(eDP|LVDS|DSI)-/.test(name || ""); }
+
+// Громкость PipeWire в пределах 0…150 %.
+function clampVolume(value) { return Math.max(0, Math.min(1.5, value)); }
+
+// Время батареи: «1 ч 20 мин» или «10 мин», не меньше минуты.
+function formatDuration(seconds) {
+    var minutes = Math.max(1, Math.round(seconds / 60)), hours = Math.floor(minutes / 60);
+    return hours ? hours + " ч " + (minutes % 60) + " мин" : minutes + " мин";
+}

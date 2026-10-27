@@ -247,3 +247,28 @@ test('network errors are Russian with the helper detail',()=>{
  assert.equal(M.networkErrorText('apply',{error:'x',field:'unknown'}),'Конфигурация не применена: x');
  assert.equal(M.networkErrorText('',{}),'Сетевое действие не выполнено');
 });
+test('brightness parse yields null without backlight',()=>{
+ assert.equal(M.parseBrightness(''),null);
+ assert.equal(M.parseBrightness('input3::capslock,leds,0,0%,1\n'),null);
+ assert.deepEqual(plain(M.parseBrightness('intel_backlight,backlight,48000,50%,96000\n')),{device:'intel_backlight',percent:50});
+});
+test('brightness writes never carry an empty request',()=>{
+ assert.deepEqual(plain(M.brightnessArgs('intel_backlight',40)),['brightnessctl','-c','backlight','-d','intel_backlight','set','40%']);
+ assert.deepEqual(plain(M.brightnessArgs('intel_backlight',140)),['brightnessctl','-c','backlight','-d','intel_backlight','set','100%']);
+ assert.equal(M.brightnessArgs('intel_backlight',-1),null);
+ assert.equal(M.brightnessArgs('',40),null);
+});
+test('only built-in outputs get the backlight slider',()=>{
+ for(const name of ['eDP-1','LVDS-1','DSI-1']) assert.equal(M.isBuiltinOutput(name),true,name);
+ for(const name of ['HDMI-A-1','DP-2','']) assert.equal(M.isBuiltinOutput(name),false,name);
+});
+test('volume is clamped to the safe range',()=>{
+ assert.equal(M.clampVolume(2),1.5);
+ assert.equal(M.clampVolume(-1),0);
+ assert.equal(M.clampVolume(0.42),0.42);
+});
+test('battery time reads in hours and minutes',()=>{
+ assert.equal(M.formatDuration(4800),'1 ч 20 мин');
+ assert.equal(M.formatDuration(600),'10 мин');
+ assert.equal(M.formatDuration(30),'1 мин');
+});
