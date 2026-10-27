@@ -1,6 +1,6 @@
 # Системные панели и окно «Настройки»
 
-**Статус:** перенос на новую оболочку (ветка `feature/system-panels`): план записан, реализация не начата.
+**Статус:** перенесён на новую оболочку (ветка `feature/system-panels`): `quietline-shell network` и `about`, QML системных панелей и окна «Настройки», модульные тесты готовы; живые проверки не проведены — порядок в `scripts/smoke-system-panels.md`, список в `docs/backlog.md`.
 **Цель:** сетевая панель с Ethernet-профилями объекта и откатом через контрольную точку NetworkManager, быстрые настройки звука, яркости, Wi-Fi и Bluetooth и окно «Настройки» с боковой навигацией поверх того же состояния.
 **Спецификация:** `docs/superpowers/specs/2026-10-19-quietline-desktop-design.md` — разделы «Оболочка и внешний вид» (сетевая панель, быстрые настройки, окно «Настройки»), «Сочетания клавиш» (`Super+I`) и «Ошибки, проверка и готовность», пункт 4. Внешний вид — `DESIGN.md`, сетевая панель — `docs/design/quiet-line-a.html`.
 **Основа:** этап 2 в `main` (`docs/superpowers/plans/2026-10-19-quickshell.md`). Источник переноса — коммиты `adabf49`…`a2e8aa5` ветки `origin/feature/installer`, написанные под прежнюю оболочку и уже прошедшие ревью.
@@ -23,7 +23,7 @@ Python-помощник `quietline-shell network …` обслуживает Net
 Поведение и внешний вид — как на ветке-источнике. Что меняется при переносе:
 
 1. **Пакет Python.** Сетевой помощник — `src/quietline_shell/network.py`, сводка «О системе» — `src/quietline_shell/system_info.py`, подкоманды подключаются в `src/quietline_shell/__main__.py`. Атомарная запись JSON выносится из `save_pins` в `config.atomic_write_json(path, value)` и используется для `pins.json` и `network.json`. Python ≥ 3.14, тесты — `uv run --python 3.14 pytest`.
-2. **Язык сообщений.** Ошибки `quietline-shell` — по-английски, как у `pins` (`AGENTS.md`). Ошибка проверки формы профиля дополнительно несёт поле `field` (`name`, `method`, `address`, `prefix`, `gateway`, `dns`); панель показывает русский текст по `field` (`Models.profileErrorText`), остальные ошибки — русский префикс действия и подробность по-английски, как ошибки движка в панели (план этапа 2, «Решения при выполнении», п. 2).
+2. **Язык сообщений.** Ошибки `quietline-shell` — по-английски, как у `pins` (`AGENTS.md`). Ошибка проверки формы профиля дополнительно несёт поле `field` (`name`, `method`, `address`, `prefix`, `gateway`, `dns`); панель показывает русский текст по `field` (`Models.networkErrorText`), остальные ошибки — русский префикс действия и подробность по-английски, как ошибки движка в панели (план этапа 2, «Решения при выполнении», п. 2).
 3. **`network` без подкоманды убирается.** Прежняя сводка `quietline-shell network` заменяется `network status`; `Indicators.qml` больше не читает сеть и `Quickshell.Networking` — сеть, Bluetooth и батарею панель берёт из сервисов этого этапа.
 4. **Раскладка папок QML** (правило папок `AGENTS.md`, не больше восьми записей):
    - `services/` — без изменений: `EngineClient`, `DesktopModel`, `Indicators`;
@@ -75,33 +75,41 @@ Python-помощник `quietline-shell network …` обслуживает Net
 
 ## Task 1: Сетевой помощник
 
-- [ ] Перенести `network.py` в `src/quietline_shell/` с английскими ошибками и полем `field` у ошибок формы, `atomic_write_json` в `config.py`, подкоманды `network …` в `__main__.py`; убрать `network_devices()` и `network` без подкоманды.
-- [ ] Перенести правило polkit и `tests/shell/polkit.test.cjs`.
-- [ ] Перенести тесты в `tests/shell/test_network.py` (состояние, профили, Wi-Fi, контрольные точки, DHCP, недавние профили, CLI) с проверкой `field`; старые тесты `network` в `test_shell_config.py` удалить.
-- [ ] `uv run --python 3.14 pytest`, `node --test 'tests/shell/*.test.cjs'` → PASS.
+- [x] Перенести `network.py` в `src/quietline_shell/` с английскими ошибками и полем `field` у ошибок формы, `atomic_write_json` в `config.py`, подкоманды `network …` в `__main__.py`; убрать `network_devices()` и `network` без подкоманды.
+- [x] Перенести правило polkit и `tests/shell/polkit.test.cjs`.
+- [x] Перенести тесты в `tests/shell/test_network.py` (состояние, профили, Wi-Fi, контрольные точки, DHCP, недавние профили, CLI) с проверкой `field`; старые тесты `network` в `test_shell_config.py` удалить.
+- [x] `uv run --python 3.14 pytest`, `node --test 'tests/shell/*.test.cjs'` → PASS.
 
 ## Task 2: Сетевая панель
 
-- [ ] `inputs/` (`ShellTextField`, `ShellSwitch`), `system/NetworkService.qml`, `panels/NetworkControls.qml`, `ShellPopup.persistent`, кнопка сети в `bar/TopBar.qml`, один `NetworkService` в `shell.qml`; `Indicators.qml` без сети.
-- [ ] `Models.secondsLeft`, `Models.deviceLabel`, `Models.pendingFromStatus`, `Models.profileErrorText` с тестами в `models.test.cjs`.
-- [ ] `node --test 'tests/shell/*.test.cjs'` → PASS; статическая проверка QML (парность скобок, импорты и `qmldir`, токены `Theme`).
+- [x] `inputs/` (`ShellTextField`, `ShellSwitch`), `system/NetworkService.qml`, `panels/NetworkControls.qml`, `ShellPopup.persistent`, кнопка сети в `bar/TopBar.qml`, один `NetworkService` в `shell.qml`; `Indicators.qml` без сети.
+- [x] `Models.secondsLeft`, `Models.deviceLabel`, `Models.pendingFromStatus`, `Models.networkErrorText` с тестами в `models.test.cjs`.
+- [x] `node --test 'tests/shell/*.test.cjs'` → PASS; статическая проверка QML (парность скобок, импорты и `qmldir`, токены `Theme`).
 
 ## Task 3: Звук, яркость, Bluetooth, питание и быстрые настройки
 
-- [ ] `system/AudioService`, `BrightnessService`, `BluetoothService`, `PowerService`; `panels/AudioControls`, `BrightnessControls`, `BluetoothControls`, `PowerControls`, `QuickSettings`; `inputs/ShellSlider`.
-- [ ] Кнопка быстрых настроек панели открывает `quick`; Bluetooth и батарея панели берутся из сервисов, `Indicators.qml` без Bluetooth и UPower.
-- [ ] `Models.parseBrightness`, `Models.clampVolume`, `Models.isBuiltinOutput` с тестами.
-- [ ] Тесты → PASS, статическая проверка QML.
+- [x] `system/AudioService`, `BrightnessService`, `BluetoothService`, `PowerService`; `panels/AudioControls`, `BrightnessControls`, `BluetoothControls`, `PowerControls`, `QuickSettings`; `inputs/ShellSlider`.
+- [x] Кнопка быстрых настроек панели открывает `quick`; Bluetooth и батарея панели берутся из сервисов, `Indicators.qml` без Bluetooth и UPower.
+- [x] `Models.parseBrightness`, `Models.clampVolume`, `Models.isBuiltinOutput` с тестами.
+- [x] Тесты → PASS, статическая проверка QML.
 
 ## Task 4: Окно «Настройки»
 
-- [ ] `settings/SettingsWindow.qml`, IPC `settings(section)` в `shell.qml`, `Super+I` в Lua-конфиге с проверкой в `tests/engine/test_server.py`.
-- [ ] `system_info.py` и подкоманда `about` с `tests/shell/test_system_info.py`; `Models.describeBinds` с тестами.
-- [ ] Тесты → PASS, статическая проверка QML.
+- [x] `settings/SettingsWindow.qml`, IPC `settings(section)` в `shell.qml`, `Super+I` в Lua-конфиге с проверкой в `tests/engine/test_server.py`.
+- [x] `system_info.py` и подкоманда `about` с `tests/shell/test_system_info.py`; `Models.describeBinds` с тестами.
+- [x] Тесты → PASS, статическая проверка QML.
 
 ## Task 5: Документация и проверка
 
-- [ ] `scripts/smoke-system-panels.md` (S1–S10 ветки-источника, пути и команды нового репозитория), пункты в `docs/backlog.md`, `README.md` (статус, этапы, зависимости `brightnessctl power-profiles-daemon bluez bluez-utils networkmanager`, установка правила polkit), `DESIGN.md` (владельцы), `CHANGELOG.md`, раскладка папок в `AGENTS.md`.
-- [ ] Полные `pytest` и `node --test` → PASS; аудит: нет `shell=True`, пароль не в аргументах, токены только из `Theme`.
+- [x] `scripts/smoke-system-panels.md` (сценарии ветки-источника S1–S14, пути и команды нового репозитория), пункты в `docs/backlog.md`, `README.md` (статус, структура, документация, этапы), `DESIGN.md` (владельцы), `CHANGELOG.md`, раскладка папок в `AGENTS.md`.
+- [x] Полные `pytest` и `node --test` → PASS; аудит: нет `shell=True`, пароль не в аргументах, токены только из `Theme`.
 - [ ] Независимое ревью ветки по Review Focus; существенные замечания исправить с воспроизводящими тестами.
 - [ ] Живая проверка `scripts/smoke-system-panels.md` на Arch с Hyprland 0.55 и Quickshell 0.3.2 — после слияния, вместе с этапами 1–2.
+
+## Решения при выполнении
+
+1. **Ошибки сетевых действий.** `Models.networkErrorText(kind, response)`: ошибка формы — русский текст по `field`, остальное — русская фраза действия (`NETWORK_ACTION_TEXTS`) и подробность `quietline-shell` через двоеточие. Ошибка опроса `network status` хранится отдельно (`NetworkService.statusError`) и снимается следующим удачным опросом; ошибка действия держится до следующего действия.
+2. **Сохранённый профиль.** `NetworkService` сообщает об успешном сохранении сигналом `profileSaved()`; форма очищается по нему, а не по тексту уведомления.
+3. **Переключатель без анимации.** Ползунок `inputs/ShellSwitch.qml` переходит сразу: поля форм не получают флаг ограничения анимаций.
+4. **Зависимости и правило polkit** описаны в «Подготовке» `scripts/smoke-system-panels.md`: в `README.md` нет раздела установки, установщик — этап 5.
+5. **Страница «Питание»** не ссылается на кнопку питания: она появится на этапе 4.

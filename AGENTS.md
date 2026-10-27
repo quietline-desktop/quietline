@@ -6,7 +6,7 @@ Quietline — личное рабочее окружение Linux поверх 
 
 ## Текущее состояние
 
-В репозитории спека, планы первых двух этапов, утверждённый макет и визуальный контракт `DESIGN.md`. Первый этап — движок пространств и окон на Python по плану `docs/superpowers/plans/2026-10-19-window-engine.md` — реализован: адаптер Hyprland, локальные пространства мониторов, режимы «Окна / Тайлы», сверка по событиям, диалоги по тегам, сервис с IPC и CLI, клавиши Hyprland. Второй этап — оболочка Quickshell по плану `docs/superpowers/plans/2026-10-19-quickshell.md` — перенесён на этот движок: верхняя панель, док, трей, показатели, `Super+Space`, CLI `quietline-shell`. Живые проверки не проведены — список в `docs/backlog.md`, порядок проверки — `scripts/smoke-window-engine.md` и `scripts/smoke-quickshell.md`.
+В репозитории спека, планы первых трёх этапов, утверждённый макет и визуальный контракт `DESIGN.md`. Первый этап — движок пространств и окон на Python по плану `docs/superpowers/plans/2026-10-19-window-engine.md` — реализован: адаптер Hyprland, локальные пространства мониторов, режимы «Окна / Тайлы», сверка по событиям, диалоги по тегам, сервис с IPC и CLI, клавиши Hyprland. Второй этап — оболочка Quickshell по плану `docs/superpowers/plans/2026-10-19-quickshell.md` — перенесён на этот движок: верхняя панель, док, трей, показатели, `Super+Space`, CLI `quietline-shell`. Третий этап — системные панели по плану `docs/superpowers/plans/2026-10-20-system-panels.md` — перенесён на новую оболочку: сетевая панель с профилями объекта и откатом, быстрые настройки, окно «Настройки». Живые проверки не проведены — список в `docs/backlog.md`, порядок проверки — `scripts/smoke-window-engine.md`, `scripts/smoke-quickshell.md`, `scripts/smoke-system-panels.md`.
 
 ## Базовая система и минимальные версии
 
@@ -28,6 +28,7 @@ Quietline ставится поверх **Arch Linux** после Archinstall Mi
 | Любая задача по поведению окружения | `docs/superpowers/specs/2026-10-19-quietline-desktop-design.md` — что делает Quietline и критерии готовности первой версии |
 | Движок пространств и окон | `docs/superpowers/plans/2026-10-19-window-engine.md` — файловая карта, контракт IPC, шаги и проверки |
 | Оболочка Quickshell (панель, док, `quietline-shell`) | `docs/superpowers/plans/2026-10-19-quickshell.md` — границы, перенос на новый движок, файлы и проверки; `DESIGN.md` — внешний вид |
+| Системные панели (сеть, звук, яркость, Bluetooth, питание, окно «Настройки») | `docs/superpowers/plans/2026-10-20-system-panels.md` — границы, контракт `quietline-shell network`, перенос, Review Focus |
 | Внешний вид панели, дока, всплывающих окон | `DESIGN.md` — визуальный контракт оболочки: токены, размеры, движения, владельцы компонентов; `docs/design/quiet-line-a.html` — утверждённый макет варианта A (в том числе сетевой панели) |
 | Задача с активной спекой или планом | `docs/superpowers/specs` и `plans` — статус в шапке файла; читать только относящиеся к задаче |
 | Устройство репозитория для человека | `README.md` |
@@ -41,15 +42,20 @@ docs/design/              — утверждённые визуальные ма
 docs/superpowers/specs/   — спеки: что строим и почему
 docs/superpowers/plans/   — планы реализации по шагам
 config/hyprland/          — Lua-конфигурация Hyprland: раскладка, запуск сервиса и оболочки, клавиши, теги диалогов
-scripts/                  — сценарии проверки в живом сеансе (`smoke-window-engine.md`, `smoke-quickshell.md`), запуск оболочки из репозитория `run-shell`
+config/polkit/            — правило polkit для сетевых профилей и отката NetworkManager
+scripts/                  — сценарии проверки в живом сеансе (`smoke-window-engine.md`, `smoke-quickshell.md`, `smoke-system-panels.md`), запуск оболочки из репозитория `run-shell`
 shell/quietline/          — конфигурация Quickshell (`qs -c quietline`): `shell.qml`, тема `Theme.qml`, стенд IPC `IpcHarness.qml`
 shell/quietline/controls/ — общие элементы: кнопки, пункты меню, подсказки, всплывающие окна, полоса прокрутки
+shell/quietline/inputs/   — поля форм: текстовое поле, переключатель, ползунок
 shell/quietline/bar/      — верхняя панель `TopBar.qml`
 shell/quietline/dock/     — док `Dock.qml`
 shell/quietline/services/ — клиент IPC движка, окна и приложения, показатели панели
+shell/quietline/system/   — сервисы оборудования: сеть, звук, яркость, Bluetooth, питание
+shell/quietline/panels/   — компоненты управления системой и быстрые настройки (общие для всплывающих панелей и окна «Настройки»)
+shell/quietline/settings/ — окно «Настройки»
 shell/quietline/logic/    — чистые функции `Models.js` (общие для QML и тестов Node)
 src/quietline_engine/     — Python-пакет движка пространств и окон
-src/quietline_shell/      — Python-пакет `quietline-shell`: закрепления дока, ограничение анимаций, сводка сети
+src/quietline_shell/      — Python-пакет `quietline-shell`: закрепления дока, ограничение анимаций, NetworkManager, «О системе»
 tests/engine/             — модульные тесты движка (pytest, без Hyprland)
 tests/shell/              — тесты `quietline-shell` (pytest) и моделей оболочки (`node --test`)
 pyproject.toml            — пакет `quietline-engine` (CLI `quietline-engine` и `quietline-shell`), Python ≥ 3.14, тестовая зависимость pytest
@@ -65,7 +71,7 @@ LICENSE                   — GPL-3.0
 - Тесты моделей оболочки: `node --test 'tests/shell/*.test.cjs'` (Node ≥ 22; шаблон в кавычках разворачивает сам Node, каталог аргументом не принимается). QML без Quickshell не запускается — проверяется только в живом сеансе.
 - Оболочка: ссылка `ln -s "$PWD/shell/quietline" ~/.config/quickshell/quietline`, затем `qs -c quietline`; из репозитория без ссылки — `scripts/run-shell`. Состояние — `qs -c quietline ipc call quietline status`. Нужны Quickshell, шрифты IBM Plex Sans/Mono и JetBrainsMono Nerd Font Mono, `quietline-shell` в `PATH`.
 - Сервис и CLI движка: `quietline-engine serve` (в сеансе Hyprland; журнал — в stderr), клиентские команды `quietline-engine switch N [--monitor KEY]`, `move N`, `toggle [--monitor KEY]`, `state`. Из репозитория без установки — `uv run --python 3.14 quietline-engine …`. Протокол сокета `$XDG_RUNTIME_DIR/quietline/engine.sock` и коды ошибок — в docstring `src/quietline_engine/server.py`.
-- Настройки оболочки: `quietline-shell pins [--set JSON] [--path PATH]`, `motion`, `network` — одна строка JSON в stdout, ошибка — `{"error": …}` и код 1 (docstring `src/quietline_shell/__main__.py`). Закрепления дока — `$XDG_CONFIG_HOME/quietline/pins.json`.
+- Настройки оболочки: `quietline-shell pins [--set JSON] [--path PATH]`, `motion`, `about`, `network ACTION` — одна строка JSON в stdout, ошибка — `{"error": …}` и код 1 (docstring `src/quietline_shell/__main__.py`; подкоманды `network` — docstring `src/quietline_shell/network.py`). Закрепления дока — `$XDG_CONFIG_HOME/quietline/pins.json`, недавние сетевые профили — `$XDG_CONFIG_HOME/quietline/network.json`.
 
 ## Общие конвенции
 

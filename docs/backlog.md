@@ -1,6 +1,6 @@
 # Непроверенное
 
-Что ещё не подтверждено в живом сеансе и поэтому не считается пройденным. Пункт удаляется, когда результат записан в файл проверки (для движка — раздел «Результаты» в `scripts/smoke-window-engine.md`, для оболочки — столбец «Результат» в `scripts/smoke-quickshell.md`).
+Что ещё не подтверждено в живом сеансе и поэтому не считается пройденным. Пункт удаляется, когда результат записан в файл проверки (для движка — раздел «Результаты» в `scripts/smoke-window-engine.md`, для оболочки — столбец «Результат» в `scripts/smoke-quickshell.md`, для системных панелей — в `scripts/smoke-system-panels.md`).
 
 ## Движок пространств и окон: живые проверки
 
@@ -56,5 +56,23 @@
 - **Перенесённое пространство на нефокусном мониторе** — кнопка панели сначала фокусирует монитор панели через `Hyprland.dispatch`, затем отправляет `switch` движку (`bar/TopBar.qml`); проверить, что фокус успевает смениться до `switch` и пространство открывается на мониторе панели (пункт 37).
 - **Команды Hyprland из оболочки** — `DesktopModel.qml` передаёт `Hyprland.dispatch` строки Lua (`hl.dsp.focus({window = …})`, `hl.dsp.focus({monitor = …})`, `hl.dsp.window.close({window = …})`); проверить, что Quickshell ≥ 0.3.2 с Hyprland 0.55 их выполняет (пункты 9, 11, 12, 16, 30), а `hyprctl switchxkblayout all next` и поля `keyboards[].main`, `active_keymap`, `layout`, `active_layout_index` в `hyprctl -j devices` есть в 0.55 (пункт 29).
 - **Параметры `scrolling`** — `column_width = 0.5` и `fullscreen_on_one_column = false` в `config/hyprland/quietline.lua` принимаются Hyprland 0.55 (`hyprctl configerrors` пуст); одна колонка в «Тайлах» занимает половину ширины, ширина восстанавливается движком (вместе с Ж3).
-- **`Super+Space`** — не занята стандартным примером конфигурации Hyprland 0.55; если занята — удалить её вместе с остальными строками примера (шапка `quietline.lua`).
+- **`Super+Space` и `Super+I`** — не заняты стандартным примером конфигурации Hyprland 0.55; если занята — удалить её вместе с остальными строками примера (шапка `quietline.lua`).
 - **Нет перезапуска панели после падения** — `qs -c quietline` запускается один раз из `hl.on("hyprland.start", …)`; после падения панель не возвращается сама, движок и клавиши работают (пункт 20). Решить вместе с перезапуском движка, нужен ли пользовательский юнит systemd.
+
+## Системные панели и окно «Настройки»: живые проверки
+
+Ни один пункт `scripts/smoke-system-panels.md` ещё не выполнен: NetworkManager, PipeWire, BlueZ, UPower и Quickshell не запускались, QML проверен только статически, `quietline-shell network` — на поддельных ответах `nmcli` и `gdbus`.
+
+- **РФ1 системных панелей** — статический профиль без шлюза при подключённом Wi-Fi: маршрут в интернет остаётся через Wi-Fi (S3; модульно — `test_new_static_profile_never_takes_default_route`).
+- **РФ2 системных панелей** — USB-адаптер выдернут или кабель не вставлен во время применения и отсчёта: ошибка или «Нет кабеля», откат проходит (S5).
+- **РФ3 системных панелей** — оболочка перезапущена посреди отсчёта: новая панель видит незавершённую точку, NetworkManager откатывает в срок (S6).
+- **РФ4 системных панелей** — неверный ввод формы показывается по-русски по полю `field`, имена с `:` и кавычками проходят разбор `nmcli -t` (S8).
+- **РФ5 системных панелей** — без подсветки, Bluetooth-адаптера, Wi-Fi и батареи фиктивных элементов нет (S11).
+- **Формат вывода NetworkManager** — разбор `nmcli -t --escape yes` (`device show`, `connection show`, `device wifi list`), строка `(<uuid>) successfully added` у `connection add` и ответы `gdbus` с `objectpath '…'` у `GetDeviceByIpIface`, `CheckpointCreate` и свойства `Checkpoints` предполагаются по документации NetworkManager; подтвердить на установленной версии (S2, S6, S9).
+- **Пароль Wi-Fi через `passwd-file /dev/stdin`** — `nmcli connection up … passwd-file /dev/stdin` читает пароль из stdin процесса, пароль не виден в `ps` и журнале (S1).
+- **Права polkit** — правило `config/polkit/50-quietline-network.rules` снимает запрос пароля у активного локального пользователя из `wheel` для `network-control`, `settings.modify.system`, `checkpoint-rollback`, `enable-disable-wifi`; других действий NetworkManager панели не нужно (S2, S4, S10).
+- **Клавиатура сетевой панели** — `persistent` всплывающее окно с `WlrKeyboardFocus.OnDemand` получает ввод в поля формы и `Esc`, а щелчок в другом окне его не закрывает (S7).
+- **Сервисы Quickshell** — `Quickshell.Services.Pipewire` (громкость, микрофон, `preferredDefaultAudioSink`), `Quickshell.Bluetooth` (`connect`, `pair`, `forget`, `discovering`), `Quickshell.Services.UPower` (`PowerProfiles`, `displayDevice`) в Quickshell 0.3.2 ведут себя как ожидают `system/*.qml` (S10, S14).
+- **Яркость без root** — `brightnessctl -c backlight -d <устройство> set N%` работает от пользователя активного сеанса через logind (S10).
+- **Памятка сочетаний** — `hyprctl binds -j` в Hyprland 0.55 отдаёт `modmask`, `key` и команду `hl.dsp.exec_cmd` в `arg`, по которым `Models.describeBinds` описывает клавиши Quietline (S14).
+- **Окно «Настройки»** — `FloatingWindow` открывается один раз, в «Тайлах» встаёт колонкой и не теряет раздел (S12, S13).
