@@ -32,12 +32,28 @@ Scope {
                  + (device.addresses.length ? device.addresses.join(", ") : Models.deviceLabel(device)));
         return lines.join("\n") || statusError || "Нет подключения";
     }
+    // Вид последнего запущенного действия (`scan`, `connect`, `save`, `apply`…).
+    property string lastAction: ""
+    // Номер завершённого действия: опрос, начатый до конца действия, устарел и не применяется.
+    property int actionGeneration: 0
+    property bool refreshQueued: false
     signal profileSaved()
 
-    function refresh() { if (!statusProcess.running) statusProcess.running = true; }
+    // Опрос во время другого опроса ставится в очередь и выполняется сразу после него.
+    function refresh() {
+        if (statusProcess.running) { refreshQueued = true; return; }
+        statusProcess.generation = actionGeneration;
+        statusProcess.running = true;
+    }
+    // Без связи с NetworkManager устройства не показываются: прежнее «Подключено» было бы ложным.
+    function statusFailed(text) {
+        statusError = text;
+        devices = [];
+    }
     function run(args, input, kind) {
-        if (busy) return;
+        if (busy) return false;
         busy = true;
+        lastAction = kind;
         errorMessage = "";
         notice = "";
         action.kind = kind;
@@ -46,8 +62,9 @@ Scope {
         action.stdinEnabled = input !== undefined;
         action.command = ["quietline-shell", "network"].concat(args);
         action.running = true;
+        return true;
     }
-    function scanWifi() { scanning = true; run(["wifi-scan"], undefined, "scan"); }
+    function scanWifi() { if (run(["wifi-scan"], undefined, "scan")) scanning = true; }
     function setWifi(on) { run(["wifi-radio", on ? "--on" : "--off"], undefined, "radio"); }
     function connectWifi(ssid, password, device) {
         run(["wifi-connect", "--ssid", ssid].concat(device ? ["--device", device] : []), (password || "") + "\n", "connect");
@@ -66,7 +83,8 @@ Scope {
         if (data.error) { errorMessage = Models.networkErrorText(kind, data); return; }
         if (kind === "scan") networks = data.networks || [];
         else if (kind === "apply") {
-            pending = {checkpoint: data.checkpoint, deadline: Date.now() + data.timeout * 1000};
+            // Срок в панели на секунду раньше срока отката NetworkManager.
+            pending = {checkpoint: data.checkpoint, deadline: Date.now() + (data.timeout - 1) * 1000};
             notice = "Новая конфигурация применена. Проверьте связь и подтвердите её.";
         } else if (kind === "confirm") notice = "Конфигурация сохранена.";
         else if (kind === "rollback") notice = "Возвращена прежняя конфигурация.";
@@ -90,6 +108,7 @@ Scope {
                 if (!action.answered) root.errorMessage = Models.networkErrorText(action.kind, {error: "quietline-shell did not respond"});
                 if (action.kind === "scan") root.scanning = false;
                 action.payload = null;
+                root.actionGeneration += 1;
                 root.busy = false;
                 root.refresh();
             });
@@ -98,21 +117,24 @@ Scope {
     Process {
         id: statusProcess
         property bool answered: false
+        property int generation: 0
         command: ["quietline-shell", "network", "status"]
         running: true
         onRunningChanged: {
             if (running) { answered = false; return; }
             Qt.callLater(function() {
-                if (!statusProcess.answered) root.statusError = Models.networkErrorText("status", {error: "quietline-shell did not respond"});
+                if (!statusProcess.answered) root.statusFailed(Models.networkErrorText("status", {error: "quietline-shell did not respond"}));
+                if (root.refreshQueued) { root.refreshQueued = false; root.refresh(); }
             });
         }
         stdout: StdioCollector {
             onStreamFinished: {
                 statusProcess.answered = true;
+                if (statusProcess.generation !== root.actionGeneration || root.busy) { root.refreshQueued = true; return; }
                 var data;
                 try { data = JSON.parse(text); }
-                catch (_) { root.statusError = Models.networkErrorText("status", {error: "quietline-shell returned no JSON"}); return; }
-                if (data.error) { root.statusError = Models.networkErrorText("status", data); return; }
+                catch (_) { root.statusFailed(Models.networkErrorText("status", {error: "quietline-shell returned no JSON"})); return; }
+                if (data.error) { root.statusFailed(Models.networkErrorText("status", data)); return; }
                 root.statusError = "";
                 var hadDeadline = root.pending && root.pending.deadline;
                 root.devices = data.devices || [];

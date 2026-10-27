@@ -457,8 +457,8 @@ def wifi_scan() -> list[dict[str, Any]]:
 def wifi_connect(ssid: str, device: str | None, password: str) -> dict[str, bool]:
     """Подключает Wi-Fi; пароль идёт в `nmcli` только через stdin (`passwd-file /dev/stdin`).
 
-    Профиль, созданный этой попыткой, удаляется при неудаче: иначе сеть с неверным
-    паролем считалась бы известной и больше не спрашивала пароль.
+    Профиль, созданный этой попыткой, при неудаче удаляется, и следующая попытка снова
+    спрашивает пароль. Новая защищённая сеть заводится как WPA-PSK.
     """
     if not ssid or len(ssid.encode()) > 32 or any(ord(char) < 32 for char in ssid):
         raise ValueError(f"invalid Wi-Fi network name: {ssid!r}")

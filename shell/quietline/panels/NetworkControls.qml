@@ -25,12 +25,14 @@ ColumnLayout {
         return used[0] || null;
     }
     spacing: 12
-    // Во время отсчёта сети не ищутся сами: поиск занял бы помощник, и «Оставить / Вернуть» стали бы недоступны.
+    // При открытии ищет сети Wi-Fi, кроме времени отсчёта: тогда «Оставить / Вернуть» остаются доступными.
     Component.onCompleted: { if (network.wifi.enabled && network.wifiDevice && !network.pending) network.scanWifi(); }
     Connections {
         target: root.network
         // Неудачное подключение к защищённой сети снова спрашивает пароль.
-        function onErrorMessageChanged() { if (root.network.errorMessage && root.lastAttempt) root.passwordFor = root.lastAttempt; }
+        function onErrorMessageChanged() {
+            if (root.network.errorMessage && root.network.lastAction === "connect" && root.lastAttempt) root.passwordFor = root.lastAttempt;
+        }
         function onBusyChanged() { if (!root.network.busy && !root.network.errorMessage) root.lastAttempt = ""; }
     }
 
@@ -247,7 +249,6 @@ ColumnLayout {
         ShellTextField { id: profileDns; visible: form.manual; Layout.fillWidth: true; placeholderText: "DNS через запятую (необязательно)"; label: "DNS" }
         ShellSwitch {
             id: neverDefault
-            visible: form.manual
             Layout.fillWidth: true
             checked: true
             text: "Не использовать как маршрут в интернет"
@@ -259,7 +260,7 @@ ColumnLayout {
             onClicked: {
                 root.network.saveProfile({
                     name: profileName.text, method: form.manual ? "manual" : "auto",
-                    // Скрытые в режиме DHCP поля не отправляются: ошибка не должна указывать на невидимое поле.
+                    // В режиме DHCP адрес, шлюз и DNS не отправляются.
                     address: form.manual ? profileAddress.text.trim() : null,
                     gateway: form.manual ? profileGateway.text.trim() || null : null,
                     dns: form.manual ? profileDns.text.split(",").map(item => item.trim()).filter(Boolean) : [],
