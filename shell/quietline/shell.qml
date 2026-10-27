@@ -3,6 +3,7 @@ import Quickshell
 import Quickshell.Io
 import Quickshell.Hyprland
 import "services"
+import "system"
 import "bar"
 import "dock"
 import "logic/Models.js" as Models
@@ -14,12 +15,15 @@ ShellRoot {
     EngineClient { id: windowEngine }
     DesktopModel { id: desktopService }
     Indicators { id: systemIndicators }
+    NetworkService { id: networkService }
+    // Системные сервисы, общие для всех панелей, всплывающих окон и окна «Настройки».
+    readonly property var services: ({network: networkService})
     Variants {
         model: Quickshell.screens
         Scope {
             id: output
             required property var modelData
-            TopBar { id: topbar; screen: output.modelData; engine: windowEngine; desktop: desktopService; indicators: systemIndicators }
+            TopBar { id: topbar; screen: output.modelData; engine: windowEngine; desktop: desktopService; indicators: systemIndicators; services: root.services }
             Dock { id: dock; screen: output.modelData; engine: windowEngine; desktop: desktopService; indicators: systemIndicators }
             Component.onCompleted: root.surfaces = root.surfaces.concat([{owner: output, bar: topbar, dock: dock}])
             Component.onDestruction: root.surfaces = root.surfaces.filter(item => item.owner !== output)

@@ -5,6 +5,8 @@ import Quickshell.Hyprland
 import ".."
 
 // Всплывающее окно панели или дока: закрывается кликом снаружи и Esc, возвращает фокус.
+// Окно с `persistent` не закрывается кликом снаружи и не держит клавиатуру исключительно:
+// закрытие — Esc и `close()`.
 PanelWindow {
     id: root
     default property alias contents: body.data
@@ -15,7 +17,8 @@ PanelWindow {
     exclusionMode: ExclusionMode.Ignore
     exclusiveZone: 0
     WlrLayershell.layer: WlrLayer.Overlay
-    WlrLayershell.keyboardFocus: visible ? WlrKeyboardFocus.Exclusive : WlrKeyboardFocus.None
+    property bool persistent: false
+    WlrLayershell.keyboardFocus: !visible ? WlrKeyboardFocus.None : persistent ? WlrKeyboardFocus.OnDemand : WlrKeyboardFocus.Exclusive
     property real popupX: 0
     property real popupY: 0
     readonly property real availableWidth: body.width
@@ -66,7 +69,7 @@ PanelWindow {
     HintPopup { id: hintPopup },
     HyprlandFocusGrab {
         windows: [root]
-        active: root.visible
+        active: root.visible && !root.persistent
         onCleared: root.close()
     },
     Rectangle {

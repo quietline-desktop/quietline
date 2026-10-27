@@ -219,3 +219,31 @@ test('wheel cycles the application windows in both directions',()=>{
  assert.equal(M.cycleTarget(group,-1).address,'0xb');
  assert.equal(M.cycleTarget({windows:[]},1),null);
 });
+test('device label never claims a connection without one',()=>{
+ assert.equal(M.deviceLabel({type:'ethernet',state:'connected',cable:true,addresses:[]}),'Подключение…');
+ assert.equal(M.deviceLabel({type:'ethernet',state:'unavailable',cable:false,addresses:[]}),'Нет кабеля');
+ assert.equal(M.deviceLabel({type:'ethernet',state:'connected',cable:false,addresses:['10.42.0.5/24']}),'Нет кабеля');
+ assert.equal(M.deviceLabel({type:'ethernet',state:'connected',cable:true,addresses:['10.42.0.5/24']}),'Подключено');
+ assert.equal(M.deviceLabel({type:'wifi',state:'connecting',cable:null,addresses:[]}),'Подключение…');
+ assert.equal(M.deviceLabel({type:'wifi',state:'disconnected',cable:null,addresses:[]}),'Отключено');
+ assert.equal(M.deviceLabel({type:'wifi',state:'unavailable',cable:null,addresses:[]}),'Недоступно');
+});
+test('countdown rounds up and stops at zero',()=>{
+ assert.equal(M.secondsLeft(30000,0),30);
+ assert.equal(M.secondsLeft(30000,29001),1);
+ assert.equal(M.secondsLeft(30000,31000),0);
+});
+test('pendingCheckpoint survives shell restart',()=>{
+ const status={pendingCheckpoints:['/org/freedesktop/NetworkManager/Checkpoint/3']};
+ assert.deepEqual(plain(M.pendingFromStatus(status,null)),{checkpoint:'/org/freedesktop/NetworkManager/Checkpoint/3',deadline:null});
+ const own={checkpoint:'/org/freedesktop/NetworkManager/Checkpoint/3',deadline:5000};
+ assert.deepEqual(plain(M.pendingFromStatus(status,own)),own);
+ assert.equal(M.pendingFromStatus({pendingCheckpoints:[]},own),null);
+});
+test('network errors are Russian with the helper detail',()=>{
+ assert.equal(M.networkErrorText('save',{error:"address needs a network prefix, for example 10.42.0.5/24: '10.42.0.5'",field:'prefix'}),'Укажите префикс сети, например 10.42.0.5/24');
+ assert.equal(M.networkErrorText('save',{error:'invalid DNS server address',field:'dns'}),'Некорректный адрес DNS');
+ assert.equal(M.networkErrorText('apply',{error:'network adapter enx0 not found'}),'Конфигурация не применена: network adapter enx0 not found');
+ assert.equal(M.networkErrorText('apply',{error:'x',field:'unknown'}),'Конфигурация не применена: x');
+ assert.equal(M.networkErrorText('',{}),'Сетевое действие не выполнено');
+});

@@ -5,6 +5,7 @@ import Quickshell
 import Quickshell.Services.SystemTray
 import ".."
 import "../controls"
+import "../panels"
 import "../logic/Models.js" as Models
 
 // Верхняя панель экрана: меню приложений, пространства, заголовок окна, режим, показатели, трей и часы.
@@ -13,6 +14,9 @@ PanelWindow {
     required property var engine
     required property var desktop
     required property var indicators
+    // Общие системные сервисы оболочки (`shell.qml`): один экземпляр на все экраны.
+    required property var services
+    readonly property var network: services.network
     readonly property string monitorName: screen ? screen.name : ""
     readonly property var workspace: engine.ready ? Models.activeWorkspace(engine.state, monitorName) : null
     readonly property var monitor: engine.ready ? Models.monitorFor(engine.state, monitorName) : null
@@ -176,10 +180,10 @@ PanelWindow {
                 }
             }
             ShellButton {
-                id: network
+                id: networkButton
                 font.family: Theme.icons
-                text: root.indicators.networkDevices.some(device => device.connected) ? "\uf796" : "\uf127"
-                hint: "Сеть · " + root.indicators.networkSummary
+                text: root.network.connected ? "\uf796" : "\uf127"
+                hint: "Сеть · " + root.network.summary
                 onClicked: popout.toggle("network")
             }
             ShellButton {
@@ -223,9 +227,11 @@ PanelWindow {
         readonly property bool showingApplications: currentName === "applications"
         readonly property bool showingNetwork: currentName === "network"
         parentPanel: root
+        // Сетевая панель держит формы и не закрывается от щелчка в другом окне.
+        persistent: showingNetwork
         popupX: showingApplications ? Theme.outerMargin : Math.max(12, root.width - width - 12)
         popupY: Theme.outerMargin + Theme.barHeight + 8
-        implicitWidth: showingApplications ? Math.min(360, root.width - Theme.outerMargin * 2) : Math.min(330, root.width - 24)
+        implicitWidth: showingApplications ? Math.min(360, root.width - Theme.outerMargin * 2) : Math.min(showingNetwork ? 400 : 330, root.width - 24)
         implicitHeight: showingApplications ? Math.min(430, root.screen ? root.screen.height - 100 : 430)
                                             : Math.min(content.implicitHeight + 24, root.screen ? root.screen.height - 100 : 500)
         onPresented: { if (showingApplications) search.forceActiveFocus(); }
@@ -274,10 +280,11 @@ PanelWindow {
                 id: content
                 width: summaryScroll.availableWidth; spacing: 12
                 Text { text: popout.showingNetwork ? "Сеть" : "Состояние системы"; color: Theme.text; font.family: Theme.sans; font.pixelSize: Theme.titleFontSize; font.bold: true }
-                Text { text: root.indicators.networkSummary; color: Theme.muted; font.family: Theme.sans; font.pixelSize: Theme.fontSize; wrapMode: Text.Wrap; Layout.fillWidth: true }
-                Repeater {
-                    model: root.indicators.networkDevices
-                    delegate: Text { required property var modelData; text: modelData.name + " · " + (modelData.connected ? "Подключено" : "Нет подключения"); color: Theme.text; font.family: Theme.sans; font.pixelSize: Theme.fontSize }
+                Loader {
+                    active: popout.showingNetwork && popout.opened
+                    visible: active
+                    Layout.fillWidth: true
+                    sourceComponent: Component { NetworkControls { network: root.network; compact: true } }
                 }
                 Text { visible: !popout.showingNetwork; text: "CPU  " + root.indicators.cpuText + "\nRAM  " + root.indicators.memoryText + " ГБ"; color: Theme.text; font.family: Theme.mono; font.pixelSize: Theme.fontSize; lineHeight: 1.4 }
                 Text { visible: !popout.showingNetwork && SystemTray.items.values.length > 0; text: "Фоновые приложения"; color: Theme.muted; font.family: Theme.sans; font.pixelSize: Theme.smallFontSize }

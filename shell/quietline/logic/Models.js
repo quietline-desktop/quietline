@@ -279,3 +279,58 @@ function layoutCode(keyboard, names) {
     }
     return code ? code.toUpperCase() : "…";
 }
+
+// Подпись сетевого устройства. «Подключено» — только с адресом: NetworkManager сообщает
+// состояние 100 чуть раньше; отсутствие кабеля важнее любого состояния.
+function deviceLabel(device) {
+    if (device.type === "ethernet" && device.cable === false) return "Нет кабеля";
+    if (device.state === "connected") return (device.addresses || []).length ? "Подключено" : "Подключение…";
+    if (device.state === "connecting") return "Подключение…";
+    if (device.state === "disconnected") return "Отключено";
+    return "Недоступно";
+}
+
+// Секунды до отката: округление вверх, не меньше 0.
+function secondsLeft(deadlineMs, nowMs) { return Math.max(0, Math.ceil((deadlineMs - nowMs) / 1000)); }
+
+// Незавершённая контрольная точка из `network status`. Точка этой оболочки сохраняет свой
+// срок; найденная после перезапуска оболочки идёт без срока — откатит её сам NetworkManager.
+function pendingFromStatus(status, current) {
+    var paths = (status && status.pendingCheckpoints) || [];
+    if (!paths.length) return null;
+    if (current && paths.indexOf(current.checkpoint) >= 0) return current;
+    return {checkpoint: paths[0], deadline: null};
+}
+
+// Русский текст ошибки формы профиля по полю `field` ответа `quietline-shell network`.
+var PROFILE_FIELD_TEXTS = {
+    name: "Укажите имя профиля длиной до 64 символов",
+    method: "Неизвестный способ настройки адреса",
+    prefix: "Укажите префикс сети, например 10.42.0.5/24",
+    address: "Некорректный адрес IPv4",
+    gateway: "Некорректный адрес шлюза",
+    dns: "Некорректный адрес DNS",
+    profile: "Некорректные данные профиля"
+};
+
+// Что не получилось, по виду сетевого действия `NetworkService`.
+var NETWORK_ACTION_TEXTS = {
+    status: "Состояние сети недоступно",
+    scan: "Не удалось найти сети Wi-Fi",
+    radio: "Не удалось переключить Wi-Fi",
+    connect: "Не удалось подключиться к Wi-Fi",
+    save: "Профиль не сохранён",
+    delete: "Профиль не удалён",
+    apply: "Конфигурация не применена",
+    confirm: "Конфигурация не подтверждена",
+    rollback: "Конфигурация не возвращена"
+};
+
+// Текст ошибки для сетевой панели: по полю формы — русский текст поля, иначе русская
+// фраза действия и подробность `quietline-shell` (по-английски) через двоеточие.
+function networkErrorText(kind, response) {
+    if (response && PROFILE_FIELD_TEXTS[response.field]) return PROFILE_FIELD_TEXTS[response.field];
+    var text = NETWORK_ACTION_TEXTS[kind] || "Сетевое действие не выполнено";
+    var detail = response && typeof response.error === "string" ? response.error : "";
+    return detail ? text + ": " + detail : text;
+}
