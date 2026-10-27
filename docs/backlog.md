@@ -69,6 +69,9 @@
 - **РФ4 системных панелей** — неверный ввод формы показывается по-русски по полю `field`, имена с `:` и кавычками проходят разбор `nmcli -t` (S8).
 - **РФ5 системных панелей** — без подсветки, Bluetooth-адаптера, Wi-Fi и батареи фиктивных элементов нет (S11).
 - **Формат вывода NetworkManager** — разбор `nmcli -t --escape yes` (`device show`, `connection show`, `device wifi list`), строка `(<uuid>) successfully added` у `connection add` и ответы `gdbus` с `objectpath '…'` у `GetDeviceByIpIface`, `CheckpointCreate` и свойства `Checkpoints` предполагаются по документации NetworkManager; подтвердить на установленной версии (S2, S6, S9).
+- **Ответ `CheckpointRollback`** — словарь результатов по устройствам `{'<путь устройства>': uint32 N}`; ненулевой код показывается ошибкой «Конфигурация не возвращена» (S4, S5).
+- **Чужие контрольные точки** — панель предлагает «Оставить / Вернуть» для любой незавершённой точки NetworkManager, в том числе созданной nmstate или Cockpit; проверить, нужна ли метка своих точек (S6).
+- **Только WPA-PSK для новых сетей** — новая защищённая сеть заводится как `wifi-sec.key-mgmt wpa-psk`; сети только WPA3-SAE и корпоративные (802.1X) так не подключатся, их профиль создаётся вне панели (S1).
 - **Пароль Wi-Fi через `passwd-file /dev/stdin`** — `nmcli connection up … passwd-file /dev/stdin` читает пароль из stdin процесса, пароль не виден в `ps` и журнале (S1).
 - **Права polkit** — правило `config/polkit/50-quietline-network.rules` снимает запрос пароля у активного локального пользователя из `wheel` для `network-control`, `settings.modify.system`, `checkpoint-rollback`, `enable-disable-wifi`; других действий NetworkManager панели не нужно (S2, S4, S10).
 - **Клавиатура сетевой панели** — `persistent` всплывающее окно с `WlrKeyboardFocus.OnDemand` получает ввод в поля формы и `Esc`, а щелчок в другом окне его не закрывает (S7).
