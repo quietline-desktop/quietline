@@ -29,7 +29,7 @@ Scope {
     Process {
         id: network
         property bool answered: false
-        command: ["quietline-shell", "network"]
+        command: ["quietline-shell", "network", "status"]
         running: true
         onRunningChanged: {
             if (running) { answered = false; return; }

@@ -3,19 +3,23 @@
 - `pins [--set JSON] [--path PATH]` — `{"pinned": [...]}`; с `--set` список сначала
   проверяется и атомарно записывается;
 - `motion` — `{"reducedMotion": true | false}`;
-- `network` — `{"devices": [{"device", "profile", "addresses"}]}`, только чтение.
+- `network ACTION …` — NetworkManager: состояние, профили объекта, Wi-Fi, контрольные
+  точки; подкоманды и их ответы — в docstring `quietline_shell.network`.
 
-Ошибка — `{"error": "<текст>"}` в stdout и код выхода 1; неверные аргументы — код 2.
+Ошибка — `{"error": "<текст>"}` в stdout и код выхода 1; у ошибки формы сетевого профиля
+ещё `"field"` с полем формы. Неверные аргументы — код 2.
 """
 
 import argparse
 import json
 import subprocess
+import sys
 from collections.abc import Sequence
 from pathlib import Path
 from typing import Any
 
-from quietline_shell.config import default_pins_path, load_pins, network_devices, reduced_motion, save_pins
+from quietline_shell import network
+from quietline_shell.config import default_pins_path, load_pins, reduced_motion, save_pins
 
 
 def _parser() -> argparse.ArgumentParser:
@@ -25,7 +29,7 @@ def _parser() -> argparse.ArgumentParser:
     pins.add_argument("--set", dest="new_pins", metavar="JSON", help="save this JSON list of desktop IDs first")
     pins.add_argument("--path", type=Path, help="pins file (default: $XDG_CONFIG_HOME/quietline/pins.json)")
     commands.add_parser("motion", help="print whether animations should be reduced")
-    commands.add_parser("network", help="print network devices, profiles and addresses")
+    network.add_parser(commands)
     return parser
 
 
@@ -34,7 +38,7 @@ def _run(args: argparse.Namespace) -> dict[str, Any]:
         case "motion":
             return {"reducedMotion": reduced_motion()}
         case "network":
-            return {"devices": network_devices()}
+            return network.run(args, sys.stdin)
         case _:
             path = args.path or default_pins_path()
             if args.new_pins is not None:
@@ -46,6 +50,9 @@ def main(argv: Sequence[str] | None = None) -> int:
     args = _parser().parse_args(argv)
     try:
         response = _run(args)
+    except network.ProfileError as error:
+        print(json.dumps({"error": str(error), "field": error.field}, ensure_ascii=False))
+        return 1
     except (OSError, ValueError, RuntimeError, subprocess.TimeoutExpired) as error:
         print(json.dumps({"error": str(error)}, ensure_ascii=False))
         return 1

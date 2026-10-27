@@ -1,4 +1,4 @@
-"""Тесты `quietline-shell`: закрепления, ограничение анимаций, сводка сети и контракт JSON CLI."""
+"""Тесты `quietline-shell`: закрепления, ограничение анимаций и контракт JSON CLI."""
 
 import json
 import os
@@ -86,25 +86,6 @@ def test_default_path_follows_xdg_config_home(tmp_path, monkeypatch):
     assert config.default_pins_path() == tmp_path / "quietline" / "pins.json"
 
 
-def test_network_summary_preserves_profile_and_ipv6_colons(monkeypatch):
-    output = (
-        "GENERAL.DEVICE:eth0\nGENERAL.CONNECTION:Site: office\n"
-        "IP4.ADDRESS[1]:10.42.0.5/24\nIP6.ADDRESS[1]:fe80::1234/64\n\n"
-        "GENERAL.DEVICE:wlan0\nGENERAL.CONNECTION:--\n"
-    )
-    monkeypatch.setattr(subprocess, "run", lambda *a, **kw: subprocess.CompletedProcess(a, 0, output, ""))
-    assert config.network_devices() == [
-        {"device": "eth0", "profile": "Site: office", "addresses": ["10.42.0.5/24", "fe80::1234/64"]},
-        {"device": "wlan0", "profile": "", "addresses": []},
-    ]
-
-
-def test_network_unavailable_is_reported(monkeypatch):
-    monkeypatch.setattr(subprocess, "run", lambda *a, **kw: subprocess.CompletedProcess(a, 1, "", "unavailable"))
-    with pytest.raises(RuntimeError, match="NetworkManager"):
-        config.network_devices()
-
-
 @pytest.mark.parametrize(("value", "expected"), [("1", True), ("yes", True), ("0", False), ("", False)])
 def test_reduced_motion_override_wins_over_the_portal(monkeypatch, value, expected):
     monkeypatch.setenv("QUIETLINE_REDUCED_MOTION", value)
@@ -160,8 +141,6 @@ def test_cli_pins_prints_saves_and_reports_errors_as_json(tmp_path, capsys):
     assert run_cli(capsys, "pins", "--path", path) == (0, {"pinned": ["code", "google-chrome"]})
 
 
-def test_cli_motion_and_network_print_the_shell_fields(capsys, monkeypatch):
+def test_cli_motion_prints_the_shell_field(capsys, monkeypatch):
     monkeypatch.setenv("QUIETLINE_REDUCED_MOTION", "1")
     assert run_cli(capsys, "motion") == (0, {"reducedMotion": True})
-    monkeypatch.setattr(subprocess, "run", lambda *a, **kw: subprocess.CompletedProcess(a, 1, "", ""))
-    assert run_cli(capsys, "network") == (1, {"error": "NetworkManager is unavailable"})
