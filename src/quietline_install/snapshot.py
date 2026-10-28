@@ -20,6 +20,9 @@ from dataclasses import dataclass
 from pathlib import Path
 
 from quietline_install.runner import Ctx, StepFailed
+from quietline_install.runner import read_system_file as _read
+from quietline_install.runner import system_path as _local
+from quietline_install.runner import write_system_file as _write_system_file
 
 __all__ = ['RootInfo', 'inspect_root', 'snapshot_plan', 'prepare', 'take', 'rollback_btrfs',
            'rollback_home', 'rollback_journal']
@@ -57,16 +60,8 @@ def _stamp() -> str:
     return time.strftime('%Y%m%d-%H%M%S')
 
 
-def _local(ctx: Ctx, path: str) -> Path:
-    """Путь системного файла внутри `ctx.root` (в тестах — временный каталог)."""
-    return ctx.root / Path(path).relative_to('/')
 
 
-def _read(ctx: Ctx, path: str) -> str | None:
-    try:
-        return _local(ctx, path).read_text(encoding='utf-8')
-    except OSError:
-        return None
 
 
 def _hooks(text: str | None) -> list[str] | None:
@@ -156,12 +151,6 @@ def snapshot_plan(info: RootInfo) -> tuple[str, str]:
     return 'btrfs-ro', 'snapshot.reason.ready'
 
 
-def _write_system_file(ctx: Ctx, path: str, text: str) -> None:
-    """Пишет файл root через `sudo tee` во временный файл рядом и переименовывает его на место."""
-    temp = path + '.quietline-new'
-    ctx.system.run(['tee', temp], sudo=True, input=text)
-    ctx.system.run(['chmod', '0644', temp], sudo=True)
-    ctx.system.run(['mv', '-f', temp, path], sudo=True)
 
 
 def _installed(ctx: Ctx, package: str) -> bool:

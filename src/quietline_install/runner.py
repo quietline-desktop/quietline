@@ -97,6 +97,34 @@ class System:
             return False
 
 
+def system_path(ctx: 'Ctx', path: str) -> Path:
+    """Путь системного файла внутри `ctx.root` (в тестах — временный каталог)."""
+    return ctx.root / Path(path).relative_to('/')
+
+
+def read_system_file(ctx: 'Ctx', path: str) -> str | None:
+    try:
+        return system_path(ctx, path).read_text(encoding='utf-8')
+    except OSError:
+        return None
+
+
+def write_system_file(ctx: 'Ctx', path: str, content: str) -> None:
+    """Пишет файл root через `sudo tee` во временный файл рядом и переименовывает его на место."""
+    temp = path + '.quietline-new'
+    ctx.system.run(['tee', temp], sudo=True, input=content)
+    ctx.system.run(['chmod', '0644', temp], sudo=True)
+    ctx.system.run(['mv', '-f', temp, path], sudo=True)
+
+
+def backup_system_file(ctx: 'Ctx', path: str) -> str:
+    """Копия файла root рядом (`<файл>.quietline-<время>`), записанная в журнал изменений."""
+    backup = f'{path}.quietline-{time.strftime("%Y%m%d-%H%M%S")}'
+    ctx.system.run(['cp', '-a', path, backup], sudo=True)
+    ctx.record({'kind': 'file', 'path': path, 'backup': backup})
+    return backup
+
+
 class StepFailed(Exception):
     """Шаг остановлен: message — что случилось, action — что делать пользователю."""
 
