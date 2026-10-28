@@ -282,6 +282,8 @@ test('binds are described in Russian with modifier names',()=>{
   {modmask:64,key:'L',dispatcher:'exec',arg:'quietline-shell lock'},
  ]));
  assert.deepEqual(rows[5],{keys:'Super+L',action:'Заблокировать сеанс'});
+ assert.equal(M.bindAction('qs -c quietline ipc call quietline settings shortcuts'),'Памятка сочетаний клавиш');
+ assert.equal(M.bindAction('dolphin'),'Открыть Dolphin');
  assert.deepEqual(rows[0],{keys:'Super+M',action:'Сменить режим «Окна / Тайлы»'});
  assert.deepEqual(rows[1],{keys:'Super+Shift+1',action:'Перенести окно на пространство 1'});
  assert.deepEqual(rows[2],{keys:'Super+0',action:'Открыть пространство 10'});

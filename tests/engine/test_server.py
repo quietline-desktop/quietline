@@ -630,12 +630,35 @@ def test_cli_prints_results_and_fails_on_errors(path, env, monkeypatch, capsys):
 
 def test_shortcuts_target_expected_cli_calls():
     text = LUA_CONFIG.read_text(encoding="utf-8")
-    binds = re.findall(r'hl\.bind\("([^"]+)",\s*hl\.dsp\.exec_cmd\("([^"]+)"\)\)', text)
-    dispatchers = dict(re.findall(r'hl\.bind\("([^"]+)",\s*(hl\.dsp\.(?!exec_cmd)[^\n]*)\)\n', text))
-    keys = re.findall(r'hl\.bind\("([^"]+)"', text)
-    assert len(keys) == len(set(keys)) == len(binds) + len(dispatchers)
-    assert dispatchers == {"SUPER + W": "hl.dsp.window.close()"}
-
+    # Каждая привязка — одна строка `hl.bind("<клавиши>", <действие>` или многострочная функция.
+    keys = re.findall(r'^hl\.bind\("([^"]+)"', text, re.M)
+    assert len(keys) == len(set(keys)) == text.count("hl.bind(")
+    binds = re.findall(r'^hl\.bind\("([^"]+)",\s*hl\.dsp\.exec_cmd\("([^"]+)"\)\)$', text, re.M)
+    # Действие без закрывающей скобки самого hl.bind.
+    others = {
+        key: action[:-1] if action.count(")") > action.count("(") else action
+        for key, action in re.findall(r'^hl\.bind\("([^"]+)",\s*(.+)$', text, re.M)
+        if not action.startswith("hl.dsp.exec_cmd(")
+    }
+    assert len(binds) + len(others) == len(keys)
+    directions = {"Left": "l", "Right": "r", "Up": "u", "Down": "d"}
+    expected_others = {
+        "SUPER + W": "hl.dsp.window.close()",
+        "SUPER + ALT + Space": 'hl.dsp.window.float({ action = "toggle" })',
+        "SUPER + F": 'hl.dsp.window.fullscreen({ mode = "maximized" })',
+        "SUPER + SHIFT + F": 'hl.dsp.window.fullscreen({ mode = "fullscreen" })',
+        "ALT + Tab": "function ()",
+        "SUPER + mouse:272": "hl.dsp.window.drag(), { mouse = true }",
+        "SUPER + mouse:273": "hl.dsp.window.resize(), { mouse = true }",
+        "SUPER + ALT + Left": 'hl.dsp.focus({ monitor = "l" })',
+        "SUPER + ALT + Right": 'hl.dsp.focus({ monitor = "r" })',
+    }
+    for key, letter in directions.items():
+        expected_others[f"SUPER + {key}"] = f'hl.dsp.focus({{ direction = "{letter}" }})'
+    nudges = {"Left": "-NUDGE, 0", "Right": "NUDGE, 0", "Up": "0, -NUDGE", "Down": "0, NUDGE"}
+    for key, letter in directions.items():
+        expected_others[f"SUPER + SHIFT + {key}"] = f'move_or_nudge("{letter}", {nudges[key]})'
+    assert others == expected_others
     expected = {}
     for number in range(1, 11):
         key = str(number % 10)
@@ -647,6 +670,8 @@ def test_shortcuts_target_expected_cli_calls():
     expected["SUPER + Q"] = "quietline-shell app quit --notify"
     expected["SUPER + SHIFT + Q"] = "qs -c quietline ipc call quietline confirmKill"
     expected["SUPER + V"] = "qs -c quietline ipc call quietline clipboard"
+    expected["SUPER + E"] = "dolphin"
+    expected["SUPER + F1"] = "qs -c quietline ipc call quietline settings shortcuts"
     expected["Print"] = "quietline-shell screenshot output"
     expected["SUPER + SHIFT + S"] = "quietline-shell screenshot region"
     expected["SUPER + Space"] = "qs -c quietline ipc call quietline launcher"

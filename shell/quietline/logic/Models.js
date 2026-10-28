@@ -381,7 +381,9 @@ function bindAction(command) {
     if (command === "quietline-shell screenshot output") return "Снимок монитора в файл и буфер";
     if (command === "quietline-shell screenshot region") return "Снимок области с разметкой";
     if (/ipc call quietline launcher$/.test(command)) return "Открыть поиск";
+    if (/ipc call quietline settings shortcuts$/.test(command)) return "Памятка сочетаний клавиш";
     if (/ipc call quietline settings/.test(command)) return "Открыть окно «Настройки»";
+    if (command === "dolphin") return "Открыть Dolphin";
     return command;
 }
 

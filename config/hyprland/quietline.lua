@@ -1,10 +1,11 @@
 -- Quietline: движок пространств и окон, его клавиши и оболочка Quickshell для Hyprland ≥ 0.55.
 -- Подключается из ~/.config/hypr/hyprland.lua строкой require("quietline").
 --
--- Внимание: стандартный пример конфигурации Hyprland привязывает SUPER + M к выходу
--- из Hyprland и сам привязывает SUPER + 1…0 и SUPER + SHIFT + 1…0 к пространствам.
--- Эти строки примера удаляются из hyprland.lua до подключения этого файла: иначе
--- SUPER + M закрывает сеанс, а цифровые клавиши конфликтуют с клавишами движка.
+-- Внимание: стандартный пример конфигурации Hyprland сам привязывает клавиши, которые
+-- здесь заняты: SUPER + M (выход из Hyprland), SUPER + 1…0 и SUPER + SHIFT + 1…0,
+-- SUPER + Q, C, E, V, стрелки, SUPER + мышь. Все привязки примера удаляются из
+-- hyprland.lua до подключения этого файла: иначе SUPER + M закрывает сеанс, а остальные
+-- клавиши конфликтуют с клавишами Quietline.
 
 -- Все пространства в раскладке scrolling: режим «Окна» держит обычные окна плавающими,
 -- режим «Тайлы» возвращает их в колонки. Новая колонка занимает половину рабочей области;
@@ -66,6 +67,54 @@ hl.bind("SUPER + V", hl.dsp.exec_cmd("qs -c quietline ipc call quietline clipboa
 -- Снимок монитора с фокусом в файл и буфер; область экрана с разметкой в Satty.
 hl.bind("Print", hl.dsp.exec_cmd("quietline-shell screenshot output"))
 hl.bind("SUPER + SHIFT + S", hl.dsp.exec_cmd("quietline-shell screenshot region"))
+
+-- Dolphin; памятка сочетаний — раздел окна «Настройки».
+hl.bind("SUPER + E", hl.dsp.exec_cmd("dolphin"))
+hl.bind("SUPER + F1", hl.dsp.exec_cmd("qs -c quietline ipc call quietline settings shortcuts"))
+
+-- Фокус соседнего окна: в «Тайлах» влево/вправо — соседняя колонка, вверх/вниз — окно в колонке.
+hl.bind("SUPER + Left", hl.dsp.focus({ direction = "l" }))
+hl.bind("SUPER + Right", hl.dsp.focus({ direction = "r" }))
+hl.bind("SUPER + Up", hl.dsp.focus({ direction = "u" }))
+hl.bind("SUPER + Down", hl.dsp.focus({ direction = "d" }))
+
+-- Плавающее окно сдвигается на NUDGE пикселей, окно в колонках переставляется в сторону.
+local NUDGE = 40
+local function move_or_nudge(direction, dx, dy)
+    return function ()
+        local window = hl.get_active_window()
+        if window and window.floating then
+            hl.dispatch(hl.dsp.window.move({ x = dx, y = dy, relative = true }))
+        else
+            hl.dispatch(hl.dsp.window.move({ direction = direction }))
+        end
+    end
+end
+hl.bind("SUPER + SHIFT + Left", move_or_nudge("l", -NUDGE, 0))
+hl.bind("SUPER + SHIFT + Right", move_or_nudge("r", NUDGE, 0))
+hl.bind("SUPER + SHIFT + Up", move_or_nudge("u", 0, -NUDGE))
+hl.bind("SUPER + SHIFT + Down", move_or_nudge("d", 0, NUDGE))
+
+-- Фокус соседнего монитора.
+hl.bind("SUPER + ALT + Left", hl.dsp.focus({ monitor = "l" }))
+hl.bind("SUPER + ALT + Right", hl.dsp.focus({ monitor = "r" }))
+
+-- Временно вынуть окно из колонки и вернуть обратно; движок не трогает такое окно до смены режима.
+hl.bind("SUPER + ALT + Space", hl.dsp.window.float({ action = "toggle" }))
+
+-- Развернуть в рабочей области / настоящий полноэкранный режим.
+hl.bind("SUPER + F", hl.dsp.window.fullscreen({ mode = "maximized" }))
+hl.bind("SUPER + SHIFT + F", hl.dsp.window.fullscreen({ mode = "fullscreen" }))
+
+-- Следующее окно текущего пространства, поверх остальных.
+hl.bind("ALT + Tab", function ()
+    hl.dispatch(hl.dsp.window.cycle_next())
+    hl.dispatch(hl.dsp.window.bring_to_top())
+end)
+
+-- Super + левая кнопка мыши двигает окно, правая — меняет размер.
+hl.bind("SUPER + mouse:272", hl.dsp.window.drag(), { mouse = true })
+hl.bind("SUPER + mouse:273", hl.dsp.window.resize(), { mouse = true })
 
 -- Локальные пространства 1–10 монитора с фокусом; клавиша 0 — пространство 10.
 hl.bind("SUPER + 1", hl.dsp.exec_cmd("quietline-engine switch 1"))
