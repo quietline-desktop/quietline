@@ -64,6 +64,7 @@ ColumnLayout {
                                 Layout.preferredWidth: 72; Layout.preferredHeight: 44
                                 fillMode: Image.PreserveAspectFit
                                 asynchronous: true
+                                cache: false
                             }
                             Text {
                                 Layout.fillWidth: true

@@ -14,7 +14,8 @@ ColumnLayout {
     signal done()
     spacing: 6
 
-    function reset() { confirming = ""; session.reset(); first.forceActiveFocus(); }
+    function reset() { confirming = ""; first.forceActiveFocus(); }
+    function cancel() { confirming = ""; session.reset(); first.forceActiveFocus(); }
 
     Text { text: "Сеанс"; color: Theme.text; font.family: Theme.sans; font.pixelSize: Theme.titleFontSize; font.bold: true }
     component ActionButton: ShellButton {
@@ -55,7 +56,7 @@ ColumnLayout {
                 emphasized: true
                 onClicked: root.session.end(root.confirming)
             }
-            ShellButton { text: "Отмена"; onClicked: root.reset() }
+            ShellButton { text: "Отмена"; onClicked: root.cancel() }
         }
     }
     Text {
@@ -77,7 +78,7 @@ ColumnLayout {
         RowLayout {
             spacing: 6
             ShellButton { text: "Повторить"; emphasized: true; onClicked: root.session.end(root.session.action) }
-            ShellButton { text: "Отмена"; onClicked: root.reset() }
+            ShellButton { text: "Отмена"; onClicked: root.cancel() }
         }
     }
     Text {

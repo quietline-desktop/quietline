@@ -45,10 +45,10 @@ PanelWindow {
     anchors { top: true; left: true; right: true }
     function openApplications() { popout.open("applications"); }
     function openSummary() { popout.open("quick"); }
-    // Подтверждение принудительного завершения процесса окна `window`.
     function openClipboard() { popout.open("clipboard"); }
     // Меню питания с ожидающим подтверждения действием сеанса.
     function openSession(action) { popout.open("power"); Qt.callLater(function() { powerMenu.confirming = action; }); }
+    // Подтверждение принудительного завершения процесса окна `window`.
     function confirmKill(window) { killConfirm.target = window; popout.open("kill"); }
     implicitHeight: Theme.outerMargin + Theme.barHeight + (message.length > 0 ? 28 : 0)
     exclusiveZone: Theme.outerMargin + Theme.barHeight + 12
@@ -248,8 +248,9 @@ PanelWindow {
         readonly property bool showingKill: currentName === "kill"
         readonly property bool showingClipboard: currentName === "clipboard"
         parentPanel: root
-        // Сетевая панель держит формы и не закрывается от щелчка в другом окне.
-        persistent: showingNetwork
+        // Сетевая панель держит формы, меню питания — ход и итог закрытия приложений: щелчок
+        // в другом окне (например, в диалоге сохранения) их не закрывает.
+        persistent: showingNetwork || (showingPower && (root.services.session.busy || root.services.session.remaining.length > 0))
         popupX: showingApplications ? Theme.outerMargin : Math.max(12, root.width - width - 12)
         popupY: Theme.outerMargin + Theme.barHeight + 8
         implicitWidth: showingApplications ? Math.min(360, root.width - Theme.outerMargin * 2) : Math.min(showingNetwork || showingClipboard ? 400 : 330, root.width - 24)

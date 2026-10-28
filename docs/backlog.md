@@ -90,6 +90,8 @@
 - **РФ4 ежедневных действий** — секреты, копирование из 1Password и запись на паузе не попадают в историю; блокировка и выход её очищают (D16–D18).
 - **РФ5 ежедневных действий** — калькулятор поиска без исполнения кода (D21; модульно — `models.test.cjs`).
 - **Экран блокировки Quickshell** — `WlSessionLock` и `PamContext` с конфигурацией `login` в Quickshell 0.3.2, импорт темы `import ".."` из `lock/LockScreen.qml` при запуске `qs -p`, выход процесса через `Qt.quit()` после разблокировки (D1).
+- **Метка блокировки** — `Quickshell.execDetached(["touch", …])` из `onSecureStateChanged` создаёт `lock.secure` за 5 с после запуска; `Quickshell.env("QUIETLINE_LOCK_MARKER")` видит переменную, переданную `quietline-shell lock` (D1).
+- **Модель уведомлений** — `Repeater { model: trackedNotifications }` в Quickshell 0.3.2 обновляется по одному уведомлению, и сроки не перезапускаются при приходе нового (D15).
 - **Привязка `locked = true`** — `Super+L` срабатывает на экране, заблокированном упавшим клиентом, и `misc.allow_session_lock_restore = true` разрешает новый экран блокировки (D2).
 - **Группы процессов** — `Quickshell.execDetached({command, workingDirectory})` с `systemd-run --user --scope --collect --quiet --unit=app-quietline-…` запускает приложения дока; строка cgroup `/app.slice/app-quietline-…scope` и `systemctl --user kill --signal=…` работают для такой группы (D9, D11).
 - **Lua-диспетчеры 0.55** — `hyprctl dispatch 'hl.dsp.window.close({window = "address:…"})'`, `hl.dsp.exit()`, `hl.get_active_window().floating`, `hl.dsp.window.move({x, y, relative = true})`, `hl.dsp.window.cycle_next()` и `bring_to_top()`, `hl.dsp.window.drag()/resize()` с `{ mouse = true }`, имена клавиш `Print`, `Left`, `mouse:272` (D7, D8, D22, D23).

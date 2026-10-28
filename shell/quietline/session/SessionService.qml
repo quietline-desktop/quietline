@@ -14,6 +14,8 @@ Scope {
     property string errorMessage: ""
 
     function lock() { Quickshell.execDetached(["quietline-shell", "lock"]); }
+    // Результат прошлого действия (оставшиеся приложения, ошибка) держится до нового действия
+    // или явной отмены: меню показывает его и после повторного открытия.
     function end(name) {
         if (busy || Models.SESSION_ACTIONS.indexOf(name) < 0) return;
         busy = true;

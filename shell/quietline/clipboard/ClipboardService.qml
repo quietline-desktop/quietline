@@ -47,6 +47,11 @@ Scope {
                 if (data.error) { root.errorMessage = "История буфера недоступна: " + data.error; return; }
                 root.entries = data.entries || [];
                 root.paused = !!data.paused;
+                // Превью есть только у записей из текущего списка: после очистки при блокировке
+                // или выходе старые файлы не показываются.
+                var kept = {};
+                root.entries.forEach(entry => { if (root.images[entry.id]) kept[entry.id] = root.images[entry.id]; });
+                root.images = kept;
                 root.imageQueue = root.entries.filter(entry => entry.kind === "image" && !root.images[entry.id]).map(entry => entry.id);
                 root.nextImage();
             }

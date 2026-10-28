@@ -6,7 +6,7 @@ Quietline — личное рабочее окружение Linux поверх 
 
 ## Текущее состояние
 
-В репозитории спека, планы первых трёх этапов, утверждённый макет и визуальный контракт `DESIGN.md`. Первый этап — движок пространств и окон на Python по плану `docs/superpowers/plans/2026-10-19-window-engine.md` — реализован: адаптер Hyprland, локальные пространства мониторов, режимы «Окна / Тайлы», сверка по событиям, диалоги по тегам, сервис с IPC и CLI, клавиши Hyprland. Второй этап — оболочка Quickshell по плану `docs/superpowers/plans/2026-10-19-quickshell.md` — перенесён на этот движок: верхняя панель, док, трей, показатели, `Super+Space`, CLI `quietline-shell`. Третий этап — системные панели по плану `docs/superpowers/plans/2026-10-20-system-panels.md` — перенесён на новую оболочку: сетевая панель с профилями объекта и откатом, быстрые настройки, окно «Настройки». Живые проверки не проведены — список в `docs/backlog.md`, порядок проверки — `scripts/smoke-window-engine.md`, `scripts/smoke-quickshell.md`, `scripts/smoke-system-panels.md`.
+В репозитории спека, планы первых четырёх этапов, утверждённый макет и визуальный контракт `DESIGN.md`. Первый этап — движок пространств и окон на Python по плану `docs/superpowers/plans/2026-10-19-window-engine.md` — реализован: адаптер Hyprland, локальные пространства мониторов, режимы «Окна / Тайлы», сверка по событиям, диалоги по тегам, сервис с IPC и CLI, клавиши Hyprland. Второй этап — оболочка Quickshell по плану `docs/superpowers/plans/2026-10-19-quickshell.md` — перенесён на этот движок: верхняя панель, док, трей, показатели, `Super+Space`, CLI `quietline-shell`. Третий этап — системные панели по плану `docs/superpowers/plans/2026-10-20-system-panels.md` — перенесён на новую оболочку: сетевая панель с профилями объекта и откатом, быстрые настройки, окно «Настройки». Четвёртый этап — ежедневные действия по плану `docs/superpowers/plans/2026-10-28-daily-actions.md`: блокировка и меню питания, корректный выход из приложений, уведомления, снимки экрана, история буфера, поиск, клавиши окон. Живые проверки не проведены — список в `docs/backlog.md`, порядок проверки — `scripts/smoke-window-engine.md`, `scripts/smoke-quickshell.md`, `scripts/smoke-system-panels.md`, `scripts/smoke-daily-actions.md`.
 
 ## Базовая система и минимальные версии
 
@@ -29,6 +29,7 @@ Quietline ставится поверх **Arch Linux** после Archinstall Mi
 | Движок пространств и окон | `docs/superpowers/plans/2026-10-19-window-engine.md` — файловая карта, контракт IPC, шаги и проверки |
 | Оболочка Quickshell (панель, док, `quietline-shell`) | `docs/superpowers/plans/2026-10-19-quickshell.md` — границы, перенос на новый движок, файлы и проверки; `DESIGN.md` — внешний вид |
 | Системные панели (сеть, звук, яркость, Bluetooth, питание, окно «Настройки») | `docs/superpowers/plans/2026-10-20-system-panels.md` — границы, контракт `quietline-shell network`, перенос, Review Focus |
+| Ежедневные действия (блокировка, меню питания, выход из приложений, уведомления, снимки, буфер, поиск, клавиши окон) | `docs/superpowers/plans/2026-10-28-daily-actions.md` — решения, контракт подкоманд `quietline-shell`, Review Focus |
 | Внешний вид панели, дока, всплывающих окон | `DESIGN.md` — визуальный контракт оболочки: токены, размеры, движения, владельцы компонентов; `docs/design/quiet-line-a.html` — утверждённый макет варианта A (в том числе сетевой панели) |
 | Задача с активной спекой или планом | `docs/superpowers/specs` и `plans` — статус в шапке файла; читать только относящиеся к задаче |
 | Устройство репозитория для человека | `README.md` |
@@ -43,7 +44,7 @@ docs/superpowers/specs/   — спеки: что строим и почему
 docs/superpowers/plans/   — планы реализации по шагам
 config/hyprland/          — Lua-конфигурация Hyprland: раскладка, запуск сервиса и оболочки, клавиши, теги диалогов
 config/polkit/            — правило polkit для сетевых профилей и отката NetworkManager
-scripts/                  — сценарии проверки в живом сеансе (`smoke-window-engine.md`, `smoke-quickshell.md`, `smoke-system-panels.md`), запуск оболочки из репозитория `run-shell`
+scripts/                  — сценарии проверки в живом сеансе (`smoke-window-engine.md`, `smoke-quickshell.md`, `smoke-system-panels.md`, `smoke-daily-actions.md`), запуск оболочки из репозитория `run-shell`
 shell/quietline/          — конфигурация Quickshell (`qs -c quietline`): `shell.qml`, тема `Theme.qml`, стенд IPC `IpcHarness.qml`
 shell/quietline/controls/ — общие элементы: кнопки, пункты меню, подсказки, всплывающие окна, полоса прокрутки
 shell/quietline/inputs/   — поля форм: текстовое поле, переключатель, ползунок

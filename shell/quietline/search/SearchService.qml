@@ -20,7 +20,7 @@ Scope {
             if (root.query.trim().length < 2) return;
             if (finder.running) { restart(); return; }
             finder.asked = root.query;
-            finder.command = ["quietline-shell", "files", root.query.trim(), "--limit", "15"];
+            finder.command = ["quietline-shell", "files", "--limit", "15", "--", root.query.trim()];
             finder.running = true;
         }
     }

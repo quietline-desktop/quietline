@@ -7,6 +7,8 @@ import "../logic/Models.js" as Models
 // отслеживаются; `visibleNotifications` — новые первыми, не больше `Models.NOTIFICATION_LIMIT`.
 Scope {
     id: root
+    // Модель для сроков: меняется по одному уведомлению, делегаты и их таймеры не пересоздаются.
+    readonly property var model: server.trackedNotifications
     readonly property var notifications: server.trackedNotifications.values
     readonly property var visibleNotifications: notifications.slice().reverse().slice(0, Models.NOTIFICATION_LIMIT)
 

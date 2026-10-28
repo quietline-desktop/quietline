@@ -5,7 +5,9 @@ import Quickshell.Services.Pam
 
 // Экран блокировки — отдельный процесс `qs -p …/lock/LockScreen.qml`, его запускает
 // `quietline-shell lock`. Поверхность на каждом экране; пароль проверяет PAM по
-// конфигурации `login`. После успешной проверки блокировка снимается и процесс завершается.
+// конфигурации `login`. Когда Hyprland подтвердил блокировку всех экранов, создаётся метка
+// `QUIETLINE_LOCK_MARKER` для `quietline-shell lock`; после успешной проверки пароля метка
+// удаляется, блокировка снимается и процесс завершается.
 ShellRoot {
     id: root
     property string message: ""
@@ -13,10 +15,14 @@ ShellRoot {
     readonly property bool checking: pam.active
     // Пароль ждёт запроса PAM и сразу стирается после ответа.
     property string pendingPassword: ""
+    // В этой попытке PAM уже сообщил об ошибке (например, о блокировке pam_faillock).
+    property bool pamReportedError: false
+    readonly property string marker: Quickshell.env("QUIETLINE_LOCK_MARKER") || ""
 
     function submit(password) {
         if (checking || password.length === 0) return;
         pendingPassword = password;
+        pamReportedError = false;
         message = "";
         if (!pam.start()) { pendingPassword = ""; showError("Не удалось начать проверку пароля"); }
     }
@@ -31,14 +37,17 @@ ShellRoot {
             } else if (message.length > 0) {
                 root.message = message;
                 root.messageIsError = messageIsError;
+                if (messageIsError) root.pamReportedError = true;
             }
         }
         onCompleted: result => {
             root.pendingPassword = "";
             if (result === PamResult.Success) {
+                if (root.marker) Quickshell.execDetached(["rm", "-f", root.marker]);
                 lock.locked = false;
                 Qt.callLater(Qt.quit);
-            } else if (result === PamResult.Failed) root.showError("Неверный пароль");
+            } else if (root.pamReportedError) root.messageIsError = true;
+            else if (result === PamResult.Failed) root.showError("Неверный пароль");
             else if (result === PamResult.MaxTries) root.showError("Слишком много попыток. Подождите и попробуйте снова.");
             else root.showError("Ошибка проверки пароля");
         }
@@ -47,6 +56,7 @@ ShellRoot {
     WlSessionLock {
         id: lock
         locked: true
+        onSecureStateChanged: { if (secure && root.marker) Quickshell.execDetached(["touch", root.marker]); }
         LockSurface { context: root }
     }
 }

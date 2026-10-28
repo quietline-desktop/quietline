@@ -38,7 +38,6 @@ ColumnLayout {
             break;
         }
     }
-    onResultsChanged: selected = 0
 
     Text { text: "Поиск"; color: Theme.text; font.family: Theme.sans; font.pixelSize: Theme.titleFontSize; font.bold: true }
     TextField {
@@ -50,8 +49,8 @@ ColumnLayout {
         Accessible.name: "Поиск"
         background: Rectangle { color: Theme.background; radius: Theme.controlRadius; border.color: field.activeFocus ? Theme.accent : Theme.border; border.width: 1 }
         ShellButton { anchors.right: parent.right; anchors.verticalCenter: parent.verticalCenter; visible: field.text.length > 0; text: "×"; hint: "Очистить поиск"; onClicked: root.reset() }
-        onTextChanged: root.finder.query = text
-        onAccepted: root.activate(root.results[root.selected])
+        onTextChanged: { root.selected = 0; root.finder.query = text; }
+        onAccepted: root.activate(root.results[Math.min(root.selected, root.results.length - 1)])
         Keys.onDownPressed: root.selected = Math.min(root.selected + 1, root.results.length - 1)
         Keys.onUpPressed: root.selected = Math.max(root.selected - 1, 0)
     }
@@ -71,7 +70,7 @@ ColumnLayout {
                     width: scroll.availableWidth
                     implicitHeight: 40
                     hint: modelData.kind === "file" ? modelData.path : modelData.title
-                    emphasized: index === root.selected
+                    emphasized: index === Math.min(root.selected, root.results.length - 1)
                     onClicked: root.activate(modelData)
                     contentItem: Column {
                         leftPadding: 6

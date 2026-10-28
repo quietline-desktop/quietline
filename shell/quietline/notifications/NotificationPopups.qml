@@ -27,7 +27,7 @@ PanelWindow {
 
     // Сроки идут у всех отслеживаемых уведомлений, в том числе не поместившихся на экран.
     Repeater {
-        model: root.service.notifications
+        model: root.service.model
         delegate: Item {
             id: holder
             required property var modelData
