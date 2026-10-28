@@ -13,6 +13,9 @@
   в фоне процессе сообщает уведомление; `app kill --pid P` — `{"killed": P}`;
 - `screenshot output|region` — снимок монитора с фокусом `{"path", "copied": true}` или
   область в Satty `{"started": true}` / `{"cancelled": true}`; итог сообщает уведомление;
+- `clipboard store|list|restore|delete|image|wipe|pause` — история буфера сеанса:
+  `store` читает запись из stdin, `list` — `{"entries": [{"id", "kind", "preview"}], "paused"}`,
+  `image --id ID` — `{"path"}`, остальные — `{"ok": true}`;
 - `network ACTION …` — NetworkManager: состояние, профили объекта, Wi-Fi, контрольные
   точки; подкоманды и их ответы — в docstring `quietline_shell.network`.
 
@@ -28,7 +31,7 @@ from collections.abc import Sequence
 from pathlib import Path
 from typing import Any
 
-from quietline_shell import capture, network, session
+from quietline_shell import capture, clipboard, network, session
 from quietline_shell.config import about, default_pins_path, load_pins, reduced_motion, save_pins
 
 
@@ -53,6 +56,18 @@ def _parser() -> argparse.ArgumentParser:
     app_actions.add_parser("kill", help="kill an application process with SIGKILL").add_argument("--pid", type=int, required=True)
     shot = commands.add_parser("screenshot", help="capture the focused monitor or a region")
     shot.add_argument("target", choices=("output", "region"))
+    clip = commands.add_parser("clipboard", help="session clipboard history")
+    clip_actions = clip.add_subparsers(dest="action", required=True, metavar="ACTION")
+    clip_actions.add_parser("store", help="store the clipboard entry read from stdin (for wl-paste --watch)")
+    clip_actions.add_parser("list", help="print the history, newest first")
+    for name, text in (("restore", "copy an entry back to the clipboard"), ("delete", "delete an entry"),
+                       ("image", "write an image entry to a temporary PNG")):
+        clip_actions.add_parser(name, help=text).add_argument("--id", required=True)
+    clip_actions.add_parser("wipe", help="delete the whole history")
+    pause = clip_actions.add_parser("pause", help="pause or resume recording")
+    pause_switch = pause.add_mutually_exclusive_group(required=True)
+    pause_switch.add_argument("--on", dest="paused", action="store_true")
+    pause_switch.add_argument("--off", dest="paused", action="store_false")
     network.add_parser(commands)
     return parser
 
@@ -65,6 +80,22 @@ def _run(args: argparse.Namespace) -> dict[str, Any]:
             return session.lock()
         case "session":
             return session.end_session(args.action, args.timeout)
+        case "clipboard":
+            match args.action:
+                case "store":
+                    return clipboard.store(sys.stdin.buffer.read())
+                case "list":
+                    return clipboard.entries()
+                case "restore":
+                    return clipboard.restore(args.id)
+                case "delete":
+                    return clipboard.delete(args.id)
+                case "image":
+                    return clipboard.image(args.id)
+                case "wipe":
+                    return clipboard.wipe()
+                case _:
+                    return clipboard.set_paused(args.paused)
         case "screenshot":
             return capture.capture_output() if args.target == "output" else capture.capture_region()
         case "app":

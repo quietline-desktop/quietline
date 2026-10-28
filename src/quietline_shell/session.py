@@ -111,8 +111,19 @@ def _process_alive(pid: int) -> bool:
         return False
 
 
+def _wipe_clipboard() -> None:
+    """Очищает историю буфера; недоступный cliphist не мешает блокировке и выходу."""
+    from quietline_shell import clipboard
+
+    try:
+        clipboard.wipe()
+    except (RuntimeError, OSError):
+        pass
+
+
 def lock() -> dict[str, bool]:
-    """Запускает экран блокировки, если он ещё не запущен."""
+    """Очищает историю буфера и запускает экран блокировки, если он ещё не запущен."""
+    _wipe_clipboard()
     state = runtime_dir()
     pidfile = state / "lock.pid"
     try:
@@ -153,6 +164,7 @@ def end_session(action: str, timeout: float = CLOSE_TIMEOUT) -> dict[str, Any]:
         }
     match action:
         case "logout":
+            _wipe_clipboard()
             hyprland_dispatch("hl.dsp.exit()")
         case "reboot":
             run(["systemctl", "reboot"])

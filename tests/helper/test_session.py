@@ -94,7 +94,10 @@ def lock_env(tmp_path, monkeypatch):
     screen = tmp_path / "config" / "quickshell" / "quietline" / "lock" / "LockScreen.qml"
     screen.parent.mkdir(parents=True)
     screen.write_text("ShellRoot {}\n")
-    started = []
+    class Started(list):
+        commands: list
+
+    started = Started()
 
     class Process:
         def __init__(self, args, **kwargs):
@@ -102,12 +105,16 @@ def lock_env(tmp_path, monkeypatch):
             self.pid = 4242
 
     monkeypatch.setattr(subprocess, "Popen", Process)
+    commands = []
+    monkeypatch.setattr(subprocess, "run", lambda args, **kwargs: commands.append(list(args)) or subprocess.CompletedProcess(args, 0, b"", b""))
+    started.commands = commands
     return tmp_path, screen, started
 
 
 def test_lock_starts_one_detached_lock_screen(lock_env, monkeypatch):
     tmp_path, screen, started = lock_env
     assert session.lock() == {"locked": True}
+    assert started.commands[0][0] == "cliphist" and started.commands[0][-1] == "wipe"
     args, kwargs = started[0]
     assert args == ["qs", "-p", str(screen)] and kwargs["start_new_session"] is True
     assert (tmp_path / "run" / "quietline" / "lock.pid").read_text() == "4242\n"
