@@ -1,6 +1,6 @@
 # Непроверенное
 
-Что ещё не подтверждено в живом сеансе и поэтому не считается пройденным. Пункт удаляется, когда результат записан в файл проверки (для движка — раздел «Результаты» в `scripts/smoke-window-engine.md`, для оболочки — столбец «Результат» в `scripts/smoke-quickshell.md`, для системных панелей — в `scripts/smoke-system-panels.md`).
+Что ещё не подтверждено в живом сеансе и поэтому не считается пройденным. Пункт удаляется, когда результат записан в файл проверки (для движка — раздел «Результаты» в `scripts/smoke-window-engine.md`, для оболочки — столбец «Результат» в `scripts/smoke-quickshell.md`, для системных панелей — в `scripts/smoke-system-panels.md`, для ежедневных действий — в `scripts/smoke-daily-actions.md`).
 
 ## Движок пространств и окон: живые проверки
 
@@ -79,3 +79,27 @@
 - **Яркость без root** — `brightnessctl -c backlight -d <устройство> set N%` работает от пользователя активного сеанса через logind (S10).
 - **Памятка сочетаний** — `hyprctl binds -j` в Hyprland 0.55 отдаёт `modmask`, `key` и команду `hl.dsp.exec_cmd` в `arg`, по которым `Models.describeBinds` описывает клавиши Quietline (S14).
 - **Окно «Настройки»** — `FloatingWindow` открывается один раз, в «Тайлах» встаёт колонкой и не теряет раздел (S12, S13).
+
+## Ежедневные действия: живые проверки
+
+Ни один пункт `scripts/smoke-daily-actions.md` ещё не выполнен: Hyprland, Quickshell, grim, slurp, Satty, cliphist и plocate не запускались, QML проверен только статически, `quietline-shell` — на поддельных командах.
+
+- **РФ1 ежедневных действий** — блокировка не открывает сеанс: падение панели и экрана блокировки, неверный пароль и лимит попыток (D1–D4).
+- **РФ2 ежедневных действий** — выход, перезагрузка и выключение не теряют документы; `SIGTERM` только процессу без окон из группы `app-quietline-*`, `Super+Q` без `SIGKILL` (D6–D9).
+- **РФ3 ежедневных действий** — снимок не объявляется готовым до файла и буфера; `PrintScreen` снимает только монитор с фокусом (D12, D13).
+- **РФ4 ежедневных действий** — секреты, копирование из 1Password и запись на паузе не попадают в историю; блокировка и выход её очищают (D16–D18).
+- **РФ5 ежедневных действий** — калькулятор поиска без исполнения кода (D21; модульно — `models.test.cjs`).
+- **Экран блокировки Quickshell** — `WlSessionLock` и `PamContext` с конфигурацией `login` в Quickshell 0.3.2, импорт темы `import ".."` из `lock/LockScreen.qml` при запуске `qs -p`, выход процесса через `Qt.quit()` после разблокировки (D1).
+- **Привязка `locked = true`** — `Super+L` срабатывает на экране, заблокированном упавшим клиентом, и `misc.allow_session_lock_restore = true` разрешает новый экран блокировки (D2).
+- **Группы процессов** — `Quickshell.execDetached({command, workingDirectory})` с `systemd-run --user --scope --collect --quiet --unit=app-quietline-…` запускает приложения дока; строка cgroup `/app.slice/app-quietline-…scope` и `systemctl --user kill --signal=…` работают для такой группы (D9, D11).
+- **Lua-диспетчеры 0.55** — `hyprctl dispatch 'hl.dsp.window.close({window = "address:…"})'`, `hl.dsp.exit()`, `hl.get_active_window().floating`, `hl.dsp.window.move({x, y, relative = true})`, `hl.dsp.window.cycle_next()` и `bring_to_top()`, `hl.dsp.window.drag()/resize()` с `{ mouse = true }`, имена клавиш `Print`, `Left`, `mouse:272` (D7, D8, D22, D23).
+- **Перестановка в «Тайлах»** — `hl.dsp.window.move({direction})` в раскладке `scrolling` переносит окно между колонками и внутри колонки; если колонка целиком должна переставляться иначе, — правка плана (D22).
+- **Satty 0.22** — `--filename - --output-filename … --copy-command wl-copy --early-exit all`: Enter копирует, `Ctrl+S` сохраняет в существующий каталог, после действия Satty закрывается; его собственные уведомления не мешают (D14).
+- **slurp при отмене** — `Esc` даёт ненулевой код или пустой вывод: снимок области тихо отменяется (D14).
+- **Уведомления** — `NotificationServer` с `keepOnReload: false` занимает org.freedesktop.Notifications, `expireTimeout` приходит в секундах, `Text.PlainText` показывает разметку текстом, окно уведомлений появляется на мониторе с фокусом (D15).
+- **cliphist 0.7 и wl-clipboard 2.3** — `CLIPBOARD_STATE=sensitive` от `wl-paste --watch` при пометке `x-kde-passwordManagerHint`, класс окна 1Password — `1password`, `decode`/`delete` принимают строку `ID\t` из stdin, база `-db-path` в `$XDG_RUNTIME_DIR` (D16–D18).
+- **Личная база plocate** — `updatedb -l 0 -U ~ -o ~/.cache/quietline/home.db` от пользователя с правилами `/etc/updatedb.conf`; `plocate -d … -i -b` находит файлы по имени (D19).
+- **`Quickshell.env("HOME")`** — есть в Quickshell 0.3.2 и сокращает пути файлов в поиске до `~` (D19).
+- **`hyprctl binds -j` для Lua-привязок** — какие `dispatcher` и `arg` у привязок к `hl.dsp.*` и Lua-функциям; памятка описывает по-русски только команды `exec_cmd`, остальные показывает как есть (D24).
+- **Жесты тачпада** — три пальца в «Тайлах» (лента колонок, соседнее пространство) и отсутствие перехвата в «Окнах» из раздела «Работа с окнами» спеки не настроены; нужна отдельная задача после проверки Hyprland 0.55 (`hl.gesture`).
+- **Известные команды выхода** — `KNOWN_QUIT` в `src/quietline_shell/session.py` пуст; приложение добавляется после проверки его команды выхода вживую.

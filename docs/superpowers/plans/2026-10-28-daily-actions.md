@@ -121,8 +121,8 @@ QML (`shell/quietline/`):
 
 ## Task 7: Документация и проверка
 
-- [ ] `scripts/smoke-daily-actions.md`, пункты в `docs/backlog.md`, `README.md`, `DESIGN.md`, `CHANGELOG.md`, `AGENTS.md`.
-- [ ] Полные `pytest` и `node --test` → PASS; аудит: нет `shell=True` и eval, секреты не в аргументах и журналах.
+- [x] `scripts/smoke-daily-actions.md`, пункты в `docs/backlog.md`, `README.md`, `DESIGN.md`, `CHANGELOG.md`, `AGENTS.md`.
+- [x] Полные `pytest` и `node --test` → PASS; аудит: нет `shell=True` и eval, секреты не в аргументах и журналах.
 - [ ] Независимое ревью ветки по Review Focus; существенные замечания исправить с воспроизводящими тестами.
 - [ ] Живая проверка `scripts/smoke-daily-actions.md` на Arch — вместе с этапами 1–3.
 

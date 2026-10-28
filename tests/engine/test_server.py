@@ -633,7 +633,9 @@ def test_shortcuts_target_expected_cli_calls():
     # Каждая привязка — одна строка `hl.bind("<клавиши>", <действие>` или многострочная функция.
     keys = re.findall(r'^hl\.bind\("([^"]+)"', text, re.M)
     assert len(keys) == len(set(keys)) == text.count("hl.bind(")
-    binds = re.findall(r'^hl\.bind\("([^"]+)",\s*hl\.dsp\.exec_cmd\("([^"]+)"\)\)$', text, re.M)
+    binds = re.findall(r'^hl\.bind\("([^"]+)",\s*hl\.dsp\.exec_cmd\("([^"]+)"\)(?:,\s*\{[^}]*\})?\)$', text, re.M)
+    locked = re.findall(r'^hl\.bind\("([^"]+)",.*\{\s*locked\s*=\s*true\s*\}\)$', text, re.M)
+    assert locked == ["SUPER + L"]
     # Действие без закрывающей скобки самого hl.bind.
     others = {
         key: action[:-1] if action.count(")") > action.count("(") else action
