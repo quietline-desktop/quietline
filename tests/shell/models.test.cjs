@@ -321,3 +321,28 @@ test('clipboard search matches text and images',()=>{
  assert.equal(M.clipboardImageLabel('[[ binary data 14 KiB png 120x80 ]]'),'Изображение PNG · 120×80');
  assert.equal(M.clipboardImageLabel('junk'),'Изображение');
 });
+test('search calculator is arithmetic only',()=>{
+ assert.equal(M.calculate('(1+2)*3'),9);
+ assert.equal(M.calculate('-2^2'),-4);
+ assert.equal(M.calculate('2^3^2'),512);
+ assert.equal(M.calculate('10 % 3'),1);
+ assert.equal(M.calculate('1,5*2'),3);
+ assert.equal(M.formatNumber(M.calculate('0.1+0.2')),'0.3');
+ for(const text of ['constructor','1;alert(1)','2**1000','1/0','2^100000','(1+2','1 2','42','','1..2+1','this.x+1','__proto__+1','1e3+1'])
+  assert.equal(M.calculate(text),null,text);
+ assert.equal(M.calculate('1+'.repeat(60)+'1'),null);
+});
+test('search ranks apps, actions, settings and files',()=>{
+ const apps=[{id:'org.kde.dolphin',name:'Dolphin'},{id:'code',name:'Visual Studio Code'},{id:'org.telegram.desktop',name:'Telegram'}];
+ assert.deepEqual(plain(M.searchResults('',apps,[],'/home/k')).map(r=>r.title),['Dolphin','Visual Studio Code','Telegram']);
+ const code=plain(M.searchResults('code',apps,['/home/k/src/code.txt'],'/home/k'));
+ assert.equal(code[0].title,'Visual Studio Code');
+ assert.deepEqual(code[code.length-1],{kind:'file',id:'/home/k/src/code.txt',title:'code.txt',subtitle:'~/src',path:'/home/k/src/code.txt'});
+ const lock=plain(M.searchResults('блок',apps,[],'/home/k'));
+ assert.equal(lock[0].kind,'action'); assert.equal(lock[0].id,'lock');
+ const wifi=plain(M.searchResults('wi-fi',apps,[],'/home/k'));
+ assert.equal(wifi[0].kind,'settings'); assert.equal(wifi[0].id,'network');
+ const calc=plain(M.searchResults('2+2',apps,[],'/home/k'));
+ assert.deepEqual(calc[0],{kind:'calc',id:'calc',title:'= 4',value:'4',subtitle:'Enter — скопировать результат'});
+ assert.equal(M.searchResults('a',apps.concat(Array.from({length:60},(_,i)=>({id:'a'+i,name:'App '+i}))),[],'',10).length,10);
+});

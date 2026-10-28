@@ -8,9 +8,10 @@ import "../controls"
 import "../panels"
 import "../session"
 import "../clipboard"
+import "../search"
 import "../logic/Models.js" as Models
 
-// Верхняя панель экрана: меню приложений, пространства, заголовок окна, режим, показатели, трей и часы.
+// Верхняя панель экрана: поиск, пространства, заголовок окна, режим, показатели, трей, часы и кнопка питания.
 PanelWindow {
     id: root
     required property var engine
@@ -46,6 +47,8 @@ PanelWindow {
     function openSummary() { popout.open("quick"); }
     // Подтверждение принудительного завершения процесса окна `window`.
     function openClipboard() { popout.open("clipboard"); }
+    // Меню питания с ожидающим подтверждения действием сеанса.
+    function openSession(action) { popout.open("power"); Qt.callLater(function() { powerMenu.confirming = action; }); }
     function confirmKill(window) { killConfirm.target = window; popout.open("kill"); }
     implicitHeight: Theme.outerMargin + Theme.barHeight + (message.length > 0 ? 28 : 0)
     exclusiveZone: Theme.outerMargin + Theme.barHeight + 12
@@ -66,7 +69,7 @@ PanelWindow {
             spacing: root.narrow ? 3 : 7
             ShellButton {
                 id: launcher
-                font.family: Theme.icons; text: "\uf009"; hint: "Открыть приложения"; implicitWidth: 28
+                font.family: Theme.icons; text: "\uf009"; hint: "Поиск · Super+Space"; implicitWidth: 28
                 onClicked: popout.toggle("applications")
             }
             Rectangle { width: 1; height: 15; color: Theme.border }
@@ -252,42 +255,19 @@ PanelWindow {
         implicitWidth: showingApplications ? Math.min(360, root.width - Theme.outerMargin * 2) : Math.min(showingNetwork || showingClipboard ? 400 : 330, root.width - 24)
         implicitHeight: showingApplications ? Math.min(430, root.screen ? root.screen.height - 100 : 430)
                                             : Math.min(content.implicitHeight + 24, root.screen ? root.screen.height - 100 : 500)
-        onPresented: { if (showingApplications) search.forceActiveFocus(); else if (showingPower) powerMenu.reset(); else if (showingKill) killConfirm.focusCancel(); else if (showingClipboard) clipboardPanel.reset(); }
-        onDismissed: { search.clear(); powerMenu.reset(); }
-        ColumnLayout {
+        onPresented: { if (showingApplications) searchPanel.reset(); else if (showingPower) powerMenu.reset(); else if (showingKill) killConfirm.focusCancel(); else if (showingClipboard) clipboardPanel.reset(); }
+        onDismissed: { searchPanel.reset(); powerMenu.reset(); }
+        SearchPanel {
+            id: searchPanel
             visible: popout.showingApplications
-            anchors.fill: parent; spacing: 10
-            Text { text: "Приложения"; color: Theme.text; font.family: Theme.sans; font.pixelSize: Theme.titleFontSize; font.bold: true }
-            TextField {
-                id: search
-                Layout.fillWidth: true
-                placeholderText: "Найти приложение"
-                font.family: Theme.sans; font.pixelSize: Theme.fontSize
-                color: Theme.text; placeholderTextColor: Theme.muted; selectByMouse: true; rightPadding: 32
-                Accessible.name: "Поиск приложений"
-                background: Rectangle { color: Theme.background; radius: Theme.controlRadius; border.color: search.activeFocus ? Theme.accent : Theme.border; border.width: 1 }
-                ShellButton { anchors.right: parent.right; anchors.verticalCenter: parent.verticalCenter; visible: search.text.length > 0; text: "×"; hint: "Очистить поиск"; onClicked: { search.clear(); search.forceActiveFocus(); } }
-                onAccepted: { if (apps.count) apps.itemAt(0).clicked(); }
-            }
-            ScrollView {
-                id: appScroll
-                Layout.fillWidth: true; Layout.fillHeight: true
-                ScrollBar.vertical: ShellScrollBar {}
-                Column {
-                    width: appScroll.availableWidth; spacing: 3
-                    Repeater {
-                        id: apps
-                        model: root.desktop.entries.filter(entry => (entry.name + " " + entry.id).toLowerCase().indexOf(search.text.toLowerCase()) >= 0)
-                        delegate: ShellButton {
-                            required property var modelData
-                            width: popout.availableWidth
-                            text: modelData.name; hint: modelData.name
-                            onClicked: { root.desktop.launch(modelData.id, root.monitorName); popout.close(); }
-                        }
-                    }
-                    Text { visible: apps.count === 0; text: "Приложения не найдены"; color: Theme.muted; font.family: Theme.sans; topPadding: 12 }
-                }
-            }
+            anchors.fill: parent
+            desktop: root.desktop
+            services: root.services
+            finder: root.services.search
+            monitorName: root.monitorName
+            onDone: popout.close()
+            onSessionRequested: action => root.openSession(action)
+            onClipboardRequested: popout.open("clipboard")
         }
         ScrollView {
             id: summaryScroll

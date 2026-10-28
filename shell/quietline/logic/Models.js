@@ -380,7 +380,7 @@ function bindAction(command) {
     if (/ipc call quietline clipboard$/.test(command)) return "История буфера";
     if (command === "quietline-shell screenshot output") return "Снимок монитора в файл и буфер";
     if (command === "quietline-shell screenshot region") return "Снимок области с разметкой";
-    if (/ipc call quietline launcher$/.test(command)) return "Открыть меню приложений";
+    if (/ipc call quietline launcher$/.test(command)) return "Открыть поиск";
     if (/ipc call quietline settings/.test(command)) return "Открыть окно «Настройки»";
     return command;
 }
@@ -456,4 +456,123 @@ function clipboardMatches(entries, query) {
 function clipboardImageLabel(preview) {
     var match = /binary data .* (\w+) (\d+)x(\d+)/.exec(String(preview || ""));
     return match ? "Изображение " + match[1].toUpperCase() + " · " + match[2] + "×" + match[3] : "Изображение";
+}
+
+// Простые вычисления поиска: числа (дробная часть через точку или запятую), `+ - * / % ^`
+// и скобки. Свой разбор без eval; не арифметика, ошибка или бесконечность — `null`.
+function calculate(text) {
+    var source = String(text || "").trim();
+    if (!source || source.length > 100 || !/[-+*\/%^]/.test(source) || !/^[\d\s.,+\-*\/%^()]+$/.test(source)) return null;
+    var tokens = source.match(/\d+(?:[.,]\d+)?|[-+*\/%^()]/g) || [];
+    if (tokens.join("") !== source.replace(/\s+/g, "")) return null;
+    var position = 0;
+    function peek() { return tokens[position]; }
+    function expression() {
+        var value = term();
+        while (peek() === "+" || peek() === "-") {
+            var operator = tokens[position++];
+            var right = term();
+            value = operator === "+" ? value + right : value - right;
+        }
+        return value;
+    }
+    function term() {
+        var value = unary();
+        while (peek() === "*" || peek() === "/" || peek() === "%") {
+            var operator = tokens[position++];
+            var right = unary();
+            value = operator === "*" ? value * right : operator === "/" ? value / right : value % right;
+        }
+        return value;
+    }
+    function unary() {
+        if (peek() === "-") { position++; return -unary(); }
+        if (peek() === "+") { position++; return unary(); }
+        return power();
+    }
+    function power() {
+        var base = primary();
+        if (peek() === "^") { position++; return Math.pow(base, unary()); }
+        return base;
+    }
+    function primary() {
+        var token = tokens[position++];
+        if (token === "(") {
+            var value = expression();
+            if (tokens[position++] !== ")") throw new Error("missing )");
+            return value;
+        }
+        if (token !== undefined && /^\d/.test(token)) return parseFloat(token.replace(",", "."));
+        throw new Error("unexpected token");
+    }
+    try {
+        var result = expression();
+        return position === tokens.length && isFinite(result) ? result : null;
+    } catch (_) {
+        return null;
+    }
+}
+
+// Число для показа и копирования: без хвостов двоичной арифметики (0.1 + 0.2 → 0.3).
+function formatNumber(value) { return String(parseFloat(Number(value).toPrecision(12))); }
+
+// Разделы окна «Настройки» и системные действия для поиска; `keywords` — дополнительные слова.
+var SETTINGS_SECTIONS = [
+    {id: "network", label: "Сеть", keywords: "wi-fi wifi ethernet интернет профиль адрес"},
+    {id: "audio", label: "Звук", keywords: "громкость микрофон динамики"},
+    {id: "display", label: "Экран и яркость", keywords: "монитор яркость дисплей"},
+    {id: "bluetooth", label: "Bluetooth", keywords: "наушники блютуз"},
+    {id: "power", label: "Питание", keywords: "батарея энергосбережение"},
+    {id: "keyboard", label: "Клавиатура", keywords: "раскладка язык"},
+    {id: "shortcuts", label: "Сочетания клавиш", keywords: "клавиши горячие памятка"},
+    {id: "about", label: "О системе", keywords: "версия система компьютер"}
+];
+var SEARCH_ACTIONS = [
+    {id: "lock", title: "Заблокировать", keywords: "блокировка экран lock"},
+    {id: "logout", title: "Выйти из сеанса", keywords: "выход logout"},
+    {id: "reboot", title: "Перезагрузить", keywords: "перезагрузка reboot restart"},
+    {id: "poweroff", title: "Выключить", keywords: "выключение shutdown poweroff"},
+    {id: "screenshot", title: "Снимок области экрана", keywords: "скриншот screenshot снимок"},
+    {id: "clipboard", title: "История буфера", keywords: "буфер обмена clipboard"}
+];
+
+// Насколько `text` подходит под `needle`: начало строки — 3, начало слова — 2, где-то внутри — 1.
+function matchScore(text, needle) {
+    var value = String(text || "").toLowerCase();
+    if (!needle || value.indexOf(needle) < 0) return 0;
+    if (value.indexOf(needle) === 0) return 3;
+    return (" " + value).indexOf(" " + needle) >= 0 ? 2 : 1;
+}
+
+// Результаты поиска: вычисление, затем приложения, действия и разделы настроек по совпадению,
+// затем файлы. Пустой запрос — все приложения. `home` сокращается до «~» в путях файлов.
+function searchResults(query, apps, files, home, limit) {
+    var needle = String(query || "").trim().toLowerCase();
+    var max = limit || 40;
+    if (!needle) return (apps || []).slice(0, max).map(function(app) { return {kind: "app", id: app.id, title: app.name, subtitle: "Приложение"}; });
+    var scored = [];
+    (apps || []).forEach(function(app) {
+        var score = Math.max(matchScore(app.name, needle), matchScore(app.id, needle) - 0.5);
+        if (score > 0) scored.push({kind: "app", id: app.id, title: app.name, subtitle: "Приложение", score: score + 0.2});
+    });
+    SEARCH_ACTIONS.forEach(function(action) {
+        var score = Math.max(matchScore(action.title, needle), matchScore(action.keywords, needle) - 0.5);
+        if (score > 0) scored.push({kind: "action", id: action.id, title: action.title, subtitle: "Действие", score: score + 0.1});
+    });
+    SETTINGS_SECTIONS.forEach(function(section) {
+        var score = Math.max(matchScore(section.label, needle), matchScore(section.keywords, needle) - 0.5);
+        if (score > 0) scored.push({kind: "settings", id: section.id, title: section.label, subtitle: "Настройки", score: score});
+    });
+    scored.sort(function(a, b) { return b.score - a.score; });
+    var results = [];
+    var value = calculate(query);
+    if (value !== null) results.push({kind: "calc", id: "calc", title: "= " + formatNumber(value), value: formatNumber(value), subtitle: "Enter — скопировать результат"});
+    results = results.concat(scored.map(function(item) { delete item.score; return item; }));
+    (files || []).forEach(function(path) {
+        var slash = path.lastIndexOf("/");
+        var folder = path.slice(0, slash) || "/";
+        if (home && (folder === home || folder.indexOf(home + "/") === 0)) folder = "~" + folder.slice(home.length);
+        results.push({kind: "file", id: path, title: path.slice(slash + 1), subtitle: folder, path: path});
+    });
+    return results.slice(0, max);
 }

@@ -669,6 +669,7 @@ def test_shortcuts_target_expected_cli_calls():
         "qs -c quietline",
         "wl-paste --type text --watch quietline-shell clipboard store",
         "wl-paste --type image --watch quietline-shell clipboard store",
+        "quietline-shell files --update",
     ]
 
     modals = re.search(r"hl\.window_rule\(\{(.*?)\n\}\)", text, re.S)

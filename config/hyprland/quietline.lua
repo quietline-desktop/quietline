@@ -38,12 +38,14 @@ end)
 
 -- Сервис движка и оболочка стартуют вместе с Hyprland отдельными процессами: сбой
 -- оболочки не останавливает движок и клавиши, оболочка сама переподключается к движку.
--- История буфера пишут наблюдатели wl-paste за текстом и картинками.
+-- История буфера пишут наблюдатели wl-paste за текстом и картинками; индекс файлов
+-- домашнего каталога для поиска строится при входе.
 hl.on("hyprland.start", function ()
     hl.exec_cmd("quietline-engine serve")
     hl.exec_cmd("qs -c quietline")
     hl.exec_cmd("wl-paste --type text --watch quietline-shell clipboard store")
     hl.exec_cmd("wl-paste --type image --watch quietline-shell clipboard store")
+    hl.exec_cmd("quietline-shell files --update")
 end)
 
 -- Терминал запускает сам Hyprland: работает без сервиса движка и без панели.
@@ -92,7 +94,7 @@ hl.bind("SUPER + SHIFT + 0", hl.dsp.exec_cmd("quietline-engine move 10"))
 -- Режим текущего пространства: «Окна» ↔ «Тайлы».
 hl.bind("SUPER + M", hl.dsp.exec_cmd("quietline-engine toggle"))
 
--- Меню приложений оболочки на мониторе с фокусом, поле поиска в фокусе.
+-- Поиск оболочки на мониторе с фокусом: приложения, файлы, действия, вычисления.
 hl.bind("SUPER + Space", hl.dsp.exec_cmd("qs -c quietline ipc call quietline launcher"))
 
 -- Окно «Настройки» оболочки на последнем открытом разделе.

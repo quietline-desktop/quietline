@@ -8,6 +8,7 @@ import "settings"
 import "session"
 import "notifications"
 import "clipboard"
+import "search"
 import "bar"
 import "dock"
 import "logic/Models.js" as Models
@@ -26,11 +27,12 @@ ShellRoot {
     PowerService { id: powerService }
     SessionService { id: sessionService }
     ClipboardService { id: clipboardService }
+    SearchService { id: searchService }
     NotificationService { id: notificationService }
     NotificationPopups { service: notificationService }
     // Системные сервисы, общие для всех панелей, всплывающих окон и окна «Настройки».
     readonly property var services: ({network: networkService, audio: audioService, brightness: brightnessService,
-                                      bluetooth: bluetoothService, power: powerService, session: sessionService, clipboard: clipboardService, settings: settingsWindow})
+                                      bluetooth: bluetoothService, power: powerService, session: sessionService, clipboard: clipboardService, search: searchService, settings: settingsWindow})
     SettingsWindow { id: settingsWindow; services: root.services; desktop: desktopService }
     Variants {
         model: Quickshell.screens
