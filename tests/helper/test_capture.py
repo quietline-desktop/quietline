@@ -7,6 +7,7 @@ from datetime import datetime
 import pytest
 
 from quietline_shell import capture
+from quietline_shell.config import notification_text
 
 NOW = datetime(2026, 10, 28, 9, 15, 30)
 MONITORS = [{"name": "DP-1", "focused": False}, {"name": "eDP-1", "focused": True}]
@@ -55,7 +56,7 @@ def test_output_shot_saves_then_copies_then_notifies(tools, tmp_path):
     assert grim == ["grim", "-o", "eDP-1", "-"]
     assert tools.names()[-2:] == ["wl-copy", "notify-send"]
     assert next(data for args, data in tools.calls if args[0] == "wl-copy") == b"PNGDATA"
-    assert tools.notices() == [["Снимок экрана сохранён и скопирован", str(path)]]
+    assert tools.notices() == [[notification_text("screenshot_saved"), str(path)]]
 
 
 def test_same_second_gets_a_free_name(tools, tmp_path):

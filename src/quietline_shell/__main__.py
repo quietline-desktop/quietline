@@ -42,7 +42,7 @@ from typing import Any
 from quietline_shell import capture, clipboard, network, search, session
 from quietline_shell.config import (
     about, apply_keyboard, default_pins_path, default_region_path, load_pins, load_region, reduced_motion,
-    save_pins, save_region, validated_region,
+    notification_text, save_pins, save_region, validated_region,
 )
 
 
@@ -133,8 +133,9 @@ def _run(args: argparse.Namespace) -> dict[str, Any]:
                 return session.kill_app(args.pid)
             result = session.quit_app(args.pid, args.timeout)
             if args.notify and result["background"]:
-                session.notify(f"«{result['app'] or 'Приложение'}» продолжает работать в фоне",
-                               "Super+Shift+Q завершит его принудительно.")
+                app = result["app"] or notification_text("app_unnamed")
+                session.notify(notification_text("app_in_background", app=app),
+                               notification_text("app_in_background_hint"))
             return result
         case "about":
             return about()

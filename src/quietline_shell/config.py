@@ -6,8 +6,8 @@
 
 Язык и регион — `region.json` вида `{"version": 1, "language", "clock", "date", "layouts",
 "toggle"}`. Сохранение region также обновляет `locale.conf` (строка `LANG`, остальные строки
-файла сохраняются) и `quietline/keyboard.lua` с раскладками для Hyprland. Только стандартная
-библиотека.
+файла сохраняются) и `quietline/keyboard.lua` с раскладками для Hyprland. Тексты уведомлений
+`quietline-shell` — `NOTIFICATION_TEXTS` на языке из region. Только стандартная библиотека.
 """
 
 import json
@@ -95,6 +95,43 @@ def default_region(lang: str | None) -> dict[str, Any]:
         "layouts": list(LAYOUTS),
         "toggle": TOGGLES[0],
     }
+
+
+# Тексты уведомлений `quietline-shell`; одни ключи и подстановки в обоих языках.
+NOTIFICATION_TEXTS: dict[str, dict[str, str]] = {
+    "ru": {
+        "capture_failed": "Не удалось снять экран",
+        "save_failed": "Не удалось сохранить снимок",
+        "copy_failed": "Снимок сохранён, но не скопирован в буфер",
+        "screenshot_saved": "Снимок экрана сохранён и скопирован",
+        "editor_failed": "Не удалось открыть редактор снимка",
+        "lock_failed": "Не удалось заблокировать сеанс",
+        "app_in_background": "«{app}» продолжает работать в фоне",
+        "app_in_background_hint": "Super+Shift+Q завершит его принудительно.",
+        "app_unnamed": "Приложение",
+    },
+    "en": {
+        "capture_failed": "Could not take a screenshot",
+        "save_failed": "Could not save the screenshot",
+        "copy_failed": "Screenshot saved but not copied",
+        "screenshot_saved": "Screenshot saved and copied",
+        "editor_failed": "Could not open the screenshot editor",
+        "lock_failed": "Could not lock the session",
+        "app_in_background": "“{app}” keeps running in the background",
+        "app_in_background_hint": "Super+Shift+Q will force it to quit.",
+        "app_unnamed": "Application",
+    },
+}
+
+
+def notification_text(key: str, **values: str) -> str:
+    """Текст уведомления на языке из `region.json`; файл повреждён или не читается — язык по `LANG`."""
+    lang = os.environ.get("LANG")
+    try:
+        language = load_region(default_region_path(), lang)["language"]
+    except (ValueError, OSError):
+        language = default_region(lang)["language"]
+    return NOTIFICATION_TEXTS[language][key].format(**values)
 
 
 def validated_region(data: object, current: dict[str, Any]) -> dict[str, Any]:

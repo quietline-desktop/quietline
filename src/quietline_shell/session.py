@@ -24,6 +24,8 @@ import time
 from pathlib import Path
 from typing import Any
 
+from quietline_shell.config import notification_text
+
 SESSION_ACTIONS = ("logout", "reboot", "poweroff")
 CLOSE_TIMEOUT = 20.0
 QUIT_TIMEOUT = 10.0
@@ -190,11 +192,11 @@ def lock() -> dict[str, bool]:
     deadline = time.monotonic() + LOCK_WAIT
     while not marker.exists():
         if process.poll() is not None:
-            notify("Не удалось заблокировать сеанс", "The lock screen exited.", urgency="critical")
+            notify(notification_text("lock_failed"), "The lock screen exited.", urgency="critical")
             raise RuntimeError("the lock screen exited before locking")
         if time.monotonic() >= deadline:
             process.terminate()
-            notify("Не удалось заблокировать сеанс", "The lock screen did not lock in time.", urgency="critical")
+            notify(notification_text("lock_failed"), "The lock screen did not lock in time.", urgency="critical")
             raise RuntimeError("the lock screen did not lock in time")
         time.sleep(0.1)
     _wipe_clipboard()

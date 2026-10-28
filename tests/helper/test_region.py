@@ -1,13 +1,16 @@
 """Тесты настроек языка и региона: `region.json`, `locale.conf`, `keyboard.lua` и CLI `region`."""
 
 import json
+import re
 import subprocess
 
 import pytest
 
 from quietline_shell import config
 from quietline_shell.__main__ import main
-from quietline_shell.config import default_region, keyboard_lua, load_region, save_region, validated_region
+from quietline_shell.config import (
+    NOTIFICATION_TEXTS, default_region, keyboard_lua, load_region, notification_text, save_region, validated_region,
+)
 
 RU_DEFAULT = {"language": "ru", "clock": "24h", "date": "dmy", "layouts": ["us", "ru"], "toggle": "grp:lalt_lshift_toggle"}
 EN_DEFAULT = {"language": "en", "clock": "12h", "date": "mdy", "layouts": ["us", "ru"], "toggle": "grp:lalt_lshift_toggle"}
@@ -155,3 +158,32 @@ def test_keyboard_apply_success_and_missing_hyprctl(monkeypatch):
 
     monkeypatch.setattr(config.subprocess, "run", slow)
     assert config.apply_keyboard(RU_DEFAULT) is False
+
+
+def test_notification_text_follows_region_language(tmp_path, monkeypatch):
+    monkeypatch.setenv("XDG_CONFIG_HOME", str(tmp_path))
+    monkeypatch.setenv("LANG", "ru_RU.UTF-8")
+    assert notification_text("screenshot_saved") == "Снимок экрана сохранён и скопирован"
+    save_region(tmp_path / "quietline" / "region.json", {**RU_DEFAULT, "language": "en"}, tmp_path)
+    assert notification_text("screenshot_saved") == "Screenshot saved and copied"
+    assert notification_text("app_in_background", app="Code") == "“Code” keeps running in the background"
+
+
+def test_notification_text_falls_back_to_lang(tmp_path, monkeypatch):
+    monkeypatch.setenv("XDG_CONFIG_HOME", str(tmp_path))
+    monkeypatch.setenv("LANG", "ru_RU.UTF-8")
+    assert notification_text("lock_failed") == "Не удалось заблокировать сеанс"
+    monkeypatch.setenv("LANG", "en_US.UTF-8")
+    assert notification_text("lock_failed") == "Could not lock the session"
+    (tmp_path / "quietline").mkdir()
+    (tmp_path / "quietline" / "region.json").write_text("{broken")
+    assert notification_text("lock_failed") == "Could not lock the session"
+    monkeypatch.setenv("LANG", "ru_RU.UTF-8")
+    assert notification_text("lock_failed") == "Не удалось заблокировать сеанс"
+
+
+def test_notification_texts_have_both_languages():
+    assert set(NOTIFICATION_TEXTS) == {"ru", "en"}
+    assert NOTIFICATION_TEXTS["ru"].keys() == NOTIFICATION_TEXTS["en"].keys()
+    for key, text in NOTIFICATION_TEXTS["ru"].items():
+        assert re.findall(r"\{(\w+)\}", text) == re.findall(r"\{(\w+)\}", NOTIFICATION_TEXTS["en"][key]), key

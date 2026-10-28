@@ -14,6 +14,7 @@ from datetime import datetime
 from pathlib import Path
 from typing import Any
 
+from quietline_shell.config import notification_text
 from quietline_shell.session import copy_to_clipboard, notify, run
 
 FILE_PATTERN = "Screenshot_%Y-%m-%d_%H-%M-%S"
@@ -27,11 +28,7 @@ class CaptureError(RuntimeError):
         self.step = step
 
 
-_STEP_TEXTS = {
-    "capture": "Не удалось снять экран",
-    "save": "Не удалось сохранить снимок",
-    "copy": "Снимок сохранён, но не скопирован в буфер",
-}
+_STEP_KEYS = {"capture": "capture_failed", "save": "save_failed", "copy": "copy_failed"}
 
 
 def screenshots_dir() -> Path:
@@ -101,9 +98,9 @@ def capture_output(now: datetime | None = None) -> dict[str, Any]:
         except RuntimeError as error:
             raise CaptureError("copy", str(error)) from error
     except CaptureError as error:
-        notify(_STEP_TEXTS[error.step], str(error), urgency="critical")
+        notify(notification_text(_STEP_KEYS[error.step]), str(error), urgency="critical")
         raise
-    notify("Снимок экрана сохранён и скопирован", str(path))
+    notify(notification_text("screenshot_saved"), str(path))
     return {"path": str(path), "copied": True}
 
 
@@ -112,7 +109,7 @@ def capture_region() -> dict[str, bool]:
     try:
         selection = subprocess.run(["slurp"], capture_output=True, text=True, timeout=300, check=False)
     except FileNotFoundError as error:
-        notify(_STEP_TEXTS["capture"], "slurp is not installed", urgency="critical")
+        notify(notification_text(_STEP_KEYS["capture"]), "slurp is not installed", urgency="critical")
         raise CaptureError("capture", "slurp is not installed") from error
     except subprocess.TimeoutExpired:
         return {"cancelled": True}
@@ -124,10 +121,10 @@ def capture_region() -> dict[str, bool]:
         directory = screenshots_dir()
         directory.mkdir(parents=True, exist_ok=True)
     except OSError as error:
-        notify(_STEP_TEXTS["save"], str(error), urgency="critical")
+        notify(notification_text(_STEP_KEYS["save"]), str(error), urgency="critical")
         raise CaptureError("save", f"cannot create {error.filename}: {error.strerror}") from error
     except CaptureError as error:
-        notify(_STEP_TEXTS[error.step], str(error), urgency="critical")
+        notify(notification_text(_STEP_KEYS[error.step]), str(error), urgency="critical")
         raise
     command = [
         "satty", "--filename", "-", "--output-filename", str(directory / f"{FILE_PATTERN}.png"),
@@ -137,7 +134,7 @@ def capture_region() -> dict[str, bool]:
         editor = subprocess.Popen(command, stdin=subprocess.PIPE, stdout=subprocess.DEVNULL,
                                   stderr=subprocess.DEVNULL, start_new_session=True)
     except FileNotFoundError as error:
-        notify("Не удалось открыть редактор снимка", "satty is not installed", urgency="critical")
+        notify(notification_text("editor_failed"), "satty is not installed", urgency="critical")
         raise CaptureError("capture", "satty is not installed") from error
     assert editor.stdin is not None
     editor.stdin.write(png)
