@@ -17,15 +17,17 @@ FloatingWindow {
     required property var services
     required property var desktop
     property string section: "network"
+    // Разделы не зависят от языка: подпись берётся в делегате по `labelKey`, поэтому смена языка
+    // не пересоздаёт модель списка и не сбрасывает текущий раздел.
     readonly property var sections: [
-        {id: "network", label: Lang.s.settingsNetwork, icon: ""},
-        {id: "audio", label: Lang.s.settingsAudio, icon: ""},
-        {id: "display", label: Lang.s.settingsDisplay, icon: ""},
-        {id: "bluetooth", label: Lang.s.settingsBluetooth, icon: ""},
-        {id: "power", label: Lang.s.settingsPower, icon: ""},
-        {id: "region", label: Lang.s.settingsRegion, icon: ""},
-        {id: "shortcuts", label: Lang.s.settingsShortcuts, icon: ""},
-        {id: "about", label: Lang.s.settingsAbout, icon: ""}
+        {id: "network", labelKey: "settingsNetwork", icon: ""},
+        {id: "audio", labelKey: "settingsAudio", icon: ""},
+        {id: "display", labelKey: "settingsDisplay", icon: ""},
+        {id: "bluetooth", labelKey: "settingsBluetooth", icon: ""},
+        {id: "power", labelKey: "settingsPower", icon: ""},
+        {id: "region", labelKey: "settingsRegion", icon: ""},
+        {id: "shortcuts", labelKey: "settingsShortcuts", icon: ""},
+        {id: "about", labelKey: "settingsAbout", icon: ""}
     ]
     // Привязки Hyprland; памятка `shortcuts` пересчитывается из них при смене языка и списка приложений.
     property var binds: []
@@ -104,7 +106,7 @@ FloatingWindow {
                     required property var modelData
                     required property int index
                     width: navigation.width
-                    hint: modelData.label
+                    hint: Lang.s[modelData.labelKey]
                     emphasized: root.section === modelData.id
                     focusPolicy: Qt.NoFocus
                     onClicked: navigation.currentIndex = index
@@ -120,7 +122,7 @@ FloatingWindow {
                         }
                         Text {
                             anchors.verticalCenter: parent.verticalCenter
-                            text: modelData.label
+                            text: Lang.s[modelData.labelKey]
                             font.family: Theme.sans; font.pixelSize: Theme.fontSize
                             color: root.section === modelData.id ? Theme.accentText : Theme.text
                         }
@@ -236,6 +238,7 @@ FloatingWindow {
                         }
                     }
                     Line { color: Theme.muted; text: Lang.f(Lang.s.keyboardToggleNote, Models.toggleLabel(Lang.toggle, Lang.s)) }
+                    Line { visible: !Lang.layoutsApplied; color: Theme.muted; text: Lang.s.regionLayoutsPending }
                 }
                 ColumnLayout {
                     Layout.margins: 24; spacing: 8

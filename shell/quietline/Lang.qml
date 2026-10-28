@@ -18,6 +18,8 @@ Singleton {
     property string toggle: "grp:lalt_lshift_toggle"
     // Текст последней ошибки чтения или записи настроек; пусто — ошибок нет.
     property string error: ""
+    // Применил ли Hyprland раскладки при последней записи; `false` — только после перезагрузки конфигурации.
+    property bool layoutsApplied: true
     readonly property var s: Strings.table(language)
     readonly property var locale: Qt.locale(Strings.localeName(language))
     // Изменения, пришедшие во время записи: отправляются следующей записью.
@@ -89,6 +91,7 @@ Singleton {
                 try { data = JSON.parse(text); }
                 catch (_) { root.failure("regionSaveFailed", "quietline-shell returned no JSON"); return; }
                 if (data.error) root.failure("regionSaveFailed", data.error);
+                else root.layoutsApplied = data.applied !== false;
             }
         }
         onRunningChanged: {

@@ -4,8 +4,8 @@
   проверяется и атомарно записывается;
 - `region [--set JSON] [--path PATH]` — `{"language", "clock", "date", "layouts", "toggle"}`:
   язык, форматы времени и даты, раскладки и сочетание переключения; с `--set` частичное
-  обновление проверяется, пишется в `region.json`, `locale.conf` и `quietline/keyboard.lua`
-  рядом с `PATH` (по умолчанию в `$XDG_CONFIG_HOME`), раскладки применяются в Hyprland,
+  обновление проверяется и пишется в `region.json`, а `locale.conf` и `quietline/keyboard.lua`
+  — в каталог на два уровня выше `PATH` (`PATH/../../`; по умолчанию `$XDG_CONFIG_HOME`), раскладки применяются в Hyprland,
   в ответ добавляется `"applied": true | false`;
 - `motion` — `{"reducedMotion": true | false}`;
 - `about` — `{os, kernel, hostname, cpu, memoryGb, hyprland, quickshell}` для страницы
@@ -54,7 +54,7 @@ def _parser() -> argparse.ArgumentParser:
     pins.add_argument("--path", type=Path, help="pins file (default: $XDG_CONFIG_HOME/quietline/pins.json)")
     region = commands.add_parser("region", help="print the language and region settings as JSON")
     region.add_argument("--set", dest="new_region", metavar="JSON", help="apply this JSON object of fields first")
-    region.add_argument("--path", type=Path, help="region file (default: $XDG_CONFIG_HOME/quietline/region.json)")
+    region.add_argument("--path", type=Path, help="region file (default: $XDG_CONFIG_HOME/quietline/region.json); locale.conf and quietline/keyboard.lua are written two directories above it")
     commands.add_parser("motion", help="print whether animations should be reduced")
     commands.add_parser("about", help="print system facts for the settings window")
     commands.add_parser("lock", help="start the lock screen unless it is already running")

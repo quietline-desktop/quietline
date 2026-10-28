@@ -103,6 +103,43 @@ def test_locale_conf_is_created_and_lang_appended(tmp_path):
     assert (tmp_path / "locale.conf").read_text(encoding="utf-8") == "LC_TIME=en_GB.UTF-8\nLANG=ru_RU.UTF-8\n"
 
 
+def test_every_lang_line_is_replaced(tmp_path):
+    (tmp_path / "locale.conf").write_text("LANG=en_US.UTF-8\nLC_TIME=en_GB.UTF-8\nLANG=de_DE.UTF-8\n", encoding="utf-8")
+    save_region(tmp_path / "quietline" / "region.json", {**EN_DEFAULT, "language": "ru"}, tmp_path)
+    assert (tmp_path / "locale.conf").read_text(encoding="utf-8") == "LANG=ru_RU.UTF-8\nLC_TIME=en_GB.UTF-8\nLANG=ru_RU.UTF-8\n"
+
+
+def test_clock_change_does_not_rewrite_locale_conf(tmp_path):
+    path = tmp_path / "quietline" / "region.json"
+    save_region(path, EN_DEFAULT, tmp_path)
+    inode = (tmp_path / "locale.conf").stat().st_ino
+    save_region(path, {**EN_DEFAULT, "clock": "24h"}, tmp_path)
+    assert (tmp_path / "locale.conf").stat().st_ino == inode
+
+
+def test_matching_lang_keeps_file_bytes(tmp_path):
+    (tmp_path / "locale.conf").write_text("# user\nLANG=ru_RU.UTF-8", encoding="utf-8")
+    save_region(tmp_path / "quietline" / "region.json", RU_DEFAULT, tmp_path)
+    assert (tmp_path / "locale.conf").read_text(encoding="utf-8") == "# user\nLANG=ru_RU.UTF-8"
+
+
+def test_locale_write_failure_keeps_region_json(tmp_path, monkeypatch):
+    path = tmp_path / "quietline" / "region.json"
+    save_region(path, EN_DEFAULT, tmp_path)
+    before = path.read_text(encoding="utf-8")
+    original = config._atomic_write_text
+
+    def failing(target, text):
+        if target.name == "locale.conf":
+            raise OSError("disk full")
+        original(target, text)
+
+    monkeypatch.setattr(config, "_atomic_write_text", failing)
+    with pytest.raises(OSError):
+        save_region(path, {**EN_DEFAULT, "language": "ru"}, tmp_path)
+    assert path.read_text(encoding="utf-8") == before
+
+
 def test_keyboard_lua_follows_order_and_toggle(tmp_path, capsys):
     region = {**RU_DEFAULT, "layouts": ["ru", "us"], "toggle": "grp:caps_toggle"}
     assert keyboard_lua(region) == 'return { kb_layout = "ru,us", kb_options = "grp:caps_toggle" }\n'

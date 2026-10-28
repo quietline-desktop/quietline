@@ -194,30 +194,37 @@ def apply_keyboard(region: dict[str, Any]) -> bool:
     return result.returncode == 0
 
 
-def _locale_conf(existing: str, language: str) -> str:
-    """`existing` с заменённой строкой `LANG`; без неё строка дописывается в конец."""
+def _locale_conf(existing: str, language: str) -> str | None:
+    """`existing` с заменой каждой строки `LANG`; без неё строка дописывается в конец.
+
+    `None`, если в файле уже есть строки `LANG` и все они совпадают с нужной.
+    """
     line = f"LANG={_LOCALES[language]}"
     lines = existing.splitlines()
-    for index, item in enumerate(lines):
-        if item.startswith("LANG="):
-            lines[index] = line
-            break
-    else:
+    positions = [index for index, item in enumerate(lines) if item.startswith("LANG=")]
+    if positions and all(lines[index] == line for index in positions):
+        return None
+    for index in positions:
+        lines[index] = line
+    if not positions:
         lines.append(line)
     return "\n".join(lines) + "\n"
 
 
 def save_region(path: Path, region: dict[str, Any], config_home: Path) -> None:
-    """Атомарно пишет `region.json`, затем `config_home/locale.conf` и `config_home/quietline/keyboard.lua`."""
+    """Пишет `config_home/locale.conf` (только при другой строке `LANG`), `config_home/quietline/keyboard.lua`
+    и последним атомарно `region.json`: при сбое записи прежние настройки остаются в силе."""
     checked = validated_region(region, region)
-    atomic_write_json(path, {"version": 1, **checked})
     locale_path = config_home / "locale.conf"
     try:
         existing = locale_path.read_text(encoding="utf-8")
     except FileNotFoundError:
         existing = ""
-    _atomic_write_text(locale_path, _locale_conf(existing, checked["language"]))
+    locale_text = _locale_conf(existing, checked["language"])
+    if locale_text is not None:
+        _atomic_write_text(locale_path, locale_text)
     _atomic_write_text(config_home / "quietline" / "keyboard.lua", keyboard_lua(checked))
+    atomic_write_json(path, {"version": 1, **checked})
 
 
 def _atomic_write_text(path: Path, text: str) -> None:
