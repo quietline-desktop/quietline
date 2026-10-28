@@ -148,6 +148,7 @@ class State:
     error: str | None = None
     changes: list = field(default_factory=list)
     finished: bool = False
+    rolled_back: bool = False
 
     _TYPES = {'selection': dict, 'done': dict, 'changes': list}
 
@@ -182,13 +183,14 @@ class State:
         return cls(path=path, version=raw.get('version', 1),
                    installer_language=raw.get('installerLanguage'), system_language=raw.get('systemLanguage'),
                    snapshot=snapshot, failed=raw.get('failed'), error=raw.get('error'),
-                   finished=bool(raw.get('finished', False)), **values)
+                   finished=bool(raw.get('finished', False)),
+                   rolled_back=bool(raw.get('rolledBack', False)), **values)
 
     def to_json(self) -> dict:
         return {'version': self.version, 'installerLanguage': self.installer_language,
                 'systemLanguage': self.system_language, 'selection': self.selection, 'snapshot': self.snapshot,
                 'done': self.done, 'failed': self.failed, 'error': self.error, 'changes': self.changes,
-                'finished': self.finished}
+                'finished': self.finished, 'rolledBack': self.rolled_back}
 
     def save(self) -> None:
         if self.path is not None:
