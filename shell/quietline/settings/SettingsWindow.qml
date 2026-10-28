@@ -10,7 +10,8 @@ import "../logic/Models.js" as Models
 
 // Окно «Настройки»: боковая навигация и страницы на тех же компонентах управления,
 // что и всплывающие панели, поэтому изменение здесь видно и там.
-// `open(section)` открывает раздел по идентификатору; пусто или неизвестно — текущий раздел.
+// `open(section)` открывает раздел по идентификатору (`keyboard` открывает `region`);
+// пусто или неизвестно — текущий раздел.
 FloatingWindow {
     id: root
     required property var services
@@ -22,7 +23,7 @@ FloatingWindow {
         {id: "display", label: Lang.s.settingsDisplay, icon: ""},
         {id: "bluetooth", label: Lang.s.settingsBluetooth, icon: ""},
         {id: "power", label: Lang.s.settingsPower, icon: ""},
-        {id: "keyboard", label: Lang.s.settingsKeyboard, icon: ""},
+        {id: "region", label: Lang.s.settingsRegion, icon: ""},
         {id: "shortcuts", label: Lang.s.settingsShortcuts, icon: ""},
         {id: "about", label: Lang.s.settingsAbout, icon: ""}
     ]
@@ -38,7 +39,8 @@ FloatingWindow {
     color: Theme.background
 
     function open(name) {
-        if (name && sections.some(item => item.id === name)) section = name;
+        var id = Models.resolveSection(name);
+        if (id && sections.some(item => item.id === id)) section = id;
         visible = true;
         Qt.callLater(function() { navigation.forceActiveFocus(); });
     }
@@ -70,6 +72,9 @@ FloatingWindow {
 
     component PageTitle: Text {
         color: Theme.text; font.family: Theme.sans; font.pixelSize: Theme.titleFontSize; font.bold: true
+    }
+    component Heading: Text {
+        color: Theme.text; font.family: Theme.sans; font.pixelSize: Theme.fontSize; font.bold: true
     }
     component Line: Text {
         color: Theme.text; font.family: Theme.sans; font.pixelSize: Theme.fontSize
@@ -173,12 +178,64 @@ FloatingWindow {
                     PowerControls { power: root.services.power; Layout.fillWidth: true }
                 }
                 ColumnLayout {
+                    id: regionPage
                     Layout.margins: 24; spacing: 14
-                    PageTitle { text: Lang.s.settingsKeyboard }
+                    // Дата для подписей форматов; обновляется при каждом открытии раздела.
+                    property date today: new Date()
+                    onVisibleChanged: { if (visible) today = new Date(); }
+                    PageTitle { text: Lang.s.settingsRegion }
+                    Line { visible: Lang.error !== ""; color: Theme.danger; text: Lang.error }
+
+                    Heading { text: Lang.s.regionLanguageTitle }
+                    Flow {
+                        Layout.fillWidth: true; Layout.maximumWidth: 560; spacing: 6
+                        ShellButton { text: Lang.s.languageRu; emphasized: Lang.language === "ru"; onClicked: Lang.update({language: "ru"}) }
+                        ShellButton { text: Lang.s.languageEn; emphasized: Lang.language === "en"; onClicked: Lang.update({language: "en"}) }
+                    }
+                    Line { color: Theme.muted; font.pixelSize: Theme.smallFontSize; text: Lang.s.regionRestartNote }
+
+                    Heading { text: Lang.s.clockTitle }
+                    Flow {
+                        Layout.fillWidth: true; Layout.maximumWidth: 560; spacing: 6
+                        ShellButton { text: Lang.s.clock24; emphasized: Lang.clock === "24h"; onClicked: Lang.update({clock: "24h"}) }
+                        ShellButton { text: Lang.s.clock12; emphasized: Lang.clock === "12h"; onClicked: Lang.update({clock: "12h"}) }
+                    }
+                    Heading { text: Lang.s.regionDateTitle }
+                    Flow {
+                        Layout.fillWidth: true; Layout.maximumWidth: 560; spacing: 6
+                        Repeater {
+                            model: ["dmy", "ymd", "mdy"]
+                            delegate: ShellButton {
+                                required property string modelData
+                                text: Lang.dateIn(regionPage.today, modelData)
+                                emphasized: Lang.date === modelData
+                                onClicked: Lang.update({date: modelData})
+                            }
+                        }
+                    }
+
+                    Heading { text: Lang.s.regionLayoutsTitle }
                     Line { text: Lang.f(Lang.s.keyboardCurrent, root.desktop.keyboardLayoutName || root.desktop.keyboardLayout) }
-                    Line { text: Lang.f(Lang.s.keyboardLayouts, (root.desktop.keyboard && root.desktop.keyboard.layout ? root.desktop.keyboard.layout.split(",").map(item => item.trim().toUpperCase()).join(", ") : Lang.s.noData)) }
-                    Line { color: Theme.muted; text: Lang.s.keyboardToggleNote }
-                    ShellButton { text: Lang.s.keyboardNext; onClicked: root.desktop.switchLayout() }
+                    Line { text: Lang.f(Lang.s.regionOrder, Lang.layouts.map(code => Models.layoutLabel(code, Lang.s)).join(" → ")) }
+                    Flow {
+                        Layout.fillWidth: true; Layout.maximumWidth: 560; spacing: 6
+                        ShellButton { text: Lang.s.layoutSwap; onClicked: Lang.update({layouts: Lang.layouts.slice().reverse()}) }
+                        ShellButton { text: Lang.s.keyboardNext; onClicked: root.desktop.switchLayout() }
+                    }
+                    Heading { text: Lang.s.regionToggleTitle }
+                    Flow {
+                        Layout.fillWidth: true; Layout.maximumWidth: 560; spacing: 6
+                        Repeater {
+                            model: ["grp:lalt_lshift_toggle", "grp:alt_shift_toggle", "grp:ctrl_shift_toggle", "grp:caps_toggle"]
+                            delegate: ShellButton {
+                                required property string modelData
+                                text: Models.toggleLabel(modelData, Lang.s)
+                                emphasized: Lang.toggle === modelData
+                                onClicked: Lang.update({toggle: modelData})
+                            }
+                        }
+                    }
+                    Line { color: Theme.muted; text: Lang.f(Lang.s.keyboardToggleNote, Models.toggleLabel(Lang.toggle, Lang.s)) }
                 }
                 ColumnLayout {
                     Layout.margins: 24; spacing: 8

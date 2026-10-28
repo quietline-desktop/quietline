@@ -371,3 +371,41 @@ test('texts follow the English table',()=>{
  const network=plain(M.searchResults('network',[],[],'/home/k',undefined,ru));
  assert.equal(network[0].id,'network'); assert.equal(network[0].title,'Сеть');
 });
+
+test('settings: region replaces keyboard and keyboard is an alias',()=>{
+ assert.equal(M.SETTINGS_SECTIONS.some(item=>item.id==='keyboard'),false);
+ assert.equal(M.SETTINGS_SECTIONS.some(item=>item.id==='region'),true);
+ assert.equal(M.resolveSection('keyboard'),'region');
+ assert.equal(M.resolveSection('region'),'region');
+ assert.equal(M.resolveSection('network'),'network');
+ assert.equal(M.resolveSection('constructor'),'constructor');
+ for(const [query,table] of [['раскладка',ru],['keyboard',en],['язык',en],['language',ru]]){
+  const rows=plain(M.searchResults(query,[],[],'/home/k',undefined,table));
+  assert.ok(rows.some(row=>row.kind==='settings'&&row.id==='region'),query);
+ }
+ assert.equal(ru[M.SETTINGS_SECTIONS.find(item=>item.id==='region').label],'Язык и регион');
+ assert.equal(en[M.SETTINGS_SECTIONS.find(item=>item.id==='region').label],'Language and region');
+});
+test('search actions are found by a word of either language',()=>{
+ for(const [query,id] of [['заблокировать','lock'],['выйти','logout'],['перезагрузить','reboot'],['выключить','poweroff'],['о системе','about']]){
+  for(const table of [ru,en]){
+   const rows=plain(M.searchResults(query,[],[],'/home/k',undefined,table));
+   assert.ok(rows.some(row=>row.id===id),`${query} ${id}`);
+  }
+ }
+ for(const [query,id] of [['lock','lock'],['log out','logout'],['restart','reboot'],['shut down','poweroff'],['about','about']]){
+  const rows=plain(M.searchResults(query,[],[],'/home/k',undefined,ru));
+  assert.ok(rows.some(row=>row.id===id),`${query} ${id}`);
+ }
+});
+test('toggle labels follow the chosen shortcut',()=>{
+ assert.equal(M.toggleLabel('grp:lalt_lshift_toggle',ru),'Левые Alt+Shift');
+ assert.equal(M.toggleLabel('grp:lalt_lshift_toggle',en),'Left Alt+Shift');
+ assert.equal(M.toggleLabel('grp:alt_shift_toggle',en),'Alt+Shift');
+ assert.equal(M.toggleLabel('grp:ctrl_shift_toggle',ru),'Ctrl+Shift');
+ assert.equal(M.toggleLabel('grp:caps_toggle',en),'Caps Lock');
+ assert.equal(M.toggleLabel('unknown',en),'unknown');
+ assert.equal(M.toggleLabel('constructor',en),'constructor');
+ assert.equal(en.barLayoutHint.replace('{0}','Caps Lock'),'Switch layout · Caps Lock');
+ assert.match(ru.keyboardToggleNote,/\{0\}/);
+});

@@ -543,10 +543,32 @@ var SETTINGS_SECTIONS = [
     {id: "display", label: "settingsDisplay", keywords: "settingsDisplayKeywords"},
     {id: "bluetooth", label: "settingsBluetooth", keywords: "settingsBluetoothKeywords"},
     {id: "power", label: "settingsPower", keywords: "settingsPowerKeywords"},
-    {id: "keyboard", label: "settingsKeyboard", keywords: "settingsKeyboardKeywords"},
+    {id: "region", label: "settingsRegion", keywords: "settingsRegionKeywords"},
     {id: "shortcuts", label: "settingsShortcuts", keywords: "settingsShortcutsKeywords"},
     {id: "about", label: "settingsAbout", keywords: "settingsAboutKeywords"}
 ];
+// Прежние идентификаторы разделов и раздел, который открывается вместо них.
+var SECTION_ALIASES = {keyboard: "region"};
+function resolveSection(name) { return textKey(SECTION_ALIASES, name, name); }
+
+// Подписи сочетаний переключения раскладки (значения `grp:*` из `quietline-shell region`)
+// и раскладок; неизвестное значение возвращается как есть.
+var TOGGLE_KEYS = {
+    "grp:lalt_lshift_toggle": "toggleLaltLshift",
+    "grp:alt_shift_toggle": "toggleAltShift",
+    "grp:ctrl_shift_toggle": "toggleCtrlShift",
+    "grp:caps_toggle": "toggleCaps"
+};
+var LAYOUT_KEYS = {us: "layoutNameUs", ru: "layoutNameRu"};
+function toggleLabel(toggle, s) {
+    var key = textKey(TOGGLE_KEYS, toggle, "");
+    return key ? s[key] : String(toggle);
+}
+function layoutLabel(code, s) {
+    var key = textKey(LAYOUT_KEYS, code, "");
+    return key ? s[key] : String(code);
+}
+
 var SEARCH_ACTIONS = [
     {id: "lock", title: "actionLock", keywords: "actionLockKeywords"},
     {id: "logout", title: "actionLogout", keywords: "actionLogoutKeywords"},

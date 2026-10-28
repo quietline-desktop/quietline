@@ -72,3 +72,18 @@ test('qml and models have no cyrillic string literals',()=>{
  const found=files.flatMap(cyrillicLiterals);
  assert.deepEqual(found,[]);
 });
+test('every Lang.s key used in QML exists in Strings',()=>{
+ const base=path.join(root,'shell/quietline');
+ const used=new Map();
+ for(const file of walk(base).filter(f=>f.endsWith('.qml'))){
+  for(const match of fs.readFileSync(file,'utf8').matchAll(/Lang\.s\.(\w+)/g)){
+   if(!used.has(match[1])) used.set(match[1],path.relative(root,file));
+  }
+ }
+ assert.ok(used.size>0);
+ for(const language of ['en','ru']){
+  const table=S.table(language);
+  const missing=[...used].filter(([key])=>typeof table[key]!=='string').map(([key,file])=>`${key} (${file})`);
+  assert.deepEqual(missing,[],language);
+ }
+});

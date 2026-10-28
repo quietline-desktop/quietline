@@ -43,6 +43,7 @@ docs/design/              — утверждённые визуальные ма
 docs/superpowers/specs/   — спеки: что строим и почему
 docs/superpowers/plans/   — планы реализации по шагам
 config/hyprland/          — Lua-конфигурация Hyprland: раскладка, запуск сервиса и оболочки, клавиши, теги диалогов
+config/fish/              — `quietline-locale.fish`: сообщения программ в терминале fish остаются английскими
 config/polkit/            — правило polkit для сетевых профилей и отката NetworkManager
 scripts/                  — сценарии проверки в живом сеансе (`smoke-window-engine.md`, `smoke-quickshell.md`, `smoke-system-panels.md`, `smoke-daily-actions.md`), запуск оболочки из репозитория `run-shell`
 shell/quietline/          — конфигурация Quickshell (`qs -c quietline`): `shell.qml`, тема `Theme.qml`, стенд IPC `IpcHarness.qml`

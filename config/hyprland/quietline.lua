@@ -17,6 +17,21 @@ hl.config({
     misc = { allow_session_lock_restore = true },
 })
 
+-- Раскладки us и ru и сочетание их переключения. Оболочка пишет выбор в файл
+-- quietline/keyboard.lua каталога настроек: он возвращает таблицу с kb_layout и kb_options.
+-- Без файла или при ошибке в нём — us,ru и левые Alt+Shift.
+local config_home = os.getenv("XDG_CONFIG_HOME")
+if not config_home or config_home == "" then
+    config_home = (os.getenv("HOME") or "") .. "/.config"
+end
+local keyboard = { kb_layout = "us,ru", kb_options = "grp:lalt_lshift_toggle" }
+local loaded, chosen = pcall(dofile, config_home .. "/quietline/keyboard.lua")
+if loaded and type(chosen) == "table"
+    and type(chosen.kb_layout) == "string" and type(chosen.kb_options) == "string" then
+    keyboard = chosen
+end
+hl.config({ input = { kb_layout = keyboard.kb_layout, kb_options = keyboard.kb_options } })
+
 -- Модальные окна плавают и получают тег quietline-modal; движок видит теги в
 -- hyprctl -j clients и такие окна не переставляет.
 hl.window_rule({

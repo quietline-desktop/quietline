@@ -27,6 +27,8 @@ Singleton {
     function f(template) { return Strings.format(template, Array.prototype.slice.call(arguments, 1)); }
     function time(value) { return value.toLocaleTimeString(locale, Strings.timeFormat(clock)); }
     function shortDate(value) { return value.toLocaleDateString(locale, Strings.dateFormat(date)); }
+    // Дата в заданном формате (`dmy` | `ymd` | `mdy`), а не в выбранном.
+    function dateIn(value, format) { return value.toLocaleDateString(locale, Strings.dateFormat(format)); }
     function longDate(value) { return value.toLocaleDateString(locale, "dddd, d MMMM"); }
 
     // Сохраняет часть настроек (`{language, clock, date, layouts, toggle}`) и перечитывает их.

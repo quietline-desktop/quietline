@@ -196,7 +196,7 @@ PanelWindow {
             }
             ShellButton {
                 text: root.desktop.keyboardLayout
-                hint: (root.desktop.keyboardLayoutName ? root.desktop.keyboardLayoutName + " · " : "") + Lang.s.barLayoutHint
+                hint: (root.desktop.keyboardLayoutName ? root.desktop.keyboardLayoutName + " · " : "") + Lang.f(Lang.s.barLayoutHint, Models.toggleLabel(Lang.toggle, Lang.s))
                 onClicked: root.desktop.switchLayout()
             }
             Text {

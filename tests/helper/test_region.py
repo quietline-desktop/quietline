@@ -3,6 +3,7 @@
 import json
 import re
 import subprocess
+from pathlib import Path
 
 import pytest
 
@@ -187,3 +188,25 @@ def test_notification_texts_have_both_languages():
     assert NOTIFICATION_TEXTS["ru"].keys() == NOTIFICATION_TEXTS["en"].keys()
     for key, text in NOTIFICATION_TEXTS["ru"].items():
         assert re.findall(r"\{(\w+)\}", text) == re.findall(r"\{(\w+)\}", NOTIFICATION_TEXTS["en"][key]), key
+
+
+ROOT = Path(__file__).resolve().parents[2]
+
+
+def test_lua_config_reads_keyboard_file_with_defaults():
+    text = (ROOT / "config/hyprland/quietline.lua").read_text(encoding="utf-8")
+    assert "quietline/keyboard.lua" in text
+    assert "pcall(dofile" in text
+    assert '"us,ru"' in text
+    assert '"grp:lalt_lshift_toggle"' in text
+    assert "kb_layout" in text and "kb_options" in text
+    line = keyboard_lua({**RU_DEFAULT, "layouts": ["ru", "us"], "toggle": "grp:caps_toggle"})
+    assert line == 'return { kb_layout = "ru,us", kb_options = "grp:caps_toggle" }\n'
+    assert line.count("\n") == 1
+
+
+def test_fish_locale_keeps_terminal_messages_english():
+    text = (ROOT / "config/fish/quietline-locale.fish").read_text(encoding="utf-8")
+    assert "set -gx LC_MESSAGES en_US.UTF-8" in text
+    assert "set -e LANGUAGE" in text
+    assert not re.search(r"\bLANG\b(?!UAGE)", re.sub(r"#.*", "", text))

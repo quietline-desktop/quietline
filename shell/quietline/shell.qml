@@ -93,7 +93,7 @@ ShellRoot {
             if (item) item.bar.confirmKill(desktopService.windows.find(window => window.activated) || null);
         }
         // Окно «Настройки» на разделе `section` (`network`, `audio`, `display`, `bluetooth`,
-        // `power`, `keyboard`, `shortcuts`, `about`); пусто — последний открытый раздел.
+        // `power`, `region`, `shortcuts`, `about`; `keyboard` открывает `region`); пусто — последний открытый раздел.
         function settings(section: string): void { settingsWindow.open(section); }
     }
 }
