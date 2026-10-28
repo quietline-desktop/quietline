@@ -646,6 +646,8 @@ def test_shortcuts_target_expected_cli_calls():
     expected["SUPER + L"] = "quietline-shell lock"
     expected["SUPER + Q"] = "quietline-shell app quit --notify"
     expected["SUPER + SHIFT + Q"] = "qs -c quietline ipc call quietline confirmKill"
+    expected["Print"] = "quietline-shell screenshot output"
+    expected["SUPER + SHIFT + S"] = "quietline-shell screenshot region"
     expected["SUPER + Space"] = "qs -c quietline ipc call quietline launcher"
     expected["SUPER + I"] = "qs -c quietline ipc call quietline settings ''"
     assert dict(binds) == expected

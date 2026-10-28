@@ -11,6 +11,8 @@
 - `app quit [--pid P]` — корректный выход из приложения активного окна (или процесса `P`):
   `{"closed", "remaining", "background"}` (с `background` — ещё `app`); с `--notify` об оставшемся
   в фоне процессе сообщает уведомление; `app kill --pid P` — `{"killed": P}`;
+- `screenshot output|region` — снимок монитора с фокусом `{"path", "copied": true}` или
+  область в Satty `{"started": true}` / `{"cancelled": true}`; итог сообщает уведомление;
 - `network ACTION …` — NetworkManager: состояние, профили объекта, Wi-Fi, контрольные
   точки; подкоманды и их ответы — в docstring `quietline_shell.network`.
 
@@ -26,7 +28,7 @@ from collections.abc import Sequence
 from pathlib import Path
 from typing import Any
 
-from quietline_shell import network, session
+from quietline_shell import capture, network, session
 from quietline_shell.config import about, default_pins_path, load_pins, reduced_motion, save_pins
 
 
@@ -49,6 +51,8 @@ def _parser() -> argparse.ArgumentParser:
     quit_parser.add_argument("--timeout", type=float, default=session.QUIT_TIMEOUT, help="seconds to wait for windows to close")
     quit_parser.add_argument("--notify", action="store_true", help="send a notification if the process stays in the background")
     app_actions.add_parser("kill", help="kill an application process with SIGKILL").add_argument("--pid", type=int, required=True)
+    shot = commands.add_parser("screenshot", help="capture the focused monitor or a region")
+    shot.add_argument("target", choices=("output", "region"))
     network.add_parser(commands)
     return parser
 
@@ -61,6 +65,8 @@ def _run(args: argparse.Namespace) -> dict[str, Any]:
             return session.lock()
         case "session":
             return session.end_session(args.action, args.timeout)
+        case "screenshot":
+            return capture.capture_output() if args.target == "output" else capture.capture_region()
         case "app":
             if args.action == "kill":
                 return session.kill_app(args.pid)

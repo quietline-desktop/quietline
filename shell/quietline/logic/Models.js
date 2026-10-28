@@ -377,6 +377,8 @@ function bindAction(command) {
     if (command === "quietline-shell lock") return "Заблокировать сеанс";
     if (/^quietline-shell app quit/.test(command)) return "Выйти из приложения";
     if (/ipc call quietline confirmKill$/.test(command)) return "Принудительно завершить приложение";
+    if (command === "quietline-shell screenshot output") return "Снимок монитора в файл и буфер";
+    if (command === "quietline-shell screenshot region") return "Снимок области с разметкой";
     if (/ipc call quietline launcher$/.test(command)) return "Открыть меню приложений";
     if (/ipc call quietline settings/.test(command)) return "Открыть окно «Настройки»";
     return command;
