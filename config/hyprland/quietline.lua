@@ -1,5 +1,5 @@
 -- Quietline: движок пространств и окон, его клавиши и оболочка Quickshell для Hyprland ≥ 0.55.
--- Подключается из ~/.config/hypr/hyprland.lua строкой require("quietline").
+-- Подключается из ~/.config/hypr/hyprland.lua строкой dofile("/usr/share/quietline/hyprland/quietline.lua").
 --
 -- Внимание: стандартный пример конфигурации Hyprland сам привязывает клавиши, которые
 -- здесь заняты: SUPER + M (выход из Hyprland), SUPER + 1…0 и SUPER + SHIFT + 1…0,
