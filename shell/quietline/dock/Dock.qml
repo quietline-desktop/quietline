@@ -64,13 +64,13 @@ PanelWindow {
                         id: dockButton
                         required property string modelData
                         readonly property var app: root.appsById[modelData] || ({id: modelData, name: modelData, icon: "", windows: [],
-                            pinned: false, available: false, running: false, active: false, lastWindow: null})
+                            pinned: false, running: false, active: false, lastWindow: null})
                         property int pinIndex: root.desktop.pinned.indexOf(app.id)
                         property int dropIndex: -1
                         property bool launchFlash: false
                         width: Theme.dockIconSize; height: Theme.dockIconSize
                         hintBelow: false
-                        hint: app.name + (!app.available && !app.running ? " · " + Lang.s.dockNotInstalled : app.windows.length > 1 ? " · " + Lang.f(Lang.s.dockWindows, app.windows.length) + " · " + Lang.s.dockWheelHint : "")
+                        hint: app.name + (app.windows.length > 1 ? " · " + Lang.f(Lang.s.dockWindows, app.windows.length) + " · " + Lang.s.dockWheelHint : "")
                         emphasized: app.active
                         scale: hovered ? Theme.hoverScale : launchFlash ? 0.94 : 1
                         transform: Translate { y: dockButton.hovered ? -Theme.hoverLift : 0; Behavior on y { NumberAnimation { duration: root.indicators.reducedMotion ? 0 : Theme.hoverDuration } } }
@@ -82,13 +82,12 @@ PanelWindow {
                             width: 27; height: 27
                             source: Quickshell.iconPath(dockButton.app.icon, true)
                             sourceSize.width: 48; sourceSize.height: 48
-                            opacity: dockButton.app.available || dockButton.app.running ? 1 : 0.4
                         }
                         Text {
                             anchors.centerIn: parent
                             text: "\uf2d0"
                             font.family: Theme.icons; font.pixelSize: Theme.dockGlyphSize
-                            color: dockButton.app.available || dockButton.app.running ? Theme.text : Theme.muted
+                            color: Theme.text
                             visible: appIcon.status !== Image.Ready
                         }
                         Rectangle {
@@ -173,7 +172,7 @@ PanelWindow {
             id: menuItems
             width: parent.width
             spacing: 2
-            ShellMenuItem { id: newWindowItem; width: parent.width; text: Lang.s.dockNewWindow; enabled: !!menu.app && menu.app.available; onTriggered: { root.desktop.newWindow(menu.currentName, root.monitorName); menu.close(); } }
+            ShellMenuItem { id: newWindowItem; width: parent.width; text: Lang.s.dockNewWindow; enabled: !!menu.app && !!Models.desktopFor(menu.currentName, root.desktop.entries); onTriggered: { root.desktop.newWindow(menu.currentName, root.monitorName); menu.close(); } }
             ShellMenuItem { width: parent.width; text: menu.pinIndex >= 0 ? Lang.s.dockUnpin : Lang.s.dockPin; enabled: !root.desktop.saving; onTriggered: { root.desktop.togglePin(menu.currentName); menu.close(); } }
             Rectangle { width: parent.width; height: 1; color: Theme.border }
             ShellMenuItem { width: parent.width; text: Lang.s.dockMoveLeft; enabled: menu.pinIndex > 0 && !root.desktop.saving; onTriggered: { root.desktop.movePin(menu.pinIndex, menu.pinIndex - 1); menu.close(); } }

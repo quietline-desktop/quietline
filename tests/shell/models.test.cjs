@@ -128,12 +128,19 @@ const windows=[{address:'0x1',appId:'dolphin',monitor:'DP-1',workspace_id:1,focu
 test('dock groups local windows and focuses most recent even on another workspace',()=>{
  const groups=plain(M.groupApps(windows,'DP-1',['org.kde.dolphin','code'],entries,ru));
  assert.equal(groups.length,2);assert.equal(groups[0].windows.length,2);assert.equal(groups[0].lastWindow.address,'0x2');
- assert.equal(groups[1].running,false);assert.equal(groups[1].available,true);
+ assert.equal(groups[1].running,false);assert.equal(groups[1].name,'Code');
 });
 test('a foreign-monitor application is not treated as running locally',()=>{
  const groups=plain(M.groupApps(windows,'DP-3',['org.kde.dolphin','missing'],entries,ru));
+ assert.equal(groups.length,1);
  assert.equal(groups[0].running,false);assert.equal(groups[0].lastWindow,null);
- assert.equal(groups[1].available,false);
+});
+test('missing pinned app is hidden but running one stays',()=>{
+ const none=[{id:'other',name:'Other',icon:'x'}];
+ assert.deepEqual(plain(M.groupApps([],'DP-1',['org.kde.dolphin'],none,ru)),[]);
+ const running=plain(M.groupApps([{address:'0x9',appId:'org.kde.dolphin',monitor:'DP-1',workspace_id:1}],'DP-1',['org.kde.dolphin'],none,ru));
+ assert.equal(running.length,1);assert.equal(running[0].id,'org.kde.dolphin');assert.equal(running[0].pinned,true);
+ assert.equal(running[0].running,true);assert.equal('available' in running[0],false);
 });
 test('fullscreen hides dock only on the affected active workspace and output',()=>{
  const ws=[{monitor:'DP-1',workspace_id:1,fullscreen:2},{monitor:'DP-2',workspace_id:2,fullscreen:1}];
@@ -294,6 +301,16 @@ test('binds are described in Russian with modifier names',()=>{
  assert.deepEqual(rows[3],{keys:'Super+I',action:'Открыть окно «Настройки»'});
  assert.deepEqual(rows[4],{keys:'Ctrl+Alt+T',action:'my-tool --flag'});
  assert.deepEqual(plain(M.describeBinds(null,ru)),[]);
+});
+test('binds to missing applications are not listed',()=>{
+ const binds=[{modmask:64,key:'E',dispatcher:'exec',arg:'dolphin'},{modmask:64,key:'Return',dispatcher:'exec',arg:'ghostty'},{modmask:64,key:'M',dispatcher:'exec',arg:'quietline-engine toggle'}];
+ const none=[{id:'other',name:'Other',icon:'x'}];
+ assert.deepEqual(plain(M.describeBinds(binds,en,none)).map(r=>r.keys),['Super+M']);
+ const rows=plain(M.describeBinds(binds,en,[{id:'org.kde.dolphin',name:'Dolphin',icon:'x'}]));
+ assert.deepEqual(rows.map(r=>r.keys),['Super+E','Super+M']);
+ assert.equal(rows[0].action,'Open Dolphin');
+ const both=plain(M.describeBinds(binds,en,[{id:'com.mitchellh.ghostty',name:'Ghostty',icon:'x'},{id:'org.kde.dolphin',name:'Dolphin',icon:'x'}]));
+ assert.equal(both.length,3);
 });
 test('session menu names the applications that did not quit',()=>{
  assert.equal(M.remainingText([{app:'code',title:'notes.md'},{app:'code',title:'notes.md'},{app:'Telegram',title:'Telegram'}],ru),

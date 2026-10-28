@@ -170,12 +170,14 @@ function desktopFor(appId, entries) {
     }) || null;
 }
 
+// Группы дока: закреплённое приложение без desktop-записи и без окон не показывается.
 function groupApps(windows, monitor, pinned, entries, s) {
-    var groups = {};
+    var groups = {}, missing = {};
     for (var id of pinned) {
         var entry = entries.find(function(candidate) { return candidate.id === id; }) || null;
         groups[id] = {id: id, name: entry ? entry.name : id, icon: entry ? entry.icon : "application-x-executable",
-                      pinned: true, available: !!entry, windows: []};
+                      pinned: true, windows: []};
+        if (!entry) missing[id] = true;
     }
     for (var window of windows) {
         if (window.monitor !== monitor || !window.address || window.hidden || window.mapped === false) continue;
@@ -184,10 +186,12 @@ function groupApps(windows, monitor, pinned, entries, s) {
         var entry = desktopFor(window.appId || window.className, entries);
         var id = entry ? entry.id : normalizedId(window.appId || window.className || window.address);
         if (!groups[id]) groups[id] = {id: id, name: entry ? entry.name : (window.appId || window.title || s.appUnnamed),
-                                      icon: entry ? entry.icon : "application-x-executable", pinned: false, available: !!entry, windows: []};
+                                      icon: entry ? entry.icon : "application-x-executable", pinned: false, windows: []};
         groups[id].windows.push(window);
     }
-    var result = Object.keys(groups).map(function(id) {
+    var result = Object.keys(groups).filter(function(id) {
+        return !missing[id] || groups[id].windows.length > 0;
+    }).map(function(id) {
         var group = groups[id];
         group.windows.sort(function(a, b) {
             if (!!a.activated !== !!b.activated) return a.activated ? -1 : 1;
@@ -404,9 +408,17 @@ function bindAction(command, s) {
     return command;
 }
 
+// Приложения, на которые ссылаются привязки Hyprland: команда -> ID desktop entry.
+var BIND_APPS = {dolphin: "org.kde.dolphin", ghostty: "com.mitchellh.ghostty"};
+
 // Памятка сочетаний из `hyprctl binds -j`: `[{keys: "Super+Shift+1", action}]`.
-function describeBinds(binds, s) {
-    return (binds || []).map(function(bind) {
+// Привязки к приложениям, которых нет среди `entries`, в памятку не входят.
+function describeBinds(binds, s, entries) {
+    return (binds || []).filter(function(bind) {
+        var command = bind.arg || bind.dispatcher || "";
+        var appId = Object.prototype.hasOwnProperty.call(BIND_APPS, command) ? BIND_APPS[command] : null;
+        return !appId || !!desktopFor(appId, entries || []);
+    }).map(function(bind) {
         var keys = MODIFIERS.filter(function(item) { return (bind.modmask & item[0]) !== 0; })
             .map(function(item) { return item[1]; });
         keys.push(bind.key);

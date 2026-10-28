@@ -157,7 +157,6 @@ var STRINGS = {
         barRetryConnection: "Повторить подключение",
 
         // Док
-        dockNotInstalled: "не установлено",
         dockWindows: "окон: {0}",
         dockWheelHint: "колесо — переключить",
         dockNewWindow: "Новое окно",
@@ -476,7 +475,6 @@ var STRINGS = {
         barRetryConnection: "Retry connection",
 
         // Док
-        dockNotInstalled: "not installed",
         dockWindows: "windows: {0}",
         dockWheelHint: "wheel to switch",
         dockNewWindow: "New window",

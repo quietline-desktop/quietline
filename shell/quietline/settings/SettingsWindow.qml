@@ -27,9 +27,9 @@ FloatingWindow {
         {id: "shortcuts", label: Lang.s.settingsShortcuts, icon: ""},
         {id: "about", label: Lang.s.settingsAbout, icon: ""}
     ]
-    // Привязки Hyprland; памятка `shortcuts` пересчитывается из них при смене языка.
+    // Привязки Hyprland; памятка `shortcuts` пересчитывается из них при смене языка и списка приложений.
     property var binds: []
-    readonly property var shortcuts: Models.describeBinds(binds, Lang.s)
+    readonly property var shortcuts: Models.describeBinds(binds, Lang.s, desktop.entries)
     property var info: null
     title: Lang.s.settingsTitle
     visible: false
