@@ -43,6 +43,8 @@ PanelWindow {
     anchors { top: true; left: true; right: true }
     function openApplications() { popout.open("applications"); }
     function openSummary() { popout.open("quick"); }
+    // Подтверждение принудительного завершения процесса окна `window`.
+    function confirmKill(window) { killConfirm.target = window; popout.open("kill"); }
     implicitHeight: Theme.outerMargin + Theme.barHeight + (message.length > 0 ? 28 : 0)
     exclusiveZone: Theme.outerMargin + Theme.barHeight + 12
     color: "transparent"
@@ -238,6 +240,7 @@ PanelWindow {
         readonly property bool showingNetwork: currentName === "network"
         readonly property bool showingQuick: currentName === "quick"
         readonly property bool showingPower: currentName === "power"
+        readonly property bool showingKill: currentName === "kill"
         parentPanel: root
         // Сетевая панель держит формы и не закрывается от щелчка в другом окне.
         persistent: showingNetwork
@@ -246,7 +249,7 @@ PanelWindow {
         implicitWidth: showingApplications ? Math.min(360, root.width - Theme.outerMargin * 2) : Math.min(showingNetwork ? 400 : 330, root.width - 24)
         implicitHeight: showingApplications ? Math.min(430, root.screen ? root.screen.height - 100 : 430)
                                             : Math.min(content.implicitHeight + 24, root.screen ? root.screen.height - 100 : 500)
-        onPresented: { if (showingApplications) search.forceActiveFocus(); else if (showingPower) powerMenu.reset(); }
+        onPresented: { if (showingApplications) search.forceActiveFocus(); else if (showingPower) powerMenu.reset(); else if (showingKill) killConfirm.focusCancel(); }
         onDismissed: { search.clear(); powerMenu.reset(); }
         ColumnLayout {
             visible: popout.showingApplications
@@ -291,6 +294,12 @@ PanelWindow {
             ColumnLayout {
                 id: content
                 width: summaryScroll.availableWidth; spacing: 12
+                KillConfirm {
+                    id: killConfirm
+                    visible: popout.showingKill
+                    Layout.fillWidth: true
+                    onDone: popout.close()
+                }
                 PowerMenu {
                     id: powerMenu
                     visible: popout.showingPower

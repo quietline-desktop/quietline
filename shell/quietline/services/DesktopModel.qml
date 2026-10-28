@@ -27,19 +27,27 @@ Scope {
                 className: data.class || "", title: window.title,
                 monitor: window.monitor ? window.monitor.name : "", workspace_id: window.workspace ? window.workspace.id : -1,
                 activated: window.activated, fullscreen: data.fullscreen || 0,
-                focusHistoryID: data.focusHistoryID, mapped: data.mapped !== false, hidden: data.hidden || false};
+                focusHistoryID: data.focusHistoryID, mapped: data.mapped !== false, hidden: data.hidden || false,
+                pid: data.pid || -1};
     })
     function groups(name) { return Models.groupApps(windows, name, pinned, entries); }
     function entryFor(id) { return DesktopEntries.byId(id); }
     function focusMonitor(name) {
         if (/^[A-Za-z0-9_.:-]+$/.test(name || "")) Hyprland.dispatch('hl.dsp.focus({monitor="' + name + '"})');
     }
+    // Приложение запускается в своей группе процессов `app-quietline-*`: по ней
+    // `quietline-shell app quit` завершает процесс, оставшийся без окон.
+    function run(id, command, workingDirectory) {
+        var line = Models.launchCommand(command, Models.scopeUnit(id, Math.random().toString(36).slice(2, 10)));
+        if (!line) { errorMessage = "У приложения нет команды запуска"; return; }
+        Quickshell.execDetached({command: line, workingDirectory: workingDirectory});
+    }
     function launch(id, monitor) {
         var entry = entryFor(id);
         if (!entry) { errorMessage = "Приложение не установлено"; return; }
         errorMessage = "";
         focusMonitor(monitor);
-        entry.execute();
+        run(id, entry.command, entry.workingDirectory);
     }
     function focusWindow(window) {
         var selector = window ? Models.windowSelector(window.address) : null;
@@ -59,17 +67,16 @@ Scope {
         if (!entry) { errorMessage = "Приложение не установлено"; return; }
         focusMonitor(monitor);
         var action = entry.actions.find(action => action.id === "new-window" || action.id === "new-empty-window");
-        if (action) action.execute();
-        else entry.execute();
+        run(id, action ? action.command : entry.command, entry.workingDirectory);
     }
     function quit(id) {
         var targets = windows.filter(window => {
             var entry = Models.desktopFor(window.appId || window.className, entries);
             return entry ? entry.id === id : Models.normalizedId(window.appId || window.className) === id;
         });
-        targets.forEach(window => {
-            var selector = Models.windowSelector(window.address);
-            if (selector) Hyprland.dispatch('hl.dsp.window.close({window="' + selector + '"})');
+        // Окна закрываются по процессам: процесс, оставшийся без окон, завершает `app quit`.
+        targets.map(window => window.pid).filter((pid, index, pids) => pid > 1 && pids.indexOf(pid) === index).forEach(pid => {
+            Quickshell.execDetached(["quietline-shell", "app", "quit", "--pid", String(pid), "--notify"]);
         });
         notice = targets.length ? "Запрос выхода отправлен. Сохраните документы в открытых окнах." : "У приложения нет открытых окон";
     }

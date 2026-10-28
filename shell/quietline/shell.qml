@@ -73,6 +73,12 @@ ShellRoot {
             if (item) item.bar.openSummary();
         }
         function movePin(from: int, to: int): void { desktopService.movePin(from, to); }
+        // `Super+Shift+Q`: подтверждение принудительного завершения активного окна на мониторе с фокусом.
+        function confirmKill(): void {
+            var name = Hyprland.focusedMonitor ? Hyprland.focusedMonitor.name : "";
+            var item = root.surfaces.find(item => item.bar.monitorName === name) || root.surfaces[0];
+            if (item) item.bar.confirmKill(desktopService.windows.find(window => window.activated) || null);
+        }
         // Окно «Настройки» на разделе `section` (`network`, `audio`, `display`, `bluetooth`,
         // `power`, `keyboard`, `shortcuts`, `about`); пусто — последний открытый раздел.
         function settings(section: string): void { settingsWindow.open(section); }

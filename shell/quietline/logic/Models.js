@@ -375,6 +375,8 @@ function bindAction(command) {
     if (command === "quietline-engine toggle") return "Сменить режим «Окна / Тайлы»";
     if (command === "ghostty") return "Открыть терминал";
     if (command === "quietline-shell lock") return "Заблокировать сеанс";
+    if (/^quietline-shell app quit/.test(command)) return "Выйти из приложения";
+    if (/ipc call quietline confirmKill$/.test(command)) return "Принудительно завершить приложение";
     if (/ipc call quietline launcher$/.test(command)) return "Открыть меню приложений";
     if (/ipc call quietline settings/.test(command)) return "Открыть окно «Настройки»";
     return command;
@@ -413,4 +415,16 @@ function remainingText(remaining) {
 function sessionErrorText(action, detail) {
     var label = SESSION_LABELS[action] || "Действие сеанса";
     return label + " не удалось" + (detail ? ": " + detail : "");
+}
+
+// Группа процессов systemd для приложения, запущенного оболочкой: `app-quietline-<id>-<token>`.
+function scopeUnit(id, token) {
+    var name = String(id || "app").replace(/[^A-Za-z0-9_.:-]/g, "_").slice(0, 64) || "app";
+    return "app-quietline-" + name + "-" + String(token).replace(/[^A-Za-z0-9]/g, "").slice(0, 16);
+}
+
+// Команда запуска desktop entry в своей группе процессов; пустая команда — `null`.
+function launchCommand(command, unit) {
+    if (!command || !command.length) return null;
+    return ["systemd-run", "--user", "--scope", "--collect", "--quiet", "--unit=" + unit, "--"].concat(Array.from(command));
 }

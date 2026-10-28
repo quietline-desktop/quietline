@@ -631,9 +631,10 @@ def test_cli_prints_results_and_fails_on_errors(path, env, monkeypatch, capsys):
 def test_shortcuts_target_expected_cli_calls():
     text = LUA_CONFIG.read_text(encoding="utf-8")
     binds = re.findall(r'hl\.bind\("([^"]+)",\s*hl\.dsp\.exec_cmd\("([^"]+)"\)\)', text)
-    assert len(binds) == text.count("hl.bind(")
-    keys = [key for key, _ in binds]
-    assert len(keys) == len(set(keys))
+    dispatchers = dict(re.findall(r'hl\.bind\("([^"]+)",\s*(hl\.dsp\.(?!exec_cmd)[^\n]*)\)\n', text))
+    keys = re.findall(r'hl\.bind\("([^"]+)"', text)
+    assert len(keys) == len(set(keys)) == len(binds) + len(dispatchers)
+    assert dispatchers == {"SUPER + W": "hl.dsp.window.close()"}
 
     expected = {}
     for number in range(1, 11):
@@ -643,6 +644,8 @@ def test_shortcuts_target_expected_cli_calls():
     expected["SUPER + M"] = "quietline-engine toggle"
     expected["SUPER + Return"] = "ghostty"
     expected["SUPER + L"] = "quietline-shell lock"
+    expected["SUPER + Q"] = "quietline-shell app quit --notify"
+    expected["SUPER + SHIFT + Q"] = "qs -c quietline ipc call quietline confirmKill"
     expected["SUPER + Space"] = "qs -c quietline ipc call quietline launcher"
     expected["SUPER + I"] = "qs -c quietline ipc call quietline settings ''"
     assert dict(binds) == expected
@@ -674,5 +677,5 @@ def test_shortcuts_target_expected_cli_calls():
     )
     # Конфигурация ставит ровно те теги, по которым движок узнаёт диалоги.
     assert set(re.findall(r'tag\s*=\s*"\+([a-z-]+)"', text)) == DIALOG_TAGS
-    comments = [line.split("--", 1)[1] for line in text.splitlines() if "--" in line]
+    comments = [line.strip()[2:] for line in text.splitlines() if line.strip().startswith("--")]
     assert comments and all(re.search("[а-яё]", c, re.IGNORECASE) for c in comments if c.strip())

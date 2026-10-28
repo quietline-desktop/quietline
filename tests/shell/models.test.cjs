@@ -298,3 +298,11 @@ test('session menu names the applications that did not quit',()=>{
  assert.equal(M.sessionErrorText('x',''),'Действие сеанса не удалось');
  for(const action of M.SESSION_ACTIONS){ assert.ok(M.SESSION_LABELS[action]); assert.ok(M.SESSION_QUESTIONS[action]); }
 });
+test('applications start in their own quietline scope',()=>{
+ assert.equal(M.scopeUnit('org.kde.dolphin','a1b2c3'),'app-quietline-org.kde.dolphin-a1b2c3');
+ assert.equal(M.scopeUnit('my app/../x','z!9'),'app-quietline-my_app_.._x-z9');
+ assert.equal(M.scopeUnit('','1'),'app-quietline-app-1');
+ assert.deepEqual(plain(M.launchCommand(['code','--new-window'],'app-quietline-code-1')),
+  ['systemd-run','--user','--scope','--collect','--quiet','--unit=app-quietline-code-1','--','code','--new-window']);
+ assert.equal(M.launchCommand([], 'u'),null);
+});

@@ -1,6 +1,6 @@
 # Ежедневные действия
 
-**Статус:** выполняется (ветка `feature/daily-actions`): часть 1 «Сеанс» написана.
+**Статус:** выполняется (ветка `feature/daily-actions`): части 1–2 («Сеанс», «Выход из приложений») написаны.
 **Цель:** блокировка и меню питания, корректный выход из приложений, уведомления, снимки экрана, история буфера, общий поиск и оставшиеся сочетания клавиш спеки — то, без чего окружение не годится для ежедневной работы.
 **Спецификация:** `docs/superpowers/specs/2026-10-19-quietline-desktop-design.md` — «Основа и границы компонентов» (п. 4), «Оболочка и внешний вид» (кнопка питания, уведомления, службы Wayland), «Ежедневные действия и сочетания клавиш», «Ошибки, проверка и готовность» (п. 4). Внешний вид — `DESIGN.md`.
 **Основа:** этапы 1–3 в `main`: движок и `config/hyprland/quietline.lua`, оболочка `shell/quietline`, `quietline-shell`.
@@ -20,7 +20,7 @@
 
 - **Блокировка — отдельный процесс Quickshell.** `quietline-shell lock` запускает `qs -p $XDG_CONFIG_HOME/quickshell/quietline/lock/LockScreen.qml`, если блокировка ещё не запущена, и выходит. Экран блокировки — `WlSessionLock` (Quickshell 0.3.2, `Quickshell.Wayland`) с поверхностью на каждом экране и проверкой пароля через `PamContext` (`Quickshell.Services.Pam`) по системной конфигурации PAM `login` (умолчание `PamContext`). Падение панели блокировку не трогает, `Super+L` привязан в Lua напрямую к `quietline-shell lock`. Если упадёт сам процесс блокировки, Hyprland оставляет экран заблокированным; повторный `Super+L` запускает новый экран блокировки: `misc.allow_session_lock_restore = true` (есть в 0.55, по умолчанию выключено).
 - **Выход, перезагрузка, выключение** — `quietline-shell session logout|reboot|poweroff`: корректно закрывает все окна (`hyprctl dispatch 'hl.dsp.window.close({window = "address:…"})'`), ждёт до 20 с и только без оставшихся окон выполняет действие: выход — `hl.dsp.exit()`, перезагрузка и выключение — `systemctl reboot|poweroff` (logind разрешает активному локальному пользователю без пароля и учитывает блокировки `systemd-inhibit`). Оставшиеся окна возвращаются списком приложений; меню показывает их и не выключает компьютер. Подтверждение — в том же меню, второй строкой.
-- **Приложения оболочки запускаются в своей группе процессов**: док и поиск запускают desktop entry через `systemd-run --user --scope --unit=app-quietline-<id>-<случайно>`. `quietline-shell app quit` закрывает все окна процесса активного окна, ждёт их закрытия и, если процесс остался без окон и он из группы `app-quietline-*`, посылает `SIGTERM` её процессам (`systemctl --user kill`). Пока у процесса есть окно (в том числе диалог сохранения), сигнал не посылается. Процесс не из группы Quietline после закрытия окон не трогается: оболочка сообщает, что приложение осталось в фоне, и предлагает `Super+Shift+Q`. `Super+Shift+Q` — подтверждение во всплывающем окне панели, затем `quietline-shell app kill --pid P` (`SIGKILL`). Таблица известных команд выхода (`KNOWN_QUIT`) начинается пустой; приложение добавляется после проверки его команды вживую.
+- **Приложения оболочки запускаются в своей группе процессов**: док и поиск запускают `DesktopEntry.command` через `Quickshell.execDetached` с `systemd-run --user --scope --collect --unit=app-quietline-<id>-<случайно>`. `quietline-shell app quit` закрывает все окна процесса активного окна, ждёт их закрытия и, если процесс остался без окон и он из группы `app-quietline-*`, посылает `SIGTERM` её процессам (`systemctl --user kill`). Пока у процесса есть окно (в том числе диалог сохранения), сигнал не посылается. Процесс не из группы Quietline после закрытия окон не трогается: оболочка сообщает, что приложение осталось в фоне, и предлагает `Super+Shift+Q`. `Super+Shift+Q` — подтверждение во всплывающем окне панели, затем `quietline-shell app kill --pid P` (`SIGKILL`). Таблица известных команд выхода (`KNOWN_QUIT`) начинается пустой; приложение добавляется после проверки его команды вживую.
 - **Уведомления** — `NotificationServer` (`Quickshell.Services.Notifications`) в оболочке: всплывают справа под панелью на мониторе с фокусом, не больше трёх; обычные исчезают через 6 с (или `expireTimeout` приложения, если он короче), критические остаются до закрытия. Текст — только `Text.PlainText`; действия уведомлений — кнопками. Истории уведомлений и режима «Не беспокоить» нет.
 - **Снимки** — `quietline-shell screenshot output|region`. `output`: `grim -o <монитор с фокусом> -` → файл `Screenshot_ГГГГ-ММ-ДД_ЧЧ-ММ-СС.png` в `$(xdg-user-dir PICTURES)/Screenshots` → `wl-copy --type image/png`; уведомление «Снимок сохранён и скопирован» — только после обоих шагов, ошибка называет неудавшийся шаг. `region`: `slurp` (отмена — тихий выход) → `grim -g <область> -` → `satty --filename - --output-filename <тот же шаблон> --copy-command wl-copy --early-exit all`; Enter копирует, `Ctrl+S` сохраняет, `Esc` отменяет (умолчания Satty 0.22). Каталог создаётся заранее.
 - **Тексты уведомлений из `quietline-shell`** (снимки, буфер) — по-русски через `notify-send`: это интерфейс окружения, а не вывод в консоль. Ответы CLI и ошибки в stdout — по-английски, как у остальных подкоманд.
@@ -37,9 +37,8 @@
 | --- | --- |
 | `lock` | `{"locked": true}` — экран блокировки запущен или уже был; история буфера очищена |
 | `session logout\|reboot\|poweroff [--timeout S]` | `{"action", "done": true}` или `{"action", "done": false, "remaining": [{"app", "title"}]}` |
-| `app quit` | `{"closed": N, "background": bool}` — `background`: процесс остался и не из группы Quietline |
+| `app quit [--pid P] [--timeout S] [--notify]` | `{"closed", "remaining", "background"}` (+ `app` при `background`) — `background`: процесс остался без окон и не из группы Quietline; `--notify` сообщает об этом уведомлением |
 | `app kill --pid P` | `{"killed": P}` |
-| `app launch --id ID -- ARGV…` | `{"unit": "app-quietline-…"}` |
 | `screenshot output\|region` | `{"path", "copied": true}` / для `region` — `{"started": true}` или `{"cancelled": true}` |
 | `clipboard store` (stdin) | `{"stored": bool, "reason"?}` |
 | `clipboard list` | `{"entries": [{"id", "kind": "text"\|"image", "preview"}], "paused"}` |
@@ -88,10 +87,10 @@ QML (`shell/quietline/`):
 
 ## Task 2: Выход из приложений
 
-- [ ] `session.py`: `app launch|quit|kill`, распознавание группы `app-quietline-*` по `/proc/<pid>/cgroup`; тесты: окно с диалогом не получает сигнал, чужой процесс не получает сигнал, `quit` не посылает `SIGKILL`.
-- [ ] `DesktopModel.launch` и «Новое окно» запускают через `app launch`; меню дока «Выйти» — через `app quit` для окон приложения.
-- [ ] `session/KillConfirm.qml`, IPC `confirmKill`; Lua: `Super+W` → `hl.dsp.window.close()`, `Super+Q` → `quietline-shell app quit`, `Super+Shift+Q` → IPC `confirmKill`.
-- [ ] Тесты → PASS.
+- [x] `session.py`: `app launch|quit|kill`, распознавание группы `app-quietline-*` по `/proc/<pid>/cgroup`; тесты: окно с диалогом не получает сигнал, чужой процесс не получает сигнал, `quit` не посылает `SIGKILL`.
+- [x] `DesktopModel.launch` и «Новое окно» запускают через `app launch`; меню дока «Выйти» — через `app quit` для окон приложения.
+- [x] `session/KillConfirm.qml`, IPC `confirmKill`; Lua: `Super+W` → `hl.dsp.window.close()`, `Super+Q` → `quietline-shell app quit`, `Super+Shift+Q` → IPC `confirmKill`.
+- [x] Тесты → PASS.
 
 ## Task 3: Уведомления и снимки экрана
 
@@ -132,3 +131,6 @@ QML (`shell/quietline/`):
 1. **PAM экрана блокировки** — системная конфигурация `login` из `/etc/pam.d` (умолчание `PamContext`): свой файл PAM не нужен, правила те же, что при входе.
 2. **Цвет кнопки питания** — `ShellButton.foreground` (цвет текста доступной кнопки без выделения), у кнопки питания — `Theme.danger`.
 3. **Подписи действий сеанса** — `Models.SESSION_LABELS`, `SESSION_QUESTIONS`, `remainingText`, `sessionErrorText`; меню питания — `session/PowerMenu.qml` во всплывающем окне панели (`power`).
+4. **Запуск без подкоманды `app launch`.** Оболочка сама строит команду `Models.launchCommand(entry.command, Models.scopeUnit(id, token))` — у `DesktopEntry` и `DesktopAction` Quickshell 0.3.2 есть разобранная команда `command`. «Выйти» в доке вызывает `app quit --pid P --notify` для каждого процесса окон приложения.
+5. **Подтверждение `Super+Shift+Q`** — `session/KillConfirm.qml` во всплывающем окне панели монитора с фокусом (IPC `confirmKill`), фокус по умолчанию — на «Отмена».
+6. **Проверка комментариев Lua-конфига** в `tests/engine/test_server.py` смотрит строки, начинающиеся с `--`: аргументы вроде `--notify` в командах комментариями не считаются.

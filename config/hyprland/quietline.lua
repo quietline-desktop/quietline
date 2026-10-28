@@ -49,6 +49,12 @@ hl.bind("SUPER + Return", hl.dsp.exec_cmd("ghostty"))
 -- Блокировка — отдельный процесс экрана блокировки, работает без панели.
 hl.bind("SUPER + L", hl.dsp.exec_cmd("quietline-shell lock"))
 
+-- Закрыть активное окно; корректно выйти из приложения со всеми окнами; принудительно
+-- завершить его процесс — только после подтверждения на панели.
+hl.bind("SUPER + W", hl.dsp.window.close())
+hl.bind("SUPER + Q", hl.dsp.exec_cmd("quietline-shell app quit --notify"))
+hl.bind("SUPER + SHIFT + Q", hl.dsp.exec_cmd("qs -c quietline ipc call quietline confirmKill"))
+
 -- Локальные пространства 1–10 монитора с фокусом; клавиша 0 — пространство 10.
 hl.bind("SUPER + 1", hl.dsp.exec_cmd("quietline-engine switch 1"))
 hl.bind("SUPER + 2", hl.dsp.exec_cmd("quietline-engine switch 2"))
