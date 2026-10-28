@@ -642,6 +642,7 @@ def test_shortcuts_target_expected_cli_calls():
         expected[f"SUPER + SHIFT + {key}"] = f"quietline-engine move {number}"
     expected["SUPER + M"] = "quietline-engine toggle"
     expected["SUPER + Return"] = "ghostty"
+    expected["SUPER + L"] = "quietline-shell lock"
     expected["SUPER + Space"] = "qs -c quietline ipc call quietline launcher"
     expected["SUPER + I"] = "qs -c quietline ipc call quietline settings ''"
     assert dict(binds) == expected
@@ -652,6 +653,7 @@ def test_shortcuts_target_expected_cli_calls():
     assert re.search(
         r"scrolling\s*=\s*\{\s*column_width\s*=\s*0\.5,\s*fullscreen_on_one_column\s*=\s*false\s*\}", config.group(1)
     )
+    assert re.search(r"misc\s*=\s*\{\s*allow_session_lock_restore\s*=\s*true\s*\}", config.group(1))
 
     # Движок стартует первым, оболочка — отдельной командой после него.
     start = re.search(r'hl\.on\("hyprland\.start",\s*function\s*\(\)(.*?)\nend\)', text, re.S)

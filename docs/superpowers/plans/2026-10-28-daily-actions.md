@@ -1,6 +1,6 @@
 # Ежедневные действия
 
-**Статус:** план записан (ветка `feature/daily-actions`), реализация не начата.
+**Статус:** выполняется (ветка `feature/daily-actions`): часть 1 «Сеанс» написана.
 **Цель:** блокировка и меню питания, корректный выход из приложений, уведомления, снимки экрана, история буфера, общий поиск и оставшиеся сочетания клавиш спеки — то, без чего окружение не годится для ежедневной работы.
 **Спецификация:** `docs/superpowers/specs/2026-10-19-quietline-desktop-design.md` — «Основа и границы компонентов» (п. 4), «Оболочка и внешний вид» (кнопка питания, уведомления, службы Wayland), «Ежедневные действия и сочетания клавиш», «Ошибки, проверка и готовность» (п. 4). Внешний вид — `DESIGN.md`.
 **Основа:** этапы 1–3 в `main`: движок и `config/hyprland/quietline.lua`, оболочка `shell/quietline`, `quietline-shell`.
@@ -18,7 +18,7 @@
 
 Решения:
 
-- **Блокировка — отдельный процесс Quickshell.** `quietline-shell lock` запускает `qs -p $XDG_CONFIG_HOME/quickshell/quietline/lock/LockScreen.qml`, если блокировка ещё не запущена, и выходит. Экран блокировки — `WlSessionLock` (Quickshell 0.3.2, `Quickshell.Wayland`) с поверхностью на каждом экране и проверкой пароля через `PamContext` (`Quickshell.Services.Pam`) по файлу `lock/quietline-lock.pam` (`auth include login`, `configDirectory` — каталог экрана блокировки). Падение панели блокировку не трогает, `Super+L` привязан в Lua напрямую к `quietline-shell lock`. Если упадёт сам процесс блокировки, Hyprland оставляет экран заблокированным; повторный `Super+L` запускает новый экран блокировки, если Hyprland разрешает восстановление (`misc.allow_session_lock_restore` — проверить в 0.55 перед шагом, иначе — стоп и правка плана).
+- **Блокировка — отдельный процесс Quickshell.** `quietline-shell lock` запускает `qs -p $XDG_CONFIG_HOME/quickshell/quietline/lock/LockScreen.qml`, если блокировка ещё не запущена, и выходит. Экран блокировки — `WlSessionLock` (Quickshell 0.3.2, `Quickshell.Wayland`) с поверхностью на каждом экране и проверкой пароля через `PamContext` (`Quickshell.Services.Pam`) по системной конфигурации PAM `login` (умолчание `PamContext`). Падение панели блокировку не трогает, `Super+L` привязан в Lua напрямую к `quietline-shell lock`. Если упадёт сам процесс блокировки, Hyprland оставляет экран заблокированным; повторный `Super+L` запускает новый экран блокировки: `misc.allow_session_lock_restore = true` (есть в 0.55, по умолчанию выключено).
 - **Выход, перезагрузка, выключение** — `quietline-shell session logout|reboot|poweroff`: корректно закрывает все окна (`hyprctl dispatch 'hl.dsp.window.close({window = "address:…"})'`), ждёт до 20 с и только без оставшихся окон выполняет действие: выход — `hl.dsp.exit()`, перезагрузка и выключение — `systemctl reboot|poweroff` (logind разрешает активному локальному пользователю без пароля и учитывает блокировки `systemd-inhibit`). Оставшиеся окна возвращаются списком приложений; меню показывает их и не выключает компьютер. Подтверждение — в том же меню, второй строкой.
 - **Приложения оболочки запускаются в своей группе процессов**: док и поиск запускают desktop entry через `systemd-run --user --scope --unit=app-quietline-<id>-<случайно>`. `quietline-shell app quit` закрывает все окна процесса активного окна, ждёт их закрытия и, если процесс остался без окон и он из группы `app-quietline-*`, посылает `SIGTERM` её процессам (`systemctl --user kill`). Пока у процесса есть окно (в том числе диалог сохранения), сигнал не посылается. Процесс не из группы Quietline после закрытия окон не трогается: оболочка сообщает, что приложение осталось в фоне, и предлагает `Super+Shift+Q`. `Super+Shift+Q` — подтверждение во всплывающем окне панели, затем `quietline-shell app kill --pid P` (`SIGKILL`). Таблица известных команд выхода (`KNOWN_QUIT`) начинается пустой; приложение добавляется после проверки его команды вживую.
 - **Уведомления** — `NotificationServer` (`Quickshell.Services.Notifications`) в оболочке: всплывают справа под панелью на мониторе с фокусом, не больше трёх; обычные исчезают через 6 с (или `expireTimeout` приложения, если он короче), критические остаются до закрытия. Текст — только `Text.PlainText`; действия уведомлений — кнопками. Истории уведомлений и режима «Не беспокоить» нет.
@@ -60,7 +60,7 @@ Python (`src/quietline_shell/` не больше восьми записей):
 
 QML (`shell/quietline/`):
 
-- `lock/` — `LockScreen.qml` (корень отдельного процесса), `LockSurface.qml`, `quietline-lock.pam`;
+- `lock/` — `LockScreen.qml` (корень отдельного процесса), `LockSurface.qml`;
 - `session/` — `PowerMenu.qml` (меню кнопки питания), `SessionService.qml` (вызовы `quietline-shell session` и `app`), `KillConfirm.qml`;
 - `notifications/` — `NotificationService.qml`, `NotificationPopups.qml`;
 - `clipboard/` — `ClipboardService.qml`, `ClipboardPanel.qml`;
@@ -80,11 +80,11 @@ QML (`shell/quietline/`):
 ## Task 1: Сеанс
 
 - [x] Перенести `system_info.py` в `config.py`, Python-тесты оболочки — в `tests/helper/`; обновить `AGENTS.md`.
-- [ ] `session.py`: `lock` (единственный экземпляр, запуск `qs -p`), `session logout|reboot|poweroff` с ожиданием окон; тесты на поддельных `hyprctl`, `systemctl`, `qs`.
-- [ ] `lock/`: экран блокировки с полем пароля, `PamContext`, сообщениями PAM и часами; поверхность на каждом экране.
-- [ ] `session/PowerMenu.qml`, `SessionService.qml`, кнопка питания последней на панели цветом `danger`, подтверждение второй строкой, список оставшихся приложений.
-- [ ] Lua: `Super+L` → `quietline-shell lock`; проверка в `tests/engine/test_server.py`.
-- [ ] Тесты → PASS, статическая проверка QML.
+- [x] `session.py`: `lock` (единственный экземпляр, запуск `qs -p`), `session logout|reboot|poweroff` с ожиданием окон; тесты на поддельных `hyprctl`, `systemctl`, `qs`.
+- [x] `lock/`: экран блокировки с полем пароля, `PamContext`, сообщениями PAM и часами; поверхность на каждом экране.
+- [x] `session/PowerMenu.qml`, `SessionService.qml`, кнопка питания последней на панели цветом `danger`, подтверждение второй строкой, список оставшихся приложений.
+- [x] Lua: `Super+L` → `quietline-shell lock`; проверка в `tests/engine/test_server.py`.
+- [x] Тесты → PASS, статическая проверка QML.
 
 ## Task 2: Выход из приложений
 
@@ -126,3 +126,9 @@ QML (`shell/quietline/`):
 - [ ] Полные `pytest` и `node --test` → PASS; аудит: нет `shell=True` и eval, секреты не в аргументах и журналах.
 - [ ] Независимое ревью ветки по Review Focus; существенные замечания исправить с воспроизводящими тестами.
 - [ ] Живая проверка `scripts/smoke-daily-actions.md` на Arch — вместе с этапами 1–3.
+
+## Решения при выполнении
+
+1. **PAM экрана блокировки** — системная конфигурация `login` из `/etc/pam.d` (умолчание `PamContext`): свой файл PAM не нужен, правила те же, что при входе.
+2. **Цвет кнопки питания** — `ShellButton.foreground` (цвет текста доступной кнопки без выделения), у кнопки питания — `Theme.danger`.
+3. **Подписи действий сеанса** — `Models.SESSION_LABELS`, `SESSION_QUESTIONS`, `remainingText`, `sessionErrorText`; меню питания — `session/PowerMenu.qml` во всплывающем окне панели (`power`).

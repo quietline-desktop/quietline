@@ -5,6 +5,7 @@ import Quickshell.Hyprland
 import "services"
 import "system"
 import "settings"
+import "session"
 import "bar"
 import "dock"
 import "logic/Models.js" as Models
@@ -21,9 +22,10 @@ ShellRoot {
     BrightnessService { id: brightnessService }
     BluetoothService { id: bluetoothService }
     PowerService { id: powerService }
+    SessionService { id: sessionService }
     // Системные сервисы, общие для всех панелей, всплывающих окон и окна «Настройки».
     readonly property var services: ({network: networkService, audio: audioService, brightness: brightnessService,
-                                      bluetooth: bluetoothService, power: powerService, settings: settingsWindow})
+                                      bluetooth: bluetoothService, power: powerService, session: sessionService, settings: settingsWindow})
     SettingsWindow { id: settingsWindow; services: root.services; desktop: desktopService }
     Variants {
         model: Quickshell.screens

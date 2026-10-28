@@ -6,6 +6,7 @@ import Quickshell.Services.SystemTray
 import ".."
 import "../controls"
 import "../panels"
+import "../session"
 import "../logic/Models.js" as Models
 
 // Верхняя панель экрана: меню приложений, пространства, заголовок окна, режим, показатели, трей и часы.
@@ -217,6 +218,15 @@ PanelWindow {
                 color: Theme.text; font.family: Theme.mono; font.pixelSize: Theme.fontSize
                 Accessible.name: Qt.formatDateTime(clock.date, "dddd, d MMMM, HH:mm")
             }
+            // Кнопка питания — последний элемент панели, видна и на узком экране.
+            ShellButton {
+                id: powerButton
+                font.family: Theme.icons
+                text: "\uf011"
+                foreground: Theme.danger
+                hint: "Питание и сеанс"
+                onClicked: popout.toggle("power")
+            }
         }
     }
     SystemClock { id: clock; precision: SystemClock.Minutes }
@@ -227,6 +237,7 @@ PanelWindow {
         readonly property bool showingApplications: currentName === "applications"
         readonly property bool showingNetwork: currentName === "network"
         readonly property bool showingQuick: currentName === "quick"
+        readonly property bool showingPower: currentName === "power"
         parentPanel: root
         // Сетевая панель держит формы и не закрывается от щелчка в другом окне.
         persistent: showingNetwork
@@ -235,8 +246,8 @@ PanelWindow {
         implicitWidth: showingApplications ? Math.min(360, root.width - Theme.outerMargin * 2) : Math.min(showingNetwork ? 400 : 330, root.width - 24)
         implicitHeight: showingApplications ? Math.min(430, root.screen ? root.screen.height - 100 : 430)
                                             : Math.min(content.implicitHeight + 24, root.screen ? root.screen.height - 100 : 500)
-        onPresented: { if (showingApplications) search.forceActiveFocus(); }
-        onDismissed: search.clear()
+        onPresented: { if (showingApplications) search.forceActiveFocus(); else if (showingPower) powerMenu.reset(); }
+        onDismissed: { search.clear(); powerMenu.reset(); }
         ColumnLayout {
             visible: popout.showingApplications
             anchors.fill: parent; spacing: 10
@@ -280,6 +291,13 @@ PanelWindow {
             ColumnLayout {
                 id: content
                 width: summaryScroll.availableWidth; spacing: 12
+                PowerMenu {
+                    id: powerMenu
+                    visible: popout.showingPower
+                    Layout.fillWidth: true
+                    session: root.services.session
+                    onDone: popout.close()
+                }
                 Text { visible: popout.showingNetwork; text: "Сеть"; color: Theme.text; font.family: Theme.sans; font.pixelSize: Theme.titleFontSize; font.bold: true }
                 Loader {
                     active: popout.showingNetwork && popout.opened

@@ -9,6 +9,8 @@ Button {
     property string hint: text
     property bool emphasized: false
     property bool busy: false
+    // Цвет текста доступной кнопки без выделения.
+    property color foreground: Theme.text
     // Подсказка показывается общим HintPopup окна кнопки: ToolTip Qt обрезался бы тонкой панелью и доком.
     property bool hintBelow: true
     font.family: Theme.sans
@@ -42,7 +44,7 @@ Button {
         font.family: root.font.family
         font.pixelSize: root.font.pixelSize
         font.weight: root.emphasized ? Font.DemiBold : Font.Normal
-        color: root.emphasized ? Theme.accentText : root.enabled ? Theme.text : Theme.muted
+        color: root.emphasized ? Theme.accentText : root.enabled ? root.foreground : Theme.muted
         horizontalAlignment: Text.AlignHCenter
         verticalAlignment: Text.AlignVCenter
         elide: Text.ElideRight

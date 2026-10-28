@@ -279,11 +279,22 @@ test('binds are described in Russian with modifier names',()=>{
   {modmask:64,key:'0',dispatcher:'exec',arg:'quietline-engine switch 10'},
   {modmask:64,key:'I',dispatcher:'exec',arg:"qs -c quietline ipc call quietline settings ''"},
   {modmask:12,key:'T',dispatcher:'exec',arg:'my-tool --flag'},
+  {modmask:64,key:'L',dispatcher:'exec',arg:'quietline-shell lock'},
  ]));
+ assert.deepEqual(rows[5],{keys:'Super+L',action:'Заблокировать сеанс'});
  assert.deepEqual(rows[0],{keys:'Super+M',action:'Сменить режим «Окна / Тайлы»'});
  assert.deepEqual(rows[1],{keys:'Super+Shift+1',action:'Перенести окно на пространство 1'});
  assert.deepEqual(rows[2],{keys:'Super+0',action:'Открыть пространство 10'});
  assert.deepEqual(rows[3],{keys:'Super+I',action:'Открыть окно «Настройки»'});
  assert.deepEqual(rows[4],{keys:'Ctrl+Alt+T',action:'my-tool --flag'});
  assert.deepEqual(plain(M.describeBinds(null)),[]);
+});
+test('session menu names the applications that did not quit',()=>{
+ assert.equal(M.remainingText([{app:'code',title:'notes.md'},{app:'code',title:'notes.md'},{app:'Telegram',title:'Telegram'}]),
+  'Не завершились: code (notes.md), Telegram. Сохраните документы и повторите.');
+ assert.equal(M.remainingText([]),'');
+ assert.equal(M.remainingText([{app:'',title:''}]),'Не завершились: окно без названия. Сохраните документы и повторите.');
+ assert.equal(M.sessionErrorText('poweroff','systemctl failed'),'Выключить не удалось: systemctl failed');
+ assert.equal(M.sessionErrorText('x',''),'Действие сеанса не удалось');
+ for(const action of M.SESSION_ACTIONS){ assert.ok(M.SESSION_LABELS[action]); assert.ok(M.SESSION_QUESTIONS[action]); }
 });

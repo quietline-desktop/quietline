@@ -374,6 +374,7 @@ function bindAction(command) {
     if ((match = /^quietline-engine move (\d+)$/.exec(command))) return "Перенести окно на пространство " + match[1];
     if (command === "quietline-engine toggle") return "Сменить режим «Окна / Тайлы»";
     if (command === "ghostty") return "Открыть терминал";
+    if (command === "quietline-shell lock") return "Заблокировать сеанс";
     if (/ipc call quietline launcher$/.test(command)) return "Открыть меню приложений";
     if (/ipc call quietline settings/.test(command)) return "Открыть окно «Настройки»";
     return command;
@@ -387,4 +388,29 @@ function describeBinds(binds) {
         keys.push(bind.key);
         return {keys: keys.join("+"), action: bindAction(bind.arg || bind.dispatcher || "")};
     });
+}
+
+// Действия сеанса после корректного закрытия окон (`quietline-shell session`).
+var SESSION_ACTIONS = ["logout", "reboot", "poweroff"];
+var SESSION_LABELS = {logout: "Выйти из сеанса", reboot: "Перезагрузить", poweroff: "Выключить"};
+var SESSION_QUESTIONS = {
+    logout: "Закрыть все приложения и выйти из сеанса?",
+    reboot: "Закрыть все приложения и перезагрузить компьютер?",
+    poweroff: "Закрыть все приложения и выключить компьютер?"
+};
+
+// Приложения, окна которых не закрылись: «Не завершились: Code (notes.md), Telegram».
+function remainingText(remaining) {
+    var names = [];
+    (remaining || []).forEach(function(window) {
+        var name = window.app || "окно без названия";
+        var label = window.title && window.title !== name ? name + " (" + window.title + ")" : name;
+        if (names.indexOf(label) < 0) names.push(label);
+    });
+    return names.length ? "Не завершились: " + names.join(", ") + ". Сохраните документы и повторите." : "";
+}
+
+function sessionErrorText(action, detail) {
+    var label = SESSION_LABELS[action] || "Действие сеанса";
+    return label + " не удалось" + (detail ? ": " + detail : "");
 }
