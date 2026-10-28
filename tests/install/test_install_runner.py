@@ -78,6 +78,28 @@ def test_log_redacts_secrets():
     assert clean.endswith('ok')
 
 
+@pytest.mark.parametrize('line, secret', [
+    ('access_token=abc123', 'abc123'),
+    ('GITHUB_TOKEN=xyz789', 'xyz789'),
+    ('db_secret: s3cr3t', 's3cr3t'),
+    ('{"password": "hunter2"}', 'hunter2'),
+    ('{"password":"hunter2","user":"kiryl"}', 'hunter2'),
+    ('nmcli con add --password hunter2 ssid', 'hunter2'),
+    ('nmcli con modify x wifi-sec.psk hunter2', 'hunter2'),
+    ('Authorization: Basic dXNlcjpwYXNz', 'dXNlcjpwYXNz'),
+    ('Authorization: Bearer abc.def', 'abc.def'),
+    ('password="two words"', 'words'),
+    ("password='two words'", 'words'),
+    ('PASSWORD=Hunter2', 'Hunter2'),
+])
+def test_redact_hides_common_secret_shapes(line, secret):
+    assert secret not in redact(line)
+
+
+def test_redact_keeps_ordinary_text():
+    assert redact('installing token-free package, user kiryl') == 'installing token-free package, user kiryl'
+
+
 def test_step_output_shows_source_and_result(ctx, tmp_path):
     calls = []
     steps = [make_step('A', True, calls), make_step('B', False, calls), make_step('C', False, calls, fail_times=1)]
@@ -118,10 +140,18 @@ def test_missing_command_is_a_failed_command_not_a_crash():
     assert error.value.returncode == 127
 
 
-def test_system_logs_commands():
+def test_system_logs_commands_and_prefixes_sudo(monkeypatch):
+    import types
+    seen = []
+
+    def fake_run(command, **kwargs):
+        seen.append(command)
+        return types.SimpleNamespace(returncode=0, stdout='', stderr='')
+    monkeypatch.setattr(subprocess, 'run', fake_run)
     lines = []
     System(lines.append).run(['true'])
     System(lines.append).run(['true'], sudo=True, check=False)
+    assert seen == [['true'], ['sudo', 'true']]
     assert lines == ['$ true', '$ sudo true']
 
 

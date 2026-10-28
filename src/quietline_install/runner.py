@@ -12,11 +12,17 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Callable
 
+_WORDS = r'(?:password|passwd|pwd|secret|token|psk)'
+_VALUE = r"""("[^"]*"|'[^']*'|\S+)"""
 _SECRETS = [
     (re.compile(r'-----BEGIN [A-Z ]*PRIVATE KEY-----.*?(?:-----END [A-Z ]*PRIVATE KEY-----|\Z)', re.S),
      '[private key hidden]'),
+    (re.compile(r'(?i)(\bauthorization\s*[=:]\s*(?:basic|bearer)\s+)\S+'), r'\1***'),
     (re.compile(r'(?i)\b(bearer)\s+\S+'), r'\1 ***'),
-    (re.compile(r'(?i)\b(password|passwd|pwd|secret|token|psk)\b(\s*[=:]\s*)\S+'), r'\1\2***'),
+    # key=value, key: value, "key": "value" с любым префиксом (access_token, GITHUB_TOKEN, wifi-sec.psk)
+    (re.compile(r'(?i)([\w.-]*' + _WORDS + r'["\']?\s*[=:]\s*)' + _VALUE), r'\1***'),
+    # --password value, wifi-sec.psk value
+    (re.compile(r'(?i)((?<![\w-])(?:--?|[\w-]+\.)[\w.-]*' + _WORDS + r'\s+)' + _VALUE), r'\1***'),
     (re.compile(r'\b(?:gh[pousr]|github_pat)_[A-Za-z0-9_]{20,}'), '***'),
 ]
 
