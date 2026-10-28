@@ -38,9 +38,12 @@ end)
 
 -- Сервис движка и оболочка стартуют вместе с Hyprland отдельными процессами: сбой
 -- оболочки не останавливает движок и клавиши, оболочка сама переподключается к движку.
+-- История буфера пишут наблюдатели wl-paste за текстом и картинками.
 hl.on("hyprland.start", function ()
     hl.exec_cmd("quietline-engine serve")
     hl.exec_cmd("qs -c quietline")
+    hl.exec_cmd("wl-paste --type text --watch quietline-shell clipboard store")
+    hl.exec_cmd("wl-paste --type image --watch quietline-shell clipboard store")
 end)
 
 -- Терминал запускает сам Hyprland: работает без сервиса движка и без панели.
@@ -54,6 +57,9 @@ hl.bind("SUPER + L", hl.dsp.exec_cmd("quietline-shell lock"))
 hl.bind("SUPER + W", hl.dsp.window.close())
 hl.bind("SUPER + Q", hl.dsp.exec_cmd("quietline-shell app quit --notify"))
 hl.bind("SUPER + SHIFT + Q", hl.dsp.exec_cmd("qs -c quietline ipc call quietline confirmKill"))
+
+-- История буфера: поиск по записям, выбранная возвращается в буфер.
+hl.bind("SUPER + V", hl.dsp.exec_cmd("qs -c quietline ipc call quietline clipboard"))
 
 -- Снимок монитора с фокусом в файл и буфер; область экрана с разметкой в Satty.
 hl.bind("Print", hl.dsp.exec_cmd("quietline-shell screenshot output"))

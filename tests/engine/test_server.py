@@ -646,6 +646,7 @@ def test_shortcuts_target_expected_cli_calls():
     expected["SUPER + L"] = "quietline-shell lock"
     expected["SUPER + Q"] = "quietline-shell app quit --notify"
     expected["SUPER + SHIFT + Q"] = "qs -c quietline ipc call quietline confirmKill"
+    expected["SUPER + V"] = "qs -c quietline ipc call quietline clipboard"
     expected["Print"] = "quietline-shell screenshot output"
     expected["SUPER + SHIFT + S"] = "quietline-shell screenshot region"
     expected["SUPER + Space"] = "qs -c quietline ipc call quietline launcher"
@@ -663,7 +664,12 @@ def test_shortcuts_target_expected_cli_calls():
     # Движок стартует первым, оболочка — отдельной командой после него.
     start = re.search(r'hl\.on\("hyprland\.start",\s*function\s*\(\)(.*?)\nend\)', text, re.S)
     assert start
-    assert re.findall(r'hl\.exec_cmd\("([^"]+)"\)', start.group(1)) == ["quietline-engine serve", "qs -c quietline"]
+    assert re.findall(r'hl\.exec_cmd\("([^"]+)"\)', start.group(1)) == [
+        "quietline-engine serve",
+        "qs -c quietline",
+        "wl-paste --type text --watch quietline-shell clipboard store",
+        "wl-paste --type image --watch quietline-shell clipboard store",
+    ]
 
     modals = re.search(r"hl\.window_rule\(\{(.*?)\n\}\)", text, re.S)
     assert modals

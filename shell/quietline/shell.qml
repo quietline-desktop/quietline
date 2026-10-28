@@ -7,6 +7,7 @@ import "system"
 import "settings"
 import "session"
 import "notifications"
+import "clipboard"
 import "bar"
 import "dock"
 import "logic/Models.js" as Models
@@ -24,11 +25,12 @@ ShellRoot {
     BluetoothService { id: bluetoothService }
     PowerService { id: powerService }
     SessionService { id: sessionService }
+    ClipboardService { id: clipboardService }
     NotificationService { id: notificationService }
     NotificationPopups { service: notificationService }
     // Системные сервисы, общие для всех панелей, всплывающих окон и окна «Настройки».
     readonly property var services: ({network: networkService, audio: audioService, brightness: brightnessService,
-                                      bluetooth: bluetoothService, power: powerService, session: sessionService, settings: settingsWindow})
+                                      bluetooth: bluetoothService, power: powerService, session: sessionService, clipboard: clipboardService, settings: settingsWindow})
     SettingsWindow { id: settingsWindow; services: root.services; desktop: desktopService }
     Variants {
         model: Quickshell.screens
@@ -76,6 +78,12 @@ ShellRoot {
             if (item) item.bar.openSummary();
         }
         function movePin(from: int, to: int): void { desktopService.movePin(from, to); }
+        // `Super+V`: история буфера на мониторе с фокусом.
+        function clipboard(): void {
+            var name = Hyprland.focusedMonitor ? Hyprland.focusedMonitor.name : "";
+            var item = root.surfaces.find(item => item.bar.monitorName === name) || root.surfaces[0];
+            if (item) item.bar.openClipboard();
+        }
         // `Super+Shift+Q`: подтверждение принудительного завершения активного окна на мониторе с фокусом.
         function confirmKill(): void {
             var name = Hyprland.focusedMonitor ? Hyprland.focusedMonitor.name : "";

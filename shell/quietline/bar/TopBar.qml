@@ -7,6 +7,7 @@ import ".."
 import "../controls"
 import "../panels"
 import "../session"
+import "../clipboard"
 import "../logic/Models.js" as Models
 
 // Верхняя панель экрана: меню приложений, пространства, заголовок окна, режим, показатели, трей и часы.
@@ -44,6 +45,7 @@ PanelWindow {
     function openApplications() { popout.open("applications"); }
     function openSummary() { popout.open("quick"); }
     // Подтверждение принудительного завершения процесса окна `window`.
+    function openClipboard() { popout.open("clipboard"); }
     function confirmKill(window) { killConfirm.target = window; popout.open("kill"); }
     implicitHeight: Theme.outerMargin + Theme.barHeight + (message.length > 0 ? 28 : 0)
     exclusiveZone: Theme.outerMargin + Theme.barHeight + 12
@@ -241,15 +243,16 @@ PanelWindow {
         readonly property bool showingQuick: currentName === "quick"
         readonly property bool showingPower: currentName === "power"
         readonly property bool showingKill: currentName === "kill"
+        readonly property bool showingClipboard: currentName === "clipboard"
         parentPanel: root
         // Сетевая панель держит формы и не закрывается от щелчка в другом окне.
         persistent: showingNetwork
         popupX: showingApplications ? Theme.outerMargin : Math.max(12, root.width - width - 12)
         popupY: Theme.outerMargin + Theme.barHeight + 8
-        implicitWidth: showingApplications ? Math.min(360, root.width - Theme.outerMargin * 2) : Math.min(showingNetwork ? 400 : 330, root.width - 24)
+        implicitWidth: showingApplications ? Math.min(360, root.width - Theme.outerMargin * 2) : Math.min(showingNetwork || showingClipboard ? 400 : 330, root.width - 24)
         implicitHeight: showingApplications ? Math.min(430, root.screen ? root.screen.height - 100 : 430)
                                             : Math.min(content.implicitHeight + 24, root.screen ? root.screen.height - 100 : 500)
-        onPresented: { if (showingApplications) search.forceActiveFocus(); else if (showingPower) powerMenu.reset(); else if (showingKill) killConfirm.focusCancel(); }
+        onPresented: { if (showingApplications) search.forceActiveFocus(); else if (showingPower) powerMenu.reset(); else if (showingKill) killConfirm.focusCancel(); else if (showingClipboard) clipboardPanel.reset(); }
         onDismissed: { search.clear(); powerMenu.reset(); }
         ColumnLayout {
             visible: popout.showingApplications
@@ -294,6 +297,13 @@ PanelWindow {
             ColumnLayout {
                 id: content
                 width: summaryScroll.availableWidth; spacing: 12
+                ClipboardPanel {
+                    id: clipboardPanel
+                    visible: popout.showingClipboard
+                    Layout.fillWidth: true
+                    clipboard: root.services.clipboard
+                    onDone: popout.close()
+                }
                 KillConfirm {
                     id: killConfirm
                     visible: popout.showingKill

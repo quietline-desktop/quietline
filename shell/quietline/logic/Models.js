@@ -377,6 +377,7 @@ function bindAction(command) {
     if (command === "quietline-shell lock") return "Заблокировать сеанс";
     if (/^quietline-shell app quit/.test(command)) return "Выйти из приложения";
     if (/ipc call quietline confirmKill$/.test(command)) return "Принудительно завершить приложение";
+    if (/ipc call quietline clipboard$/.test(command)) return "История буфера";
     if (command === "quietline-shell screenshot output") return "Снимок монитора в файл и буфер";
     if (command === "quietline-shell screenshot region") return "Снимок области с разметкой";
     if (/ipc call quietline launcher$/.test(command)) return "Открыть меню приложений";
@@ -439,4 +440,20 @@ function notificationTimeout(expireTimeout, urgency) {
     if (urgency === 2) return 0;
     var requested = Number(expireTimeout) * 1000;
     return requested > 0 ? Math.min(requested, NOTIFICATION_MS) : NOTIFICATION_MS;
+}
+
+// Записи истории буфера, подходящие под запрос: по тексту превью, картинки — по слову «изображение».
+function clipboardMatches(entries, query) {
+    var needle = String(query || "").trim().toLowerCase();
+    return (entries || []).filter(function(entry) {
+        if (!needle) return true;
+        var text = entry.kind === "image" ? "изображение image " + entry.preview : entry.preview;
+        return String(text).toLowerCase().indexOf(needle) >= 0;
+    });
+}
+
+// Подпись картинки из превью cliphist «[[ binary data 14 KiB png 120x80 ]]»: «Изображение PNG · 120×80».
+function clipboardImageLabel(preview) {
+    var match = /binary data .* (\w+) (\d+)x(\d+)/.exec(String(preview || ""));
+    return match ? "Изображение " + match[1].toUpperCase() + " · " + match[2] + "×" + match[3] : "Изображение";
 }

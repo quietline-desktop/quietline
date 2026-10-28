@@ -55,10 +55,11 @@ shell/quietline/panels/   — компоненты управления сист
 shell/quietline/settings/ — окно «Настройки»
 shell/quietline/session/  — меню кнопки питания и действия сеанса
 shell/quietline/notifications/ — сервер уведомлений и всплывающие уведомления
+shell/quietline/clipboard/ — история буфера `Super+V`
 shell/quietline/lock/     — экран блокировки: отдельный процесс `qs -p …/lock/LockScreen.qml`
 shell/quietline/logic/    — чистые функции `Models.js` (общие для QML и тестов Node)
 src/quietline_engine/     — Python-пакет движка пространств и окон
-src/quietline_shell/      — Python-пакет `quietline-shell`: закрепления дока, ограничение анимаций, NetworkManager, «О системе», сеанс, снимки экрана
+src/quietline_shell/      — Python-пакет `quietline-shell`: закрепления дока, ограничение анимаций, NetworkManager, «О системе», сеанс, снимки экрана, история буфера
 tests/engine/             — модульные тесты движка (pytest, без Hyprland)
 tests/helper/             — тесты `quietline-shell` (pytest, без NetworkManager и Hyprland)
 tests/shell/              — тесты моделей оболочки (`node --test`), правила polkit и контракта протокола движка
@@ -75,7 +76,7 @@ LICENSE                   — GPL-3.0
 - Тесты моделей оболочки: `node --test 'tests/shell/*.test.cjs'` (Node ≥ 22; шаблон в кавычках разворачивает сам Node, каталог аргументом не принимается). QML без Quickshell не запускается — проверяется только в живом сеансе.
 - Оболочка: ссылка `ln -s "$PWD/shell/quietline" ~/.config/quickshell/quietline`, затем `qs -c quietline`; из репозитория без ссылки — `scripts/run-shell`. Состояние — `qs -c quietline ipc call quietline status`. Нужны Quickshell, шрифты IBM Plex Sans/Mono и JetBrainsMono Nerd Font Mono, `quietline-shell` в `PATH`.
 - Сервис и CLI движка: `quietline-engine serve` (в сеансе Hyprland; журнал — в stderr), клиентские команды `quietline-engine switch N [--monitor KEY]`, `move N`, `toggle [--monitor KEY]`, `state`. Из репозитория без установки — `uv run --python 3.14 quietline-engine …`. Протокол сокета `$XDG_RUNTIME_DIR/quietline/engine.sock` и коды ошибок — в docstring `src/quietline_engine/server.py`.
-- Настройки оболочки: `quietline-shell pins [--set JSON] [--path PATH]`, `motion`, `about`, `lock`, `session logout|reboot|poweroff`, `app quit|kill`, `screenshot output|region`, `network ACTION` — одна строка JSON в stdout, ошибка — `{"error": …}` и код 1 (docstring `src/quietline_shell/__main__.py`; подкоманды `network` — docstring `src/quietline_shell/network.py`). Закрепления дока — `$XDG_CONFIG_HOME/quietline/pins.json`, недавние сетевые профили — `$XDG_CONFIG_HOME/quietline/network.json`.
+- Настройки оболочки: `quietline-shell pins [--set JSON] [--path PATH]`, `motion`, `about`, `lock`, `session logout|reboot|poweroff`, `app quit|kill`, `screenshot output|region`, `clipboard ACTION`, `network ACTION` — одна строка JSON в stdout, ошибка — `{"error": …}` и код 1 (docstring `src/quietline_shell/__main__.py`; подкоманды `network` — docstring `src/quietline_shell/network.py`). Закрепления дока — `$XDG_CONFIG_HOME/quietline/pins.json`, недавние сетевые профили — `$XDG_CONFIG_HOME/quietline/network.json`.
 
 ## Общие конвенции
 

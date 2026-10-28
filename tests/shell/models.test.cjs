@@ -313,3 +313,11 @@ test('notifications never cover the screen for long',()=>{
  assert.equal(M.notificationTimeout(60,1),6000);
  assert.equal(M.notificationTimeout(60,2),0);
 });
+test('clipboard search matches text and images',()=>{
+ const entries=[{id:'3',kind:'text',preview:'Привет, мир'},{id:'2',kind:'image',preview:'[[ binary data 14 KiB png 120x80 ]]'},{id:'1',kind:'text',preview:'ssh host'}];
+ assert.deepEqual(plain(M.clipboardMatches(entries,'')).map(e=>e.id),['3','2','1']);
+ assert.deepEqual(plain(M.clipboardMatches(entries,'МИР')).map(e=>e.id),['3']);
+ assert.deepEqual(plain(M.clipboardMatches(entries,'изобр')).map(e=>e.id),['2']);
+ assert.equal(M.clipboardImageLabel('[[ binary data 14 KiB png 120x80 ]]'),'Изображение PNG · 120×80');
+ assert.equal(M.clipboardImageLabel('junk'),'Изображение');
+});
