@@ -12,6 +12,8 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Callable
 
+from quietline_install.texts import text
+
 _WORDS = r'(?:password|passwd|pwd|secret|token|psk)'
 _VALUE = r"""("[^"]*"|'[^']*'|\S+)"""
 _SECRETS = [
@@ -179,6 +181,10 @@ class Ctx:
     language: str = 'en'
     state: State = field(default_factory=State)
     log: Callable[[str], None] = field(default=lambda line: None)
+
+    def t(self, key: str, **values) -> str:
+        """Текст экрана на языке установщика."""
+        return text(self.language, key, **values)
 
     def record(self, change: dict) -> None:
         """Дописывает изменение в журнал и сразу сохраняет состояние."""
