@@ -8,6 +8,9 @@
 - `lock` — `{"locked": true}`: экран блокировки запущен или уже работал;
 - `session logout|reboot|poweroff [--timeout S]` — корректно закрывает окна и выполняет
   действие: `{"action", "done": true}` или `{"action", "done": false, "remaining": [{"app", "title"}]}`;
+- `app quit [--pid P]` — корректный выход из приложения активного окна (или процесса `P`):
+  `{"closed", "remaining", "background"}` (с `background` — ещё `app`); с `--notify` об оставшемся
+  в фоне процессе сообщает уведомление; `app kill --pid P` — `{"killed": P}`;
 - `network ACTION …` — NetworkManager: состояние, профили объекта, Wi-Fi, контрольные
   точки; подкоманды и их ответы — в docstring `quietline_shell.network`.
 
@@ -39,6 +42,13 @@ def _parser() -> argparse.ArgumentParser:
     ending = commands.add_parser("session", help="close all windows, then log out, reboot or power off")
     ending.add_argument("action", choices=session.SESSION_ACTIONS)
     ending.add_argument("--timeout", type=float, default=session.CLOSE_TIMEOUT, help="seconds to wait for windows to close")
+    app = commands.add_parser("app", help="quit or kill an application")
+    app_actions = app.add_subparsers(dest="action", required=True, metavar="ACTION")
+    quit_parser = app_actions.add_parser("quit", help="close the windows of the active application (or --pid) gracefully")
+    quit_parser.add_argument("--pid", type=int)
+    quit_parser.add_argument("--timeout", type=float, default=session.QUIT_TIMEOUT, help="seconds to wait for windows to close")
+    quit_parser.add_argument("--notify", action="store_true", help="send a notification if the process stays in the background")
+    app_actions.add_parser("kill", help="kill an application process with SIGKILL").add_argument("--pid", type=int, required=True)
     network.add_parser(commands)
     return parser
 
@@ -51,6 +61,14 @@ def _run(args: argparse.Namespace) -> dict[str, Any]:
             return session.lock()
         case "session":
             return session.end_session(args.action, args.timeout)
+        case "app":
+            if args.action == "kill":
+                return session.kill_app(args.pid)
+            result = session.quit_app(args.pid, args.timeout)
+            if args.notify and result["background"]:
+                session.notify(f"«{result['app'] or 'Приложение'}» продолжает работать в фоне",
+                               "Super+Shift+Q завершит его принудительно.")
+            return result
         case "about":
             return about()
         case "network":

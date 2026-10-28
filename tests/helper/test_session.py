@@ -149,3 +149,136 @@ def test_cli_lock_without_runtime_dir_is_an_error(monkeypatch, capsys):
     monkeypatch.delenv("XDG_RUNTIME_DIR", raising=False)
     assert main(["lock"]) == 1
     assert json.loads(capsys.readouterr().out) == {"error": "XDG_RUNTIME_DIR is not set"}
+
+
+class FakeApps(FakeHyprland):
+    """Окна и активное окно Hyprland для `app quit`."""
+
+    def __init__(self, clients, active, stubborn=()):
+        super().__init__(clients, stubborn)
+        self.active = active
+
+    def __call__(self, args, **kwargs):
+        if args[:3] == ["hyprctl", "activewindow", "-j"]:
+            self.commands.append(list(args))
+            return subprocess.CompletedProcess(args, 0, json.dumps(self.active), "")
+        return super().__call__(args, **kwargs)
+
+
+APP_WINDOWS = [
+    {"address": "0xc1", "class": "code", "title": "notes.md — Code", "pid": 30},
+    {"address": "0xc2", "class": "code", "title": "todo.md — Code", "pid": 30},
+    {"address": "0xd1", "class": "org.telegram.desktop", "title": "Telegram", "pid": 40},
+]
+
+
+@pytest.fixture
+def process(monkeypatch):
+    """Процесс приложения: жив ли он и в какой группе systemd живёт."""
+    state = {"alive": True, "scope": None, "killed": []}
+    monkeypatch.setattr(session, "process_alive", lambda pid: state["alive"])
+    monkeypatch.setattr(session, "quietline_scope", lambda pid: state["scope"])
+    monkeypatch.setattr(session.os, "kill", lambda pid, sig: state["killed"].append((pid, sig)))
+    return state
+
+
+def test_quit_closes_only_the_active_process_windows(monkeypatch, clock, process):
+    fake = FakeApps(APP_WINDOWS, APP_WINDOWS[0])
+    monkeypatch.setattr(subprocess, "run", fake)
+    process["alive"] = False
+    assert session.quit_app() == {"closed": 2, "remaining": [], "background": False}
+    closed = [args[2] for args in fake.commands if args[:2] == ["hyprctl", "dispatch"]]
+    assert closed == ['hl.dsp.window.close({window = "address:0xc1"})', 'hl.dsp.window.close({window = "address:0xc2"})']
+
+
+def test_save_dialog_keeps_the_process_safe(monkeypatch, clock, process):
+    fake = FakeApps(APP_WINDOWS, APP_WINDOWS[0], stubborn={"0xc2"})
+    monkeypatch.setattr(subprocess, "run", fake)
+    process["scope"] = "app-quietline-code-1a2b3c.scope"
+    result = session.quit_app(timeout=2)
+    assert result == {"closed": 1, "remaining": [{"app": "code", "title": "todo.md — Code"}], "background": False}
+    assert not any(args[0] == "systemctl" for args in fake.commands)
+    assert process["killed"] == []
+
+
+def test_quietline_process_without_windows_gets_sigterm(monkeypatch, clock, process):
+    fake = FakeApps(APP_WINDOWS, APP_WINDOWS[0])
+    monkeypatch.setattr(subprocess, "run", fake)
+    process["scope"] = "app-quietline-code-1a2b3c.scope"
+    assert session.quit_app()["background"] is False
+    assert fake.commands[-1] == ["systemctl", "--user", "kill", "--signal=SIGTERM", "app-quietline-code-1a2b3c.scope"]
+    assert process["killed"] == []
+
+
+def test_foreign_process_is_left_alone_and_reported(monkeypatch, clock, process, capsys):
+    fake = FakeApps(APP_WINDOWS, APP_WINDOWS[2])
+    monkeypatch.setattr(subprocess, "run", fake)
+    monkeypatch.setattr("sys.stdin", io.StringIO(""))
+    assert main(["app", "quit", "--notify"]) == 0
+    assert json.loads(capsys.readouterr().out) == {
+        "closed": 1, "remaining": [], "background": True, "app": "org.telegram.desktop",
+    }
+    assert not any(args[0] == "systemctl" for args in fake.commands)
+    assert process["killed"] == []
+    notice = fake.commands[-1]
+    assert notice[0] == "notify-send" and "продолжает работать в фоне" in notice[3]
+
+
+def test_known_quit_command_replaces_window_closing(monkeypatch, clock, process):
+    fake = FakeApps(APP_WINDOWS, APP_WINDOWS[2])
+    monkeypatch.setattr(subprocess, "run", fake)
+    monkeypatch.setitem(session.KNOWN_QUIT, "org.telegram.desktop", ["telegram-desktop", "-quit"])
+    fake.stubborn = {"0xd1"}
+    session.quit_app(timeout=1)
+    assert ["telegram-desktop", "-quit"] in fake.commands
+    assert not any(args[:2] == ["hyprctl", "dispatch"] for args in fake.commands)
+
+
+def test_quit_by_pid_uses_that_process(monkeypatch, clock, process):
+    fake = FakeApps(APP_WINDOWS, APP_WINDOWS[0])
+    monkeypatch.setattr(subprocess, "run", fake)
+    process["alive"] = False
+    assert session.quit_app(pid=40)["closed"] == 1
+    assert not any(args[:3] == ["hyprctl", "activewindow", "-j"] for args in fake.commands)
+
+
+def test_quit_without_active_window_is_an_error(monkeypatch, process):
+    monkeypatch.setattr(subprocess, "run", FakeApps([], {}))
+    with pytest.raises(RuntimeError, match="no active window"):
+        session.quit_app()
+
+
+def test_kill_uses_the_scope_or_the_process(monkeypatch, process):
+    fake = FakeApps([], {})
+    monkeypatch.setattr(subprocess, "run", fake)
+    process["scope"] = "app-quietline-code-1a2b3c.scope"
+    assert session.kill_app(30) == {"killed": 30}
+    assert fake.commands[-1] == ["systemctl", "--user", "kill", "--signal=SIGKILL", "app-quietline-code-1a2b3c.scope"]
+    process["scope"] = None
+    session.kill_app(40)
+    assert process["killed"] == [(40, session.signal.SIGKILL)]
+    for pid in (0, 1, -5):
+        with pytest.raises(ValueError):
+            session.kill_app(pid)
+
+
+def test_quietline_scope_is_read_from_the_cgroup(tmp_path, monkeypatch):
+    lines = {
+        "ours": "0::/user.slice/user-1000.slice/user@1000.service/app.slice/app-quietline-code-1a2b3c.scope\n",
+        "foreign": "0::/user.slice/user-1000.slice/user@1000.service/app.slice/app-org.kde.dolphin@x.service\n",
+    }
+    real = session.Path
+
+    def fake_path(path):
+        name = str(path)
+        for key, text in lines.items():
+            if name == f"/proc/{key}/cgroup":
+                target = tmp_path / key
+                target.write_text(text)
+                return target
+        return real(path)
+
+    monkeypatch.setattr(session, "Path", fake_path)
+    assert session.quietline_scope("ours") == "app-quietline-code-1a2b3c.scope"
+    assert session.quietline_scope("foreign") is None
+    assert session.quietline_scope("missing") is None
