@@ -1,0 +1,288 @@
+# Каталог программ установщика Quietline: что ставится, откуда и что закрепляется в доке.
+# Схема и правила — в docstring src/quietline_install/catalog.py.
+# desktop: wechat и code не подтверждены на живой системе (docs/backlog.md).
+
+[core]
+packages = [
+  "hyprland", "quickshell", "greetd", "greetd-tuigreet",
+  "xdg-desktop-portal-hyprland", "xdg-desktop-portal-gtk", "hyprpolkitagent", "qt6-wayland", "polkit",
+  "pipewire", "pipewire-pulse", "wireplumber", "networkmanager", "bluez", "bluez-utils",
+  "power-profiles-daemon", "brightnessctl", "upower", "libnotify", "glib2",
+  "xdg-user-dirs", "xdg-utils", "flatpak",
+  "ttf-ibm-plex", "ttf-jetbrains-mono-nerd", "noto-fonts", "noto-fonts-emoji",
+  "grim", "slurp", "satty", "wl-clipboard", "cliphist", "plocate",
+  "ghostty", "fish", "starship", "micro", "git", "openssh", "curl", "unzip",
+]
+services = ["NetworkManager.service", "bluetooth.service", "power-profiles-daemon.service"]
+# Терминал основы закрепляется в доке всегда.
+desktop = "com.mitchellh.ghostty"
+pin = "terminal"
+
+[[section]]
+id = "browsers"
+title_key = "sectionBrowsers"
+multiple = true
+
+[[section.item]]
+id = "chrome"
+name = "Google Chrome"
+source = "aur"
+packages = ["google-chrome"]
+desktop = "google-chrome"
+recommended = true
+pin = "browser"
+
+[[section.item]]
+id = "firefox"
+name = "Firefox"
+source = "repo"
+packages = ["firefox"]
+desktop = "firefox"
+pin = "browser"
+
+[[section.item]]
+id = "brave"
+name = "Brave"
+source = "flatpak"
+packages = ["com.brave.Browser"]
+desktop = "com.brave.Browser"
+pin = "browser"
+
+[[section.item]]
+id = "chromium"
+name = "Chromium"
+source = "repo"
+packages = ["chromium"]
+desktop = "chromium"
+pin = "browser"
+
+[[section]]
+id = "messengers"
+title_key = "sectionMessengers"
+multiple = true
+
+[[section.item]]
+id = "telegram"
+name = "Telegram"
+source = "repo"
+packages = ["telegram-desktop"]
+desktop = "org.telegram.desktop"
+recommended = true
+pin = "messenger"
+
+[[section.item]]
+id = "slack"
+name = "Slack"
+source = "aur"
+packages = ["slack-desktop"]
+desktop = "slack"
+pin = "messenger"
+
+[[section.item]]
+id = "wechat"
+name = "WeChat"
+source = "aur"
+packages = ["wechat-bin"]
+repo_packages = ["noto-fonts-cjk"]
+desktop = "wechat"
+pin = "messenger"
+
+[[section]]
+id = "files"
+title_key = "sectionFiles"
+multiple = false
+
+[[section.item]]
+id = "dolphin"
+name = "Dolphin"
+source = "repo"
+packages = ["dolphin"]
+desktop = "org.kde.dolphin"
+recommended = true
+pin = "files"
+
+[[section]]
+id = "code"
+title_key = "sectionCode"
+multiple = false
+
+[[section.item]]
+id = "vscode"
+name = "Visual Studio Code"
+source = "aur"
+packages = ["visual-studio-code-bin"]
+desktop = "code"
+recommended = true
+pin = "code"
+
+[[section]]
+id = "passwords"
+title_key = "sectionPasswords"
+multiple = false
+
+[[section.item]]
+id = "1password"
+name = "1Password"
+source = "aur"
+packages = ["1password"]
+desktop = "com.onepassword.OnePassword"
+recommended = true
+
+[[section]]
+id = "vpn"
+title_key = "sectionVpn"
+multiple = false
+
+[[section.item]]
+id = "amneziavpn"
+name = "AmneziaVPN"
+source = "manual"
+recommended = true
+
+[[section]]
+id = "remote"
+title_key = "sectionRemote"
+multiple = false
+
+[[section.item]]
+id = "remmina"
+name = "Remmina"
+source = "repo"
+packages = ["remmina", "freerdp", "libvncserver", "gtk-vnc", "libsecret"]
+desktop = "org.remmina.Remmina"
+recommended = true
+
+[[section]]
+id = "documents"
+title_key = "sectionDocuments"
+multiple = false
+
+[[section.item]]
+id = "onlyoffice"
+name = "ONLYOFFICE Desktop Editors"
+source = "flatpak"
+packages = ["org.onlyoffice.desktopeditors"]
+repo_packages = ["ttf-carlito", "ttf-caladea", "ttf-liberation"]
+desktop = "org.onlyoffice.desktopeditors"
+recommended = true
+
+[[section]]
+id = "containers"
+title_key = "sectionContainers"
+multiple = true
+
+[[section.item]]
+id = "docker"
+name = "Docker Engine"
+source = "repo"
+packages = ["docker", "docker-buildx", "docker-compose"]
+services = ["docker.socket"]
+recommended = true
+
+[[section.item]]
+id = "docker-desktop"
+name = "Docker Desktop"
+source = "manual"
+
+[[section]]
+id = "dotnet"
+title_key = "sectionDotnet"
+multiple = true
+
+[[section.item]]
+id = "dotnet-latest"
+name = ".NET (latest)"
+source = "repo"
+packages = ["dotnet-sdk", "aspnet-runtime", "aspnet-targeting-pack"]
+recommended = true
+
+[[section.item]]
+id = "dotnet-8"
+name = ".NET 8.0 LTS"
+source = "repo"
+packages = ["dotnet-sdk-8.0", "aspnet-runtime-8.0"]
+advanced = true
+
+[[section.item]]
+id = "dotnet-9"
+name = ".NET 9.0"
+source = "repo"
+packages = ["dotnet-sdk-9.0", "aspnet-runtime-9.0"]
+advanced = true
+
+[[section]]
+id = "node"
+title_key = "sectionNode"
+multiple = true
+
+[[section.item]]
+id = "node-lts"
+name = "Node.js LTS"
+source = "fnm"
+packages = ["lts-latest"]
+repo_packages = ["fnm", "pnpm"]
+recommended = true
+
+[[section.item]]
+id = "node-22"
+name = "Node.js 22"
+source = "fnm"
+packages = ["22"]
+repo_packages = ["fnm"]
+advanced = true
+
+[[section.item]]
+id = "node-24"
+name = "Node.js 24"
+source = "fnm"
+packages = ["24"]
+repo_packages = ["fnm"]
+advanced = true
+
+[[section.item]]
+id = "node-26"
+name = "Node.js 26"
+source = "fnm"
+packages = ["26"]
+repo_packages = ["fnm"]
+advanced = true
+
+[[section]]
+id = "python"
+title_key = "sectionPython"
+multiple = true
+
+[[section.item]]
+id = "python-system"
+name = "Python (system)"
+source = "repo"
+packages = ["python", "python-pip", "uv"]
+recommended = true
+
+[[section.item]]
+id = "python-3.12"
+name = "Python 3.12"
+source = "uv"
+packages = ["3.12"]
+repo_packages = ["uv"]
+advanced = true
+
+[[section.item]]
+id = "python-3.13"
+name = "Python 3.13"
+source = "uv"
+packages = ["3.13"]
+repo_packages = ["uv"]
+advanced = true
+
+[[section]]
+id = "devtools"
+title_key = "sectionDevTools"
+multiple = false
+
+[[section.item]]
+id = "devtools"
+name = "Developer tools"
+source = "repo"
+packages = ["base-devel", "jq", "ripgrep", "fzf"]
+recommended = true
