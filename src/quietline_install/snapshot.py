@@ -3,7 +3,8 @@
 Снимки лежат в неподключённом подтоме `@snapshots` верхнего уровня (`subvolid=5`), меню GRUB
 строит `grub-btrfs` при `grub-mkconfig`. Верх монтируется только во временный каталог
 `/run/quietline-top.XXXXXX` и всегда размонтируется. Подтом `@` не удаляется и не назначается
-подтомом по умолчанию: откат переименовывает его в `@broken-<время>` и создаёт новый `@`.
+подтомом по умолчанию: откат собирает новый корень рядом, затем переименовывает `@` в
+`@broken-<время>`, а новый корень — в `@`.
 
 Общедоступные системные файлы (`/etc/mkinitcpio.conf`, `/proc/*`) читаются через `ctx.root`;
 запись, проверки и чтение файлов root (`fstab` внутри верха) — командами под `sudo`.
@@ -27,6 +28,7 @@ HOOK = 'grub-btrfs-overlayfs'
 MKINITCPIO = '/etc/mkinitcpio.conf'
 GRUB_CFG = '/boot/grub/grub.cfg'
 TOP_PREFIX = '/run/quietline-top.'
+SYSTEM_PATHS = ('/usr/lib/modules', '/var/lib/pacman')
 SNAPSHOT_NAME = re.compile(r'quietline-pre-\d{8}-\d{6}')
 _HOOKS_LINE = re.compile(r'^[ \t]*HOOKS=\(([^)]*)\)', re.M)
 _FSTAB_ROOT = re.compile(r'^(\s*[^#\s]\S*\s+/\s+btrfs\s+)(\S+)(.*)$')
@@ -34,7 +36,11 @@ _FSTAB_ROOT = re.compile(r'^(\s*[^#\s]\S*\s+/\s+btrfs\s+)(\S+)(.*)$')
 
 @dataclass
 class RootInfo:
-    """Устройство корня. `hooks_editable` — `HOOKS` задан в `/etc/mkinitcpio.conf` и не переопределён."""
+    """Устройство корня.
+
+    `hooks_editable` — `HOOKS` задан в `/etc/mkinitcpio.conf` и не переопределён;
+    `system_inside` — `/usr/lib/modules` и `/var/lib/pacman` в том же подтоме, что и `/`.
+    """
 
     fstype: str
     device: str | None
@@ -44,6 +50,7 @@ class RootInfo:
     overlay: bool
     swapfile_in_root: bool
     hooks_editable: bool = True
+    system_inside: bool = True
 
 
 def _stamp() -> str:
@@ -96,6 +103,10 @@ def _swapfile_in_root(ctx: Ctx, root_source: str) -> bool:
     return False
 
 
+def _same_source(ctx: Ctx, path: str, root_source: str) -> bool:
+    return ctx.system.run(['findmnt', '-no', 'SOURCE', '-T', path], check=False).strip() == root_source
+
+
 def inspect_root(ctx: Ctx) -> RootInfo:
     """Читает устройство корня: `findmnt`, `/etc/mkinitcpio.conf`, `/proc/swaps`, `/proc/cmdline`."""
     line = ctx.system.run(['findmnt', '-no', 'FSTYPE,SOURCE,OPTIONS', '/']).strip().splitlines()
@@ -111,6 +122,7 @@ def inspect_root(ctx: Ctx) -> RootInfo:
     else:
         device = None
     boot = ctx.system.run(['findmnt', '-no', 'SOURCE', '/boot'], check=False).strip()
+    system_inside = fstype != 'btrfs' or all(_same_source(ctx, path, source) for path in SYSTEM_PATHS)
     hooks = _hooks(_read(ctx, MKINITCPIO))
     return RootInfo(
         fstype=fstype, device=device, subvol=subvol,
@@ -119,6 +131,7 @@ def inspect_root(ctx: Ctx) -> RootInfo:
         overlay=overlay,
         swapfile_in_root=fstype == 'btrfs' and _swapfile_in_root(ctx, source),
         hooks_editable=hooks is not None and not _hooks_in_dropins(ctx),
+        system_inside=system_inside,
     )
 
 
@@ -132,6 +145,8 @@ def snapshot_plan(info: RootInfo) -> tuple[str, str]:
         return 'none', 'snapshot.reason.subvol'
     if not info.boot_inside:
         return 'none', 'snapshot.reason.bootSeparate'
+    if not info.system_inside:
+        return 'none', 'snapshot.reason.splitSystem'
     if info.swapfile_in_root:
         return 'none', 'snapshot.reason.swapfile'
     if info.systemd_hook:
@@ -182,7 +197,35 @@ def prepare(ctx: Ctx) -> None:
         ctx.system.run(['cp', '-a', MKINITCPIO, backup], sudo=True)
         ctx.record({'kind': 'file', 'path': MKINITCPIO, 'backup': backup})
         _write_system_file(ctx, MKINITCPIO, new)
-    ctx.system.run(['mkinitcpio', '-P'], sudo=True)
+    try:
+        ctx.system.run(['mkinitcpio', '-P'], sudo=True)
+    except subprocess.CalledProcessError as exc:
+        _undo_hook(ctx, exc)
+
+
+def _undo_hook(ctx: Ctx, error: subprocess.CalledProcessError) -> None:
+    """`mkinitcpio -P` с хуком не прошёл: возвращает копию `mkinitcpio.conf` и собирает образы заново."""
+    backups = [change['backup'] for change in ctx.state.changes
+               if change.get('kind') == 'file' and change.get('path') == MKINITCPIO and change.get('backup')]
+    ctx.log(f'mkinitcpio -P failed with the {HOOK} hook: {error}')
+    if not backups:
+        raise StepFailed(f'mkinitcpio -P failed and there is no copy of {MKINITCPIO}',
+                         'Fix the HOOKS line, run sudo mkinitcpio -P, then run ./install.sh again.') from error
+    backup = backups[-1]
+    temp = MKINITCPIO + '.quietline-new'
+    try:
+        ctx.system.run(['cp', '-a', backup, temp], sudo=True)
+        ctx.system.run(['mv', '-f', temp, MKINITCPIO], sudo=True)
+        ctx.system.run(['mkinitcpio', '-P'], sudo=True)
+    except subprocess.CalledProcessError as exc:
+        ctx.log(f'restoring {MKINITCPIO} from {backup} failed: {exc}')
+        raise StepFailed(f'mkinitcpio -P failed with the {HOOK} hook, and restoring {MKINITCPIO} from {backup} '
+                         f'failed too',
+                         f'Run: sudo cp -a {backup} {MKINITCPIO} && sudo mkinitcpio -P, '
+                         'then run ./install.sh again.') from exc
+    ctx.log(f'{MKINITCPIO} restored from {backup}, initramfs rebuilt without {HOOK}')
+    raise StepFailed(f'mkinitcpio -P failed with the {HOOK} hook; {MKINITCPIO} was restored from {backup}',
+                     'The installer falls back to a writable snapshot (btrfs-rw).') from error
 
 
 def _unmount(ctx: Ctx, top: str, strict: bool) -> None:
@@ -266,44 +309,97 @@ def _strip_root_subvolid(fstab: str) -> str:
     return ''.join(lines)
 
 
+def _swap_roots(ctx: Ctx, top: str, device: str, new: str, broken: str, has_root: bool) -> None:
+    """Ставит готовый `new` на место `@`, старый `@` — в `broken`; при сбое возвращает `@` назад."""
+    if has_root:
+        try:
+            ctx.system.run(['mv', '-T', f'{top}/@', f'{top}/{broken}'], sudo=True)
+        except subprocess.CalledProcessError as exc:
+            ctx.log(f'rollback: moving @ to {broken} failed: {exc}')
+            raise StepFailed(f'could not move @ aside; @ was not changed, the new root is left as {new}',
+                             'See the install log.') from exc
+    try:
+        ctx.system.run(['mv', '-T', f'{top}/{new}', f'{top}/@'], sudo=True)
+        return
+    except subprocess.CalledProcessError as exc:
+        ctx.log(f'rollback: moving {new} to @ failed: {exc}')
+        failure = exc
+    if not has_root:
+        raise StepFailed(f'could not move {new} to @; there is no @ now',
+                         f'From a live system: sudo mount -o subvolid=5 {device} /mnt && '
+                         f'sudo mv -T /mnt/{new} /mnt/@') from failure
+    try:
+        ctx.system.run(['mv', '-T', f'{top}/{broken}', f'{top}/@'], sudo=True)
+    except subprocess.CalledProcessError as exc:
+        ctx.log(f'rollback: moving {broken} back to @ failed: {exc}')
+        raise StepFailed(f'could not move {new} to @, and could not move the old root {broken} back to @; '
+                         'there is no @ now',
+                         f'Before rebooting: sudo mount -o subvolid=5 {device} /mnt && '
+                         f'sudo mv -T /mnt/{broken} /mnt/@') from exc
+    ctx.log(f'rollback: old root moved back from {broken} to @')
+    raise StepFailed(f'could not move {new} to @; the old root is back as @, the new root is left as {new}',
+                     'See the install log.') from failure
+
+
 def rollback_btrfs(ctx: Ctx, name: str) -> str:
-    """Подменяет `@` копией снимка `name`, правит `fstab` нового `@`, возвращает файлы `~`; имя старого `@`."""
+    """Собирает новый корень из снимка `name` рядом с `@`, затем подменяет `@`; возвращает имя старого `@`.
+
+    Пока новый корень (`@rollback-new-<время>` с исправленным `fstab`) не готов, `@` не меняется.
+    Подмена — два переименования подряд; результат сразу пишется в `state.snapshot`.
+    Затем возвращаются файлы домашнего каталога.
+    """
     if not isinstance(name, str) or not SNAPSHOT_NAME.fullmatch(name):
         raise StepFailed(f'not a Quietline snapshot name: {name!r}')
     info = inspect_root(ctx)
     if not info.device or not (info.overlay or (info.fstype == 'btrfs' and info.subvol == '/@')):
         raise StepFailed('the root filesystem is not Btrfs with the @ subvolume')
-    broken = f'@broken-{_stamp()}'
-    with _top_level(ctx, info.device) as top:
-        source = f'{top}/@snapshots/{name}'
-        try:
-            ctx.system.run(['btrfs', 'subvolume', 'show', source], sudo=True)
-        except subprocess.CalledProcessError:
-            raise StepFailed(f'snapshot {name} not found', 'Nothing was changed.') from None
-        found = _entries(ctx, top)
-        if broken in found:
-            raise StepFailed(f'{broken} already exists', 'Run the rollback again in a second.')
-        moved = '@' in found
-        if moved:
-            ctx.system.run(['mv', '-T', f'{top}/@', f'{top}/{broken}'], sudo=True)
-        created = False
-        try:
-            ctx.system.run(['btrfs', 'subvolume', 'snapshot', source, f'{top}/@'], sudo=True)
-            created = True
-            fstab = f'{top}/@/etc/fstab'
-            text = ctx.system.run(['cat', fstab], sudo=True)
-            fixed = _strip_root_subvolid(text)
-            if fixed != text:
-                _write_system_file(ctx, fstab, fixed)
-        except BaseException:
-            if moved:
-                if created:
-                    ctx.system.run(['mv', '-T', f'{top}/@', f'{top}/@rollback-failed-{_stamp()}'],
-                                   sudo=True, check=False)
-                ctx.system.run(['mv', '-T', f'{top}/{broken}', f'{top}/@'], sudo=True, check=False)
+    stamp = _stamp()
+    new, broken = f'@rollback-new-{stamp}', f'@broken-{stamp}'
+    swapped = False
+    errors = []
+    action = 'Reboot to use the restored root; see the install log.'
+    try:
+        with _top_level(ctx, info.device) as top:
+            source = f'{top}/@snapshots/{name}'
+            try:
+                ctx.system.run(['btrfs', 'subvolume', 'show', source], sudo=True)
+            except subprocess.CalledProcessError:
+                raise StepFailed(f'snapshot {name} not found', 'Nothing was changed.') from None
+            found = _entries(ctx, top)
+            if new in found or broken in found:
+                raise StepFailed(f'{new} or {broken} already exists', 'Run the rollback again in a second.')
+            try:
+                ctx.system.run(['btrfs', 'subvolume', 'snapshot', source, f'{top}/{new}'], sudo=True)
+            except subprocess.CalledProcessError as exc:
+                raise StepFailed(f'could not create {new} from {name}; @ was not changed',
+                                 'See the install log.') from exc
+            try:
+                fstab = f'{top}/{new}/etc/fstab'
+                text = ctx.system.run(['cat', fstab], sudo=True)
+                fixed = _strip_root_subvolid(text)
+                if fixed != text:
+                    _write_system_file(ctx, fstab, fixed)
+            except subprocess.CalledProcessError as exc:
+                raise StepFailed(f'could not fix /etc/fstab in {new}; @ was not changed, {new} is left in place',
+                                 'See the install log.') from exc
+            _swap_roots(ctx, top, info.device, new, broken, '@' in found)
+            swapped = True
+            ctx.state.snapshot = {**(ctx.state.snapshot or {}), 'rolledBackTo': name, 'broken': broken}
+            ctx.state.save()
+            ctx.log(f'rollback: @ replaced with a copy of {name}, old root kept as {broken}')
+            ctx.system.run(['sync'], check=False)
+    except StepFailed as exc:
+        if not swapped:
             raise
-        ctx.system.run(['sync'])
-    rollback_home(ctx)
+        errors.append(str(exc))
+        action = exc.action or action
+    try:
+        rollback_home(ctx)
+    except StepFailed as exc:
+        errors.append(str(exc))
+    if errors:
+        raise StepFailed(f'the root was replaced with a copy of {name} (old root kept as {broken}), but: '
+                         + '; '.join(errors), action)
     return broken
 
 
@@ -332,10 +428,21 @@ def _restore_home_file(ctx: Ctx, path: str, backup: str | None) -> None:
 
 
 def rollback_home(ctx: Ctx) -> None:
-    """Файлы домашнего каталога из журнала, в обратном порядке: копия возвращается, созданный удаляется."""
+    """Файлы домашнего каталога из журнала, в обратном порядке: копия возвращается, созданный удаляется.
+
+    Сбой одной записи не останавливает остальные; все сбои — в одном StepFailed в конце.
+    """
+    failures = []
     for change in reversed(ctx.state.changes):
         if change.get('kind') == 'file' and _in_home(ctx, change['path']):
-            _restore_home_file(ctx, change['path'], change.get('backup'))
+            try:
+                _restore_home_file(ctx, change['path'], change.get('backup'))
+            except OSError as exc:
+                ctx.log(f'rollback: {change["path"]} failed: {exc}')
+                failures.append(change['path'])
+    if failures:
+        raise StepFailed(f'{len(failures)} file(s) in the home folder were not restored: {", ".join(failures)}',
+                         'See the install log.')
 
 
 def _restore_system_file(ctx: Ctx, path: str, backup: str | None) -> None:

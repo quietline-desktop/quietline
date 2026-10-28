@@ -138,6 +138,10 @@ TEXTS = {
             'Система загружена из снимка. Установку здесь не начинать: откатите систему или загрузитесь '
             'обычным пунктом меню GRUB.'
         ),
+        'snapshot.reason.splitSystem': (
+            '/usr/lib/modules или /var/lib/pacman в отдельном подтоме или разделе: откат вернул бы ядро без его '
+            'модулей или без базы пакетов. Снимка не будет, откат пойдёт по журналу установщика.'
+        ),
         'snapshot.reason.swapfile': (
             'В подтоме @ включён файл подкачки, и снимок @ невозможен. Перенесите его в отдельный подтом '
             'или выключите (swapoff) — иначе снимка не будет, откат пойдёт по журналу установщика.'
@@ -267,6 +271,11 @@ TEXTS = {
         'snapshot.reason.overlay': (
             'The system was booted from a snapshot. Do not install here: roll the system back, or boot the '
             'normal GRUB entry.'
+        ),
+        'snapshot.reason.splitSystem': (
+            '/usr/lib/modules or /var/lib/pacman is on a separate subvolume or partition: a rollback would bring '
+            'back the kernel without its modules or without the package database. No snapshot, rollback follows '
+            'the installer journal.'
         ),
         'snapshot.reason.swapfile': (
             'A swap file is active inside the @ subvolume, so @ cannot be snapshotted. Move it to its own '
