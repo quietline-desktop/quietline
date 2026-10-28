@@ -166,3 +166,14 @@ def test_scroll_top_keeps_cursor_visible():
     assert scroll_top(cursor=7, top=0, height=5) == 3
     assert scroll_top(cursor=1, top=3, height=5) == 1
     assert scroll_top(cursor=4, top=0, height=5) == 0
+
+
+def test_every_hint_fits_two_lines_of_an_80_column_console():
+    from quietline_install.screens import FOOTER_LINES, wrap
+
+    hints = [(lang, key) for lang in texts.TEXTS for key in texts.TEXTS[lang] if key.startswith(('hint.', 'final.hint'))]
+    assert hints
+    for lang, key in hints:
+        lines = wrap(texts.TEXTS[lang][key], 78)
+        assert len(lines) <= FOOTER_LINES, (lang, key)
+        assert all(len(line) <= 78 for line in lines), (lang, key)

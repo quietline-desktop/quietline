@@ -171,6 +171,12 @@ def wrap(text: str, width: int) -> list[str]:
 
 # --- отрисовка ---
 
+
+def body_room(height: int) -> int:
+    """Сколько строк остаётся телу экрана: заголовок, пустая строка и подсказка занимают остальное."""
+    return max(1, height - 2 - FOOTER_LINES)
+
+FOOTER_LINES = 2
 ENTER_KEYS = (10, 13, curses.KEY_ENTER)
 ESC = 27
 
@@ -199,10 +205,11 @@ def _paint(stdscr, title: str, body: list[tuple[str, bool]], footer: str, top: i
     stdscr.erase()
     height, width = stdscr.getmaxyx()
     stdscr.addstr(0, 1, clip(title, width - 2), curses.A_BOLD)
-    room = max(1, height - 4)
+    room = body_room(height)
     for row, (line, selected) in enumerate(body[top:top + room]):
         stdscr.addstr(2 + row, 1, clip(line, width - 2), curses.A_REVERSE if selected else curses.A_NORMAL)
-    stdscr.addstr(height - 1, 1, clip(footer, width - 2), curses.A_DIM)
+    for row, line in enumerate(wrap(footer, width - 2)[:FOOTER_LINES]):
+        stdscr.addstr(height - FOOTER_LINES + row, 1, clip(line, width - 2), curses.A_DIM)
     stdscr.refresh()
 
 
@@ -215,7 +222,7 @@ def _menu(stdscr, title: str, intro: str, options: list[str], footer: str, index
         height, width = stdscr.getmaxyx()
         head = [(line, False) for line in wrap(intro, width - 2)] + [('', False)] if intro else []
         body = head + [(('> ' if i == choice.index else '  ') + option, i == choice.index) for i, option in enumerate(options)]
-        top = scroll_top(len(head) + choice.index, top, max(1, height - 4))
+        top = scroll_top(len(head) + choice.index, top, body_room(height))
         _paint(stdscr, title, body, footer, top)
         key = _key(stdscr)
         if key == curses.KEY_UP:
@@ -233,7 +240,7 @@ def _read_text_screen(stdscr, title: str, lines: list[str], footer: str) -> None
     while True:
         height, width = stdscr.getmaxyx()
         wrapped = [piece for line in lines for piece in (wrap(line, width - 2) or [''])]
-        room = max(1, height - 4)
+        room = body_room(height)
         top = max(0, min(top, max(0, len(wrapped) - room)))
         _paint(stdscr, title, [(line, False) for line in wrapped], footer, top)
         key = _key(stdscr)
@@ -269,7 +276,7 @@ def show_checks(stdscr, ctx, results: list[CheckResult]) -> bool:
         lines.append(f'[{ctx.t("check.status." + status)}] {ctx.t("check." + result.id)}{detail}')
     if any(not r.ok and r.blocking for r in results):
         lines += ['', ctx.t('checks.failed')]
-        _read_text_screen(stdscr, ctx.t('checks.title'), lines, ctx.t('hint.any'))
+        _read_text_screen(stdscr, ctx.t('checks.title'), lines, ctx.t('hint.close'))
         return False
     footer = ctx.t('hint.any')
     if any(not r.ok for r in results):
@@ -318,7 +325,7 @@ def choose_programs(stdscr, ctx, checklist: Checklist):
         head = [(line, False) for line in wrap(ctx.t('programs.base'), width - 2)] + [('', False)]
         rows = checklist.rows()
         body = head + [(_row_label(ctx, row), i == checklist.cursor) for i, row in enumerate(rows)]
-        top = scroll_top(len(head) + checklist.cursor, top, max(1, height - 4))
+        top = scroll_top(len(head) + checklist.cursor, top, body_room(height))
         _paint(stdscr, ctx.t('programs.title'), body, ctx.t('hint.list'), top)
         key = _key(stdscr)
         if key == curses.KEY_UP:

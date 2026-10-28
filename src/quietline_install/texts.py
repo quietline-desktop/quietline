@@ -9,10 +9,11 @@ TEXTS = {
         # Общее
         'language.ru': 'Русский',
         'language.en': 'English',
-        'hint.menu': 'Стрелки — выбор   Enter — дальше   Esc — назад   q — выход без изменений',
-        'hint.confirm': 'Enter — да, продолжить   Esc — назад   q — выход без изменений',
-        'hint.list': 'Стрелки — выбор   Пробел — отметить   Enter — раскрыть / дальше   r — рекомендуемый набор   Esc — назад   q — выход',
+        'hint.menu': 'Стрелки — выбор, Enter — дальше, Esc — назад, q — выход без изменений',
+        'hint.confirm': 'Enter — продолжить, Esc — назад, q — выход без изменений',
+        'hint.list': 'Стрелки — выбор, Пробел — отметить, Enter — раскрыть, r — рекомендуемый набор, Esc — назад, q — выход',
         'hint.any': 'Enter — продолжить',
+        'hint.close': 'Enter — закрыть',
 
         # Проверки
         'checks.title': 'Проверка системы',
@@ -20,7 +21,7 @@ TEXTS = {
         'check.not-root': 'Запуск не от root',
         'check.network': 'Есть сеть',
         'check.sudo': 'Есть sudo',
-        'check.btrfs': 'Корень на Btrfs (будет снимок для отката)',
+        'check.btrfs': 'Корень на Btrfs',
         'check.status.ok': 'ОК',
         'check.status.fail': 'НЕТ',
         'check.status.warn': 'ВНИМАНИЕ',
@@ -70,7 +71,7 @@ TEXTS = {
         'final.checks': 'Проверка готовности:',
         'final.homeDirs': 'Папки в домашнем каталоге оставлены как были: {path}. Данные не переносились.',
         'final.reboot': 'Перезагрузиться сейчас, чтобы войти через экран входа Quietline?',
-        'final.hint': 'Enter — перезагрузить   Esc — позже',
+        'final.hint': 'Enter — перезагрузить, Esc — позже',
 
         # Продолжить или откатить
         'resume.title': 'Незавершённая установка',
@@ -114,17 +115,18 @@ TEXTS = {
     'en': {
         'language.ru': 'Русский',
         'language.en': 'English',
-        'hint.menu': 'Arrows — choose   Enter — next   Esc — back   q — quit without changes',
-        'hint.confirm': 'Enter — yes, continue   Esc — back   q — quit without changes',
-        'hint.list': 'Arrows — choose   Space — check   Enter — expand / next   r — recommended set   Esc — back   q — quit',
+        'hint.menu': 'Arrows — choose, Enter — next, Esc — back, q — quit without changes',
+        'hint.confirm': 'Enter — continue, Esc — back, q — quit without changes',
+        'hint.list': 'Arrows — choose, Space — check, Enter — expand, r — recommended set, Esc — back, q — quit',
         'hint.any': 'Enter — continue',
+        'hint.close': 'Enter — close',
 
         'checks.title': 'System check',
         'check.arch': 'This is Arch Linux',
         'check.not-root': 'Not running as root',
         'check.network': 'Network is available',
         'check.sudo': 'sudo is available',
-        'check.btrfs': 'Root is on Btrfs (a snapshot will be taken for rollback)',
+        'check.btrfs': 'Root filesystem is Btrfs',
         'check.status.ok': 'OK',
         'check.status.fail': 'NO',
         'check.status.warn': 'WARNING',
@@ -170,7 +172,7 @@ TEXTS = {
         'final.checks': 'Readiness check:',
         'final.homeDirs': 'Folders in your home directory were left as they are: {path}. No data was moved.',
         'final.reboot': 'Reboot now to sign in through the Quietline login screen?',
-        'final.hint': 'Enter — reboot   Esc — later',
+        'final.hint': 'Enter — reboot, Esc — later',
 
         'resume.title': 'Unfinished installation',
         'resume.failed': 'Step "{step}" did not finish.',
