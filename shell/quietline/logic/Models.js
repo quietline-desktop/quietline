@@ -430,3 +430,13 @@ function launchCommand(command, unit) {
     if (!command || !command.length) return null;
     return ["systemd-run", "--user", "--scope", "--collect", "--quiet", "--unit=" + unit, "--"].concat(Array.from(command));
 }
+
+// Сколько мс держать уведомление: критическое — до закрытия (0), остальные — не дольше
+// `NOTIFICATION_MS`, короче — если приложение просит меньше (`expireTimeout` в секундах).
+var NOTIFICATION_MS = 6000;
+var NOTIFICATION_LIMIT = 3;
+function notificationTimeout(expireTimeout, urgency) {
+    if (urgency === 2) return 0;
+    var requested = Number(expireTimeout) * 1000;
+    return requested > 0 ? Math.min(requested, NOTIFICATION_MS) : NOTIFICATION_MS;
+}

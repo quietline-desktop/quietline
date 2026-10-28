@@ -6,6 +6,7 @@ import "services"
 import "system"
 import "settings"
 import "session"
+import "notifications"
 import "bar"
 import "dock"
 import "logic/Models.js" as Models
@@ -23,6 +24,8 @@ ShellRoot {
     BluetoothService { id: bluetoothService }
     PowerService { id: powerService }
     SessionService { id: sessionService }
+    NotificationService { id: notificationService }
+    NotificationPopups { service: notificationService }
     // Системные сервисы, общие для всех панелей, всплывающих окон и окна «Настройки».
     readonly property var services: ({network: networkService, audio: audioService, brightness: brightnessService,
                                       bluetooth: bluetoothService, power: powerService, session: sessionService, settings: settingsWindow})

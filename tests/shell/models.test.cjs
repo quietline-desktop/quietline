@@ -306,3 +306,10 @@ test('applications start in their own quietline scope',()=>{
   ['systemd-run','--user','--scope','--collect','--quiet','--unit=app-quietline-code-1','--','code','--new-window']);
  assert.equal(M.launchCommand([], 'u'),null);
 });
+test('notifications never cover the screen for long',()=>{
+ assert.equal(M.notificationTimeout(-1,1),6000);
+ assert.equal(M.notificationTimeout(0,1),6000);
+ assert.equal(M.notificationTimeout(2.5,0),2500);
+ assert.equal(M.notificationTimeout(60,1),6000);
+ assert.equal(M.notificationTimeout(60,2),0);
+});
