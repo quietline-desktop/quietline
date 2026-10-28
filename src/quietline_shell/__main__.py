@@ -16,6 +16,8 @@
 - `clipboard store|list|restore|delete|image|wipe|pause` — история буфера сеанса:
   `store` читает запись из stdin, `list` — `{"entries": [{"id", "kind", "preview"}], "paused"}`,
   `image --id ID` — `{"path"}`, остальные — `{"ok": true}`;
+- `files QUERY [--limit N]` — файлы домашнего каталога `{"files": [path…], "indexedAt"}`;
+  `files --update` — перестроить базу, `{"indexedAt"}`;
 - `network ACTION …` — NetworkManager: состояние, профили объекта, Wi-Fi, контрольные
   точки; подкоманды и их ответы — в docstring `quietline_shell.network`.
 
@@ -31,7 +33,7 @@ from collections.abc import Sequence
 from pathlib import Path
 from typing import Any
 
-from quietline_shell import capture, clipboard, network, session
+from quietline_shell import capture, clipboard, network, search, session
 from quietline_shell.config import about, default_pins_path, load_pins, reduced_motion, save_pins
 
 
@@ -68,6 +70,10 @@ def _parser() -> argparse.ArgumentParser:
     pause_switch = pause.add_mutually_exclusive_group(required=True)
     pause_switch.add_argument("--on", dest="paused", action="store_true")
     pause_switch.add_argument("--off", dest="paused", action="store_false")
+    files = commands.add_parser("files", help="find files in the home directory by name")
+    files.add_argument("query", nargs="?", help="part of the file name")
+    files.add_argument("--limit", type=int, default=20)
+    files.add_argument("--update", action="store_true", help="rebuild the home directory index")
     network.add_parser(commands)
     return parser
 
@@ -96,6 +102,10 @@ def _run(args: argparse.Namespace) -> dict[str, Any]:
                     return clipboard.wipe()
                 case _:
                     return clipboard.set_paused(args.paused)
+        case "files":
+            if args.update:
+                return search.update_index()
+            return search.find_files(args.query or "", args.limit)
         case "screenshot":
             return capture.capture_output() if args.target == "output" else capture.capture_region()
         case "app":
