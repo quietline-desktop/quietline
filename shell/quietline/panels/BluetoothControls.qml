@@ -12,13 +12,13 @@ ColumnLayout {
     spacing: 6
     Text {
         visible: !root.bluetooth.available
-        text: "Bluetooth-адаптер не найден"
+        text: Lang.s.btNotFound
         color: Theme.muted; font.family: Theme.sans; font.pixelSize: Theme.smallFontSize
     }
     ShellSwitch {
         visible: root.bluetooth.available
         Layout.fillWidth: true
-        text: "Bluetooth" + (root.bluetooth.connected.length ? " · подключено: " + root.bluetooth.connected.length : "")
+        text: "Bluetooth" + (root.bluetooth.connected.length ? " · " + Lang.f(Lang.s.btConnectedCount, root.bluetooth.connected.length) : "")
         checked: root.bluetooth.enabled
         onToggled: root.bluetooth.setEnabled(checked)
     }
@@ -31,32 +31,32 @@ ColumnLayout {
             Text {
                 Layout.fillWidth: true
                 text: root.bluetooth.label(deviceRow.modelData)
-                    + (deviceRow.modelData.connected ? " · подключено" : deviceRow.modelData.paired ? " · сопряжено" : "")
+                    + (deviceRow.modelData.connected ? " · " + Lang.s.btConnected : deviceRow.modelData.paired ? " · " + Lang.s.btPaired : "")
                     + (deviceRow.modelData.batteryAvailable ? " · " + Math.round(deviceRow.modelData.battery * 100) + "%" : "")
                 color: Theme.text; font.family: Theme.sans; font.pixelSize: Theme.fontSize
                 elide: Text.ElideRight
             }
             ShellButton {
                 visible: deviceRow.modelData.paired
-                text: deviceRow.modelData.connected ? "Отключить" : "Подключить"
+                text: deviceRow.modelData.connected ? Lang.s.btDisconnect : Lang.s.connect
                 onClicked: root.bluetooth.toggleDevice(deviceRow.modelData)
             }
             ShellButton {
                 visible: !root.compact && !deviceRow.modelData.paired
-                text: deviceRow.modelData.pairing ? "Сопряжение…" : "Сопрячь"
+                text: deviceRow.modelData.pairing ? Lang.s.btPairing : Lang.s.btPair
                 enabled: !deviceRow.modelData.pairing
                 onClicked: root.bluetooth.pair(deviceRow.modelData)
             }
             ShellButton {
                 visible: !root.compact && deviceRow.modelData.paired
-                text: "Забыть"
+                text: Lang.s.btForget
                 onClicked: root.bluetooth.forget(deviceRow.modelData)
             }
         }
     }
     ShellButton {
         visible: !root.compact && root.bluetooth.enabled
-        text: root.bluetooth.scanning ? "Остановить поиск" : "Найти устройства"
+        text: root.bluetooth.scanning ? Lang.s.btStopScan : Lang.s.btScan
         onClicked: root.bluetooth.setScanning(!root.bluetooth.scanning)
     }
 }

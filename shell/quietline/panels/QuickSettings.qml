@@ -13,7 +13,7 @@ ColumnLayout {
     signal networkRequested()
     signal settingsRequested()
     spacing: 12
-    Text { text: "Быстрые настройки"; color: Theme.text; font.family: Theme.sans; font.pixelSize: Theme.titleFontSize; font.bold: true }
+    Text { text: Lang.s.quickSettingsTitle; color: Theme.text; font.family: Theme.sans; font.pixelSize: Theme.titleFontSize; font.bold: true }
     AudioControls { audio: root.services.audio; compact: true; Layout.fillWidth: true }
     Loader {
         active: root.services.brightness.supported && root.builtinScreen
@@ -32,7 +32,7 @@ ColumnLayout {
             enabled: !root.services.network.busy
             onToggled: root.services.network.setWifi(checked)
         }
-        ShellButton { text: "Сеть…"; hint: "Открыть сетевую панель"; onClicked: root.networkRequested() }
+        ShellButton { text: Lang.s.quickNetwork; hint: Lang.s.quickOpenNetwork; onClicked: root.networkRequested() }
     }
     Loader {
         active: root.services.bluetooth.available
@@ -43,8 +43,8 @@ ColumnLayout {
     ShellButton {
         visible: !!root.services.settings
         Layout.fillWidth: true
-        text: "Все настройки"
-        hint: "Открыть окно «Настройки» · Super+I"
+        text: Lang.s.quickAllSettings
+        hint: Lang.s.quickOpenSettings
         onClicked: root.settingsRequested()
     }
 }

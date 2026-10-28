@@ -33,7 +33,7 @@ PanelWindow {
     // 0 — «Окна», 1 — «Тайлы»; анимируется только после подтверждения движком.
     property real modeProgress: workspace && workspace.mode === "tiles" ? 1 : 0
     Behavior on modeProgress { NumberAnimation { duration: root.indicators.reducedMotion ? 0 : Theme.modeDuration; easing.type: Easing.OutCubic } }
-    readonly property string modeLabel: !engine.ready ? "Нет связи" : workspace ? workspace.mode === "tiles" ? "Тайлы" : "Окна" : "—"
+    readonly property string modeLabel: !engine.ready ? Lang.s.barNoConnection : workspace ? workspace.mode === "tiles" ? Lang.s.modeTiles : Lang.s.modeWindows : "—"
     readonly property var buttons: engine.ready ? Models.workspaceItems(engine.state, monitorName, Lang.s) : []
     readonly property var buttonsByKey: Models.keyed(buttons, Models.workspaceKey)
     readonly property string activeTitle: {
@@ -69,7 +69,7 @@ PanelWindow {
             spacing: root.narrow ? 3 : 7
             ShellButton {
                 id: launcher
-                font.family: Theme.icons; text: "\uf009"; hint: "Поиск · Super+Space"; implicitWidth: 28
+                font.family: Theme.icons; text: "\uf009"; hint: Lang.s.barSearchHint; implicitWidth: 28
                 onClicked: popout.toggle("applications")
             }
             Rectangle { width: 1; height: 15; color: Theme.border }
@@ -82,7 +82,7 @@ PanelWindow {
                         required property string modelData
                         readonly property var item: root.buttonsByKey[modelData] || ({number: 0, monitor: "", label: "", migrated: false, active: false})
                         text: item.migrated ? root.tiny ? "↪" + item.number : item.label : ""
-                        hint: "Пространство " + item.number + (item.migrated ? " · " + Models.monitorLabel(item.monitor) : "")
+                        hint: Lang.f(Lang.s.barWorkspaceHint, item.number) + (item.migrated ? " · " + Models.monitorLabel(item.monitor) : "")
                         implicitWidth: item.migrated ? root.tiny ? 28 : Math.min(110, implicitContentWidth + 12) : root.tiny ? 14 : root.narrow ? 20 : 24
                         enabled: root.engine.ready && !root.engine.busy
                         // Перенесённое пространство открывается на мониторе этой панели:
@@ -116,14 +116,14 @@ PanelWindow {
             ShellButton {
                 id: modeButton
                 text: root.modeLabel
-                hint: root.engine.ready ? "Режим: " + root.modeLabel + " · Сменить · Super+M" : "Сервис окон недоступен"
+                hint: root.engine.ready ? Lang.f(Lang.s.barModeHint, root.modeLabel) : Lang.s.barEngineUnavailable
                 implicitWidth: root.tiny ? 36 : 108
                 // Обе подписи режима стоят на месте и сменяются по общему прогрессу 0→1:
                 // подтверждённая смена режима видна как переход, а не замена текста.
                 contentItem: Item {
                     clip: true
                     Repeater {
-                        model: [{mode: "windows", icon: "\uf24d", label: "Окна"}, {mode: "tiles", icon: "\uf00a", label: "Тайлы"}]
+                        model: [{mode: "windows", icon: "\uf24d", label: Lang.s.modeWindows}, {mode: "tiles", icon: "\uf00a", label: Lang.s.modeTiles}]
                         delegate: Row {
                             required property var modelData
                             required property int index
@@ -191,12 +191,12 @@ PanelWindow {
                 id: networkButton
                 font.family: Theme.icons
                 text: root.network.connected ? "\uf796" : "\uf127"
-                hint: "Сеть · " + root.network.summary
+                hint: Lang.f(Lang.s.barNetworkHint, root.network.summary)
                 onClicked: popout.toggle("network")
             }
             ShellButton {
                 text: root.desktop.keyboardLayout
-                hint: (root.desktop.keyboardLayoutName ? root.desktop.keyboardLayoutName + " · " : "") + "Сменить раскладку · левый Alt+Shift"
+                hint: (root.desktop.keyboardLayoutName ? root.desktop.keyboardLayoutName + " · " : "") + Lang.s.barLayoutHint
                 onClicked: root.desktop.switchLayout()
             }
             Text {
@@ -204,26 +204,26 @@ PanelWindow {
                 font.family: Theme.icons
                 text: "\uf293"
                 color: Theme.muted; font.pixelSize: Theme.iconFontSize
-                Accessible.name: root.services.bluetooth.enabled ? "Bluetooth включён" : "Bluetooth выключен"
+                Accessible.name: root.services.bluetooth.enabled ? Lang.s.barBluetoothOn : Lang.s.barBluetoothOff
             }
             Text {
                 visible: root.services.power.hasBattery && !root.tiny
                 Layout.preferredWidth: 58
                 text: (root.services.power.charging ? "↯ " : "▰ ") + root.services.power.percent + "%"
                 color: Theme.text; font.family: Theme.mono; font.pixelSize: Theme.smallFontSize
-                Accessible.name: "Заряд батареи " + root.services.power.percent + "%" + (root.services.power.charging ? ", заряжается" : "")
+                Accessible.name: Lang.f(root.services.power.charging ? Lang.s.barBatteryChargingName : Lang.s.barBatteryName, root.services.power.percent)
             }
             ShellButton {
                 id: details
                 font.family: Theme.icons
                 text: "\uf1de"
-                hint: "Быстрые настройки"
+                hint: Lang.s.quickSettingsTitle
                 onClicked: popout.toggle("quick")
             }
             Text {
-                text: Qt.formatTime(clock.date, "HH:mm")
+                text: Lang.time(clock.date)
                 color: Theme.text; font.family: Theme.mono; font.pixelSize: Theme.fontSize
-                Accessible.name: Qt.formatDateTime(clock.date, "dddd, d MMMM, HH:mm")
+                Accessible.name: Lang.longDate(clock.date) + ", " + Lang.time(clock.date)
             }
             // Кнопка питания — последний элемент панели, видна и на узком экране.
             ShellButton {
@@ -231,7 +231,7 @@ PanelWindow {
                 font.family: Theme.icons
                 text: "\uf011"
                 foreground: Theme.danger
-                hint: "Питание и сеанс"
+                hint: Lang.s.barPower
                 onClicked: popout.toggle("power")
             }
         }
@@ -298,7 +298,7 @@ PanelWindow {
                     session: root.services.session
                     onDone: popout.close()
                 }
-                Text { visible: popout.showingNetwork; text: "Сеть"; color: Theme.text; font.family: Theme.sans; font.pixelSize: Theme.titleFontSize; font.bold: true }
+                Text { visible: popout.showingNetwork; text: Lang.s.settingsNetwork; color: Theme.text; font.family: Theme.sans; font.pixelSize: Theme.titleFontSize; font.bold: true }
                 Loader {
                     active: popout.showingNetwork && popout.opened
                     visible: active
@@ -314,13 +314,13 @@ PanelWindow {
                     onSettingsRequested: { popout.close(); root.services.settings.open(""); }
                 }
                 // Скрытое с узкой панели остаётся доступным здесь.
-                Text { visible: popout.showingQuick && root.compact; text: "CPU  " + root.indicators.cpuText + "\nRAM  " + root.indicators.memoryText + " ГБ"; color: Theme.text; font.family: Theme.mono; font.pixelSize: Theme.fontSize; lineHeight: 1.4 }
-                Text { visible: popout.showingQuick && root.compact && SystemTray.items.values.length > 0; text: "Фоновые приложения"; color: Theme.muted; font.family: Theme.sans; font.pixelSize: Theme.smallFontSize }
+                Text { visible: popout.showingQuick && root.compact; text: "CPU  " + root.indicators.cpuText + "\nRAM  " + root.indicators.memoryText + " " + Lang.s.unitGb; color: Theme.text; font.family: Theme.mono; font.pixelSize: Theme.fontSize; lineHeight: 1.4 }
+                Text { visible: popout.showingQuick && root.compact && SystemTray.items.values.length > 0; text: Lang.s.barBackgroundApps; color: Theme.muted; font.family: Theme.sans; font.pixelSize: Theme.smallFontSize }
                 Repeater {
                     model: popout.showingQuick && root.compact ? SystemTray.items : null
                     delegate: ShellButton { required property var modelData; Layout.fillWidth: true; text: modelData.title || modelData.id; onClicked: { modelData.onlyMenu ? modelData.display(root, root.width - 300, 70) : modelData.activate(); } }
                 }
-                Text { visible: popout.showingQuick && root.tiny && root.services.power.hasBattery; text: "Батарея " + root.services.power.percent + "%" + (root.services.power.timeText ? " · " + root.services.power.timeText : ""); color: Theme.text; font.family: Theme.sans; font.pixelSize: Theme.fontSize }
+                Text { visible: popout.showingQuick && root.tiny && root.services.power.hasBattery; text: Lang.f(Lang.s.powerBattery, root.services.power.percent) + (root.services.power.timeText ? " · " + root.services.power.timeText : ""); color: Theme.text; font.family: Theme.sans; font.pixelSize: Theme.fontSize }
             }
         }
     }
@@ -329,7 +329,7 @@ PanelWindow {
         x: 12; y: Theme.outerMargin + Theme.barHeight - 1
         width: parent.width - 24; height: 28
         text: root.message
-        hint: root.message + (root.engine.ready ? " · Закрыть сообщение" : " · Повторить подключение")
+        hint: root.message + " · " + (root.engine.ready ? Lang.s.barDismissMessage : Lang.s.barRetryConnection)
         background: Rectangle {
             color: parent.hovered ? Theme.raised : Theme.surface
             radius: Theme.controlRadius

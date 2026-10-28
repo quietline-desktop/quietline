@@ -13,8 +13,8 @@ Scope {
     readonly property int percent: hasBattery ? Math.round(battery.percentage * 100) : 0
     readonly property bool charging: hasBattery && (battery.state === UPowerDeviceState.Charging || battery.state === UPowerDeviceState.FullyCharged)
     readonly property string timeText: !hasBattery ? "" : charging
-        ? (battery.timeToFull > 0 ? "до полной зарядки " + Models.formatDuration(battery.timeToFull, Lang.s) : "заряжается")
-        : (battery.timeToEmpty > 0 ? "осталось " + Models.formatDuration(battery.timeToEmpty, Lang.s) : "")
+        ? (battery.timeToFull > 0 ? Lang.f(Lang.s.powerUntilFull, Models.formatDuration(battery.timeToFull, Lang.s)) : Lang.s.powerCharging)
+        : (battery.timeToEmpty > 0 ? Lang.f(Lang.s.powerRemaining, Models.formatDuration(battery.timeToEmpty, Lang.s)) : "")
     // PowerProfiles отдаёт значение и без службы, поэтому её наличие проверяет powerprofilesctl.
     property bool profilesAvailable: false
     readonly property int profile: PowerProfiles.profile

@@ -19,12 +19,12 @@ WlSessionLockSurface {
         spacing: 14
         Text {
             Layout.alignment: Qt.AlignHCenter
-            text: Qt.formatTime(clock.date, "HH:mm")
+            text: Lang.time(clock.date)
             color: Theme.text; font.family: Theme.mono; font.pixelSize: 64
         }
         Text {
             Layout.alignment: Qt.AlignHCenter
-            text: Qt.formatDate(clock.date, "dddd, d MMMM")
+            text: Lang.longDate(clock.date)
             color: Theme.muted; font.family: Theme.sans; font.pixelSize: Theme.fontSize
         }
         TextField {
@@ -32,14 +32,14 @@ WlSessionLockSurface {
             Layout.fillWidth: true
             Layout.topMargin: 18
             echoMode: TextInput.Password
-            placeholderText: root.context.checking ? "Проверка…" : "Пароль"
+            placeholderText: root.context.checking ? Lang.s.lockChecking : Lang.s.password
             enabled: !root.context.checking
             focus: true
             font.family: Theme.sans; font.pixelSize: Theme.fontSize
             color: Theme.text; placeholderTextColor: Theme.muted
             implicitHeight: 38
             leftPadding: 12; rightPadding: 12
-            Accessible.name: "Пароль для разблокировки"
+            Accessible.name: Lang.s.lockPasswordLabel
             background: Rectangle {
                 color: Theme.surface
                 radius: Theme.controlRadius

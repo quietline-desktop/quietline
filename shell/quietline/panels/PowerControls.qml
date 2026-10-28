@@ -11,13 +11,13 @@ ColumnLayout {
     spacing: 8
     Text {
         text: root.power.hasBattery
-            ? "Батарея " + root.power.percent + "%" + (root.power.timeText ? " · " + root.power.timeText : "")
-            : "Батареи нет: питание от сети"
+            ? Lang.f(Lang.s.powerBattery, root.power.percent) + (root.power.timeText ? " · " + root.power.timeText : "")
+            : Lang.s.powerOnMains
         color: root.power.hasBattery ? Theme.text : Theme.muted
         font.family: Theme.sans; font.pixelSize: Theme.fontSize
     }
     Text {
-        text: root.power.profilesAvailable ? "Режим питания" : "Служба профилей питания (power-profiles-daemon) не запущена"
+        text: root.power.profilesAvailable ? Lang.s.powerMode : Lang.s.powerDaemonMissing
         color: Theme.muted; font.family: Theme.sans; font.pixelSize: Theme.smallFontSize
     }
     Flow {
@@ -26,9 +26,9 @@ ColumnLayout {
         spacing: 6
         Repeater {
             model: [
-                {value: PowerProfile.PowerSaver, label: "Энергосбережение"},
-                {value: PowerProfile.Balanced, label: "Баланс"},
-                {value: PowerProfile.Performance, label: "Производительность"}
+                {value: PowerProfile.PowerSaver, label: Lang.s.powerSaver},
+                {value: PowerProfile.Balanced, label: Lang.s.powerBalanced},
+                {value: PowerProfile.Performance, label: Lang.s.powerPerformance}
             ].filter(item => item.value !== PowerProfile.Performance || root.power.hasPerformance)
             delegate: ShellButton {
                 required property var modelData

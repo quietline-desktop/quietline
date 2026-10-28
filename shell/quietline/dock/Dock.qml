@@ -70,7 +70,7 @@ PanelWindow {
                         property bool launchFlash: false
                         width: Theme.dockIconSize; height: Theme.dockIconSize
                         hintBelow: false
-                        hint: app.name + (!app.available && !app.running ? " · не установлено" : app.windows.length > 1 ? " · окон: " + app.windows.length + " · колесо — переключить" : "")
+                        hint: app.name + (!app.available && !app.running ? " · " + Lang.s.dockNotInstalled : app.windows.length > 1 ? " · " + Lang.f(Lang.s.dockWindows, app.windows.length) + " · " + Lang.s.dockWheelHint : "")
                         emphasized: app.active
                         scale: hovered ? Theme.hoverScale : launchFlash ? 0.94 : 1
                         transform: Translate { y: dockButton.hovered ? -Theme.hoverLift : 0; Behavior on y { NumberAnimation { duration: root.indicators.reducedMotion ? 0 : Theme.hoverDuration } } }
@@ -173,14 +173,14 @@ PanelWindow {
             id: menuItems
             width: parent.width
             spacing: 2
-            ShellMenuItem { id: newWindowItem; width: parent.width; text: "Новое окно"; enabled: !!menu.app && menu.app.available; onTriggered: { root.desktop.newWindow(menu.currentName, root.monitorName); menu.close(); } }
-            ShellMenuItem { width: parent.width; text: menu.pinIndex >= 0 ? "Открепить" : "Закрепить"; enabled: !root.desktop.saving; onTriggered: { root.desktop.togglePin(menu.currentName); menu.close(); } }
+            ShellMenuItem { id: newWindowItem; width: parent.width; text: Lang.s.dockNewWindow; enabled: !!menu.app && menu.app.available; onTriggered: { root.desktop.newWindow(menu.currentName, root.monitorName); menu.close(); } }
+            ShellMenuItem { width: parent.width; text: menu.pinIndex >= 0 ? Lang.s.dockUnpin : Lang.s.dockPin; enabled: !root.desktop.saving; onTriggered: { root.desktop.togglePin(menu.currentName); menu.close(); } }
             Rectangle { width: parent.width; height: 1; color: Theme.border }
-            ShellMenuItem { width: parent.width; text: "Сдвинуть влево · Alt+←"; enabled: menu.pinIndex > 0 && !root.desktop.saving; onTriggered: { root.desktop.movePin(menu.pinIndex, menu.pinIndex - 1); menu.close(); } }
-            ShellMenuItem { width: parent.width; text: "Сдвинуть вправо · Alt+→"; enabled: menu.pinIndex >= 0 && menu.pinIndex < root.desktop.pinned.length - 1 && !root.desktop.saving; onTriggered: { root.desktop.movePin(menu.pinIndex, menu.pinIndex + 1); menu.close(); } }
+            ShellMenuItem { width: parent.width; text: Lang.s.dockMoveLeft; enabled: menu.pinIndex > 0 && !root.desktop.saving; onTriggered: { root.desktop.movePin(menu.pinIndex, menu.pinIndex - 1); menu.close(); } }
+            ShellMenuItem { width: parent.width; text: Lang.s.dockMoveRight; enabled: menu.pinIndex >= 0 && menu.pinIndex < root.desktop.pinned.length - 1 && !root.desktop.saving; onTriggered: { root.desktop.movePin(menu.pinIndex, menu.pinIndex + 1); menu.close(); } }
             Rectangle { width: parent.width; height: 1; color: Theme.border }
-            ShellMenuItem { width: parent.width; text: "Закрыть окно · средняя кнопка"; enabled: !!menu.app && menu.app.running; onTriggered: { root.desktop.closeWindow(menu.app.lastWindow); menu.close(); } }
-            ShellMenuItem { width: parent.width; text: "Выйти"; enabled: !!menu.app && menu.app.running; onTriggered: { root.desktop.quit(menu.currentName); menu.close(); } }
+            ShellMenuItem { width: parent.width; text: Lang.s.dockCloseWindow; enabled: !!menu.app && menu.app.running; onTriggered: { root.desktop.closeWindow(menu.app.lastWindow); menu.close(); } }
+            ShellMenuItem { width: parent.width; text: Lang.s.dockQuit; enabled: !!menu.app && menu.app.running; onTriggered: { root.desktop.quit(menu.currentName); menu.close(); } }
         }
     }
     onShownChanged: { if (!shown) { keyboardNavigation = false; menu.close(); } }

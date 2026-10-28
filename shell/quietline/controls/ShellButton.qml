@@ -21,7 +21,7 @@ Button {
     implicitWidth: Math.max(28, label.implicitWidth + 16)
     padding: 4
     Accessible.name: hint || text
-    Accessible.description: busy ? "Выполняется" : ""
+    Accessible.description: busy ? Lang.s.buttonBusy : ""
     function updateHint() {
         var host = QsWindow.window;
         if (!host || !host.hints) return;

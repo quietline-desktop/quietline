@@ -31,7 +31,7 @@ Scope {
         var lines = devices.filter(device => device.state === "connected" || device.state === "connecting")
             .map(device => device.device + (device.profile ? " · " + device.profile : "") + " · "
                  + (device.addresses.length ? device.addresses.join(", ") : Models.deviceLabel(device, Lang.s)));
-        return lines.join("\n") || statusError || "Нет подключения";
+        return lines.join("\n") || statusError || Lang.s.networkNone;
     }
     // Вид последнего запущенного действия (`scan`, `connect`, `save`, `apply`…).
     property string lastAction: ""
@@ -86,10 +86,10 @@ Scope {
         else if (kind === "apply") {
             // Срок в панели на секунду раньше срока отката NetworkManager.
             pending = {checkpoint: data.checkpoint, deadline: Date.now() + (data.timeout - 1) * 1000};
-            notice = "Новая конфигурация применена. Проверьте связь и подтвердите её.";
-        } else if (kind === "confirm") notice = "Конфигурация сохранена.";
-        else if (kind === "rollback") notice = "Возвращена прежняя конфигурация.";
-        else if (kind === "save") { notice = "Профиль «" + data.profile.name + "» сохранён."; profileSaved(); }
+            notice = Lang.s.networkApplied;
+        } else if (kind === "confirm") notice = Lang.s.networkSaved;
+        else if (kind === "rollback") notice = Lang.s.networkRolledBack;
+        else if (kind === "save") { notice = Lang.f(Lang.s.networkProfileSaved, data.profile.name); profileSaved(); }
         if (kind === "confirm" || kind === "rollback") pending = null;
     }
 
@@ -142,7 +142,7 @@ Scope {
                 root.profiles = data.profiles || [];
                 root.wifi = data.wifi || {enabled: false};
                 root.pending = Models.pendingFromStatus(data, root.pending);
-                if (hadDeadline && !root.pending) root.notice = "Время подтверждения истекло: возвращена прежняя конфигурация.";
+                if (hadDeadline && !root.pending) root.notice = Lang.s.networkConfirmExpired;
             }
         }
     }

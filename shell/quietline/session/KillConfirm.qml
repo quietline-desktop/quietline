@@ -14,18 +14,18 @@ ColumnLayout {
 
     function focusCancel() { cancel.forceActiveFocus(); }
 
-    Text { text: "Принудительное завершение"; color: Theme.text; font.family: Theme.sans; font.pixelSize: Theme.titleFontSize; font.bold: true }
+    Text { text: Lang.s.killTitle; color: Theme.text; font.family: Theme.sans; font.pixelSize: Theme.titleFontSize; font.bold: true }
     Text {
         Layout.fillWidth: true
-        text: root.target ? "Завершить «" + (root.target.title || root.target.appId || root.target.className) + "» без сохранения? Несохранённые данные будут потеряны."
-                          : "Нет активного окна."
+        text: root.target ? Lang.f(Lang.s.killQuestion, root.target.title || root.target.appId || root.target.className)
+                          : Lang.s.killNoWindow
         color: Theme.text; font.family: Theme.sans; font.pixelSize: Theme.smallFontSize
         wrapMode: Text.Wrap
     }
     RowLayout {
         spacing: 6
         ShellButton {
-            text: "Завершить принудительно"
+            text: Lang.s.killConfirm
             foreground: Theme.danger
             enabled: !!root.target && root.target.pid > 1
             KeyNavigation.right: cancel
@@ -34,6 +34,6 @@ ColumnLayout {
                 root.done();
             }
         }
-        ShellButton { id: cancel; text: "Отмена"; onClicked: root.done() }
+        ShellButton { id: cancel; text: Lang.s.cancel; onClicked: root.done() }
     }
 }

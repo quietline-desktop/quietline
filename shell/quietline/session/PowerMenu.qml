@@ -17,7 +17,7 @@ ColumnLayout {
     function reset() { confirming = ""; first.forceActiveFocus(); }
     function cancel() { confirming = ""; session.reset(); first.forceActiveFocus(); }
 
-    Text { text: "Сеанс"; color: Theme.text; font.family: Theme.sans; font.pixelSize: Theme.titleFontSize; font.bold: true }
+    Text { text: Lang.s.sessionTitle; color: Theme.text; font.family: Theme.sans; font.pixelSize: Theme.titleFontSize; font.bold: true }
     component ActionButton: ShellButton {
         required property string action
         Layout.fillWidth: true
@@ -29,8 +29,8 @@ ColumnLayout {
     ShellButton {
         id: first
         Layout.fillWidth: true
-        text: "Заблокировать"
-        hint: "Заблокировать сеанс · Super+L"
+        text: Lang.s.actionLock
+        hint: Lang.s.sessionLockHint
         enabled: !root.session.busy
         KeyNavigation.down: logout
         onClicked: { root.done(); root.session.lock(); }
@@ -56,13 +56,13 @@ ColumnLayout {
                 emphasized: true
                 onClicked: root.session.end(root.confirming)
             }
-            ShellButton { text: "Отмена"; onClicked: root.cancel() }
+            ShellButton { text: Lang.s.cancel; onClicked: root.cancel() }
         }
     }
     Text {
         visible: root.session.busy
         Layout.fillWidth: true
-        text: "Закрываем приложения…"
+        text: Lang.s.sessionClosingApps
         color: Theme.muted; font.family: Theme.sans; font.pixelSize: Theme.smallFontSize
     }
     ColumnLayout {
@@ -77,8 +77,8 @@ ColumnLayout {
         }
         RowLayout {
             spacing: 6
-            ShellButton { text: "Повторить"; emphasized: true; onClicked: root.session.end(root.session.action) }
-            ShellButton { text: "Отмена"; onClicked: root.cancel() }
+            ShellButton { text: Lang.s.retry; emphasized: true; onClicked: root.session.end(root.session.action) }
+            ShellButton { text: Lang.s.cancel; onClicked: root.cancel() }
         }
     }
     Text {

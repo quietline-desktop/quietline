@@ -66,11 +66,11 @@ PanelWindow {
                         Layout.fillWidth: true
                         Text {
                             Layout.fillWidth: true
-                            text: card.modelData.appName || "Уведомление"
+                            text: card.modelData.appName || Lang.s.notificationDefaultApp
                             color: Theme.muted; font.family: Theme.sans; font.pixelSize: Theme.smallFontSize
                             elide: Text.ElideRight; textFormat: Text.PlainText
                         }
-                        ShellButton { text: "×"; hint: "Закрыть уведомление"; implicitHeight: 22; onClicked: card.modelData.dismiss() }
+                        ShellButton { text: "×"; hint: Lang.s.notificationDismiss; implicitHeight: 22; onClicked: card.modelData.dismiss() }
                     }
                     Text {
                         Layout.fillWidth: true

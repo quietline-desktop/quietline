@@ -2,6 +2,7 @@ import QtQuick
 import Quickshell
 import Quickshell.Wayland
 import Quickshell.Services.Pam
+import ".."
 
 // Экран блокировки — отдельный процесс `qs -p …/lock/LockScreen.qml`, его запускает
 // `quietline-shell lock`. Поверхность на каждом экране; пароль проверяет PAM по
@@ -24,7 +25,7 @@ ShellRoot {
         pendingPassword = password;
         pamReportedError = false;
         message = "";
-        if (!pam.start()) { pendingPassword = ""; showError("Не удалось начать проверку пароля"); }
+        if (!pam.start()) { pendingPassword = ""; showError(Lang.s.lockStartFailed); }
     }
     function showError(text) { message = text; messageIsError = true; }
 
@@ -47,9 +48,9 @@ ShellRoot {
                 lock.locked = false;
                 Qt.callLater(Qt.quit);
             } else if (root.pamReportedError) root.messageIsError = true;
-            else if (result === PamResult.Failed) root.showError("Неверный пароль");
-            else if (result === PamResult.MaxTries) root.showError("Слишком много попыток. Подождите и попробуйте снова.");
-            else root.showError("Ошибка проверки пароля");
+            else if (result === PamResult.Failed) root.showError(Lang.s.lockWrongPassword);
+            else if (result === PamResult.MaxTries) root.showError(Lang.s.lockTooManyTries);
+            else root.showError(Lang.s.lockCheckFailed);
         }
     }
 

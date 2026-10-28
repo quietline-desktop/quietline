@@ -67,13 +67,13 @@ ColumnLayout {
             Muted {
                 color: Theme.text
                 text: root.network.secondsLeft >= 0
-                    ? "Без подтверждения прежняя конфигурация вернётся через " + root.network.secondsLeft + " с."
-                    : "Есть неподтверждённая конфигурация сети. NetworkManager вернёт прежнюю сам, если её не оставить."
+                    ? Lang.f(Lang.s.netRevertIn, root.network.secondsLeft)
+                    : Lang.s.netUnconfirmed
             }
             RowLayout {
                 spacing: 8
-                ShellButton { text: "Оставить"; emphasized: true; enabled: !root.network.busy; onClicked: root.network.keep() }
-                ShellButton { text: "Вернуть"; enabled: !root.network.busy; onClicked: root.network.revert() }
+                ShellButton { text: Lang.s.netKeep; emphasized: true; enabled: !root.network.busy; onClicked: root.network.keep() }
+                ShellButton { text: Lang.s.netRevert; enabled: !root.network.busy; onClicked: root.network.revert() }
             }
         }
     }
@@ -83,7 +83,7 @@ ColumnLayout {
         SectionTitle { text: "Wi-Fi"; Layout.fillWidth: true }
         ShellSwitch {
             visible: !!root.network.wifiDevice
-            text: root.network.wifi.enabled ? "Включён" : "Выключен"
+            text: root.network.wifi.enabled ? Lang.s.netOn : Lang.s.netOff
             checked: root.network.wifi.enabled
             enabled: !root.network.busy
             onToggled: root.network.setWifi(checked)
@@ -94,7 +94,7 @@ ColumnLayout {
         text: root.network.wifiDevice ? root.network.wifiDevice.device + " · " + Models.deviceLabel(root.network.wifiDevice, Lang.s)
             + (root.network.wifiDevice.profile ? " · " + root.network.wifiDevice.profile : "") : ""
     }
-    Muted { visible: !root.network.wifiDevice; text: "Wi-Fi-адаптер не найден." }
+    Muted { visible: !root.network.wifiDevice; text: Lang.s.netNoWifi }
     ColumnLayout {
         visible: root.network.wifi.enabled && !!root.network.wifiDevice
         Layout.fillWidth: true
@@ -109,8 +109,8 @@ ColumnLayout {
                 ShellButton {
                     Layout.fillWidth: true
                     emphasized: wifiRow.modelData.active
-                    text: wifiRow.modelData.ssid + "   " + wifiRow.modelData.signal + "%" + (wifiRow.modelData.security ? "  ·  защищена" : "")
-                    hint: wifiRow.modelData.active ? "Подключено" : "Подключиться к " + wifiRow.modelData.ssid
+                    text: wifiRow.modelData.ssid + "   " + wifiRow.modelData.signal + "%" + (wifiRow.modelData.security ? "  ·  " + Lang.s.netSecured : "")
+                    hint: wifiRow.modelData.active ? Lang.s.deviceConnected : Lang.f(Lang.s.netConnectTo, wifiRow.modelData.ssid)
                     enabled: !root.network.busy && !wifiRow.modelData.active
                     onClicked: {
                         root.lastAttempt = wifiRow.modelData.security ? wifiRow.modelData.ssid : "";
@@ -125,15 +125,15 @@ ColumnLayout {
                     ShellTextField {
                         id: password
                         Layout.fillWidth: true
-                        label: "Пароль сети " + wifiRow.modelData.ssid
-                        placeholderText: "Пароль"
+                        label: Lang.f(Lang.s.netPasswordFor, wifiRow.modelData.ssid)
+                        placeholderText: Lang.s.password
                         echoMode: TextInput.Password
                         onAccepted: connect.clicked()
                         onVisibleChanged: { if (visible) forceActiveFocus(); }
                     }
                     ShellButton {
                         id: connect
-                        text: "Подключить"
+                        text: Lang.s.connect
                         enabled: password.text.length > 0 && !root.network.busy
                         onClicked: {
                             root.lastAttempt = wifiRow.modelData.ssid;
@@ -146,14 +146,14 @@ ColumnLayout {
             }
         }
         ShellButton {
-            text: root.network.scanning ? "Поиск сетей…" : "Обновить список сетей"
+            text: root.network.scanning ? Lang.s.netScanning : Lang.s.netRefresh
             enabled: !root.network.busy
             onClicked: root.network.scanWifi()
         }
     }
 
     SectionTitle { text: "Ethernet" }
-    Muted { visible: !root.adapter; text: "Ethernet-адаптер не найден. Подключите кабель или USB-адаптер." }
+    Muted { visible: !root.adapter; text: Lang.s.netNoEthernet }
     Flow {
         visible: root.network.ethernet.length > 1
         Layout.fillWidth: true
@@ -163,7 +163,7 @@ ColumnLayout {
             delegate: ShellButton {
                 required property var modelData
                 text: modelData.device
-                hint: "Адаптер " + modelData.device + " · " + Models.deviceLabel(modelData, Lang.s)
+                hint: Lang.f(Lang.s.netAdapterHint, modelData.device, Models.deviceLabel(modelData, Lang.s))
                 emphasized: root.adapter && root.adapter.device === modelData.device
                 onClicked: root.selectedDevice = modelData.device
             }
@@ -178,27 +178,27 @@ ColumnLayout {
             text: root.adapter ? root.adapter.device + " · " + Models.deviceLabel(root.adapter, Lang.s)
                 + (root.adapter.profile ? " · " + root.adapter.profile : "")
                 + (root.adapter.addresses.length ? "\n" + root.adapter.addresses.join(", ") : "")
-                + (root.adapter.gateway ? " · шлюз " + root.adapter.gateway : "") : ""
+                + (root.adapter.gateway ? " · " + Lang.f(Lang.s.netGateway, root.adapter.gateway) : "") : ""
         }
         Flow {
             Layout.fillWidth: true
             spacing: 6
             ShellButton {
-                text: "Вернуть DHCP"
+                text: Lang.s.netUseDhcp
                 enabled: !root.network.busy && !root.network.pending
                 onClicked: root.network.useDhcp(root.adapter.device)
             }
             ShellButton {
                 visible: !!root.recentProfile
-                text: root.recentProfile ? "Применить «" + root.recentProfile.name + "»" : ""
-                hint: "Недавний профиль"
+                text: root.recentProfile ? Lang.f(Lang.s.netApplyRecent, root.recentProfile.name) : ""
+                hint: Lang.s.netRecentProfile
                 enabled: !root.network.busy && !root.network.pending
                 onClicked: root.network.apply(root.recentProfile.uuid, root.adapter.device)
             }
         }
     }
 
-    SectionTitle { visible: root.network.profiles.length > 0; text: "Сохранённые профили" }
+    SectionTitle { visible: root.network.profiles.length > 0; text: Lang.s.netSavedProfiles }
     Repeater {
         model: root.network.profiles
         delegate: RowLayout {
@@ -209,16 +209,16 @@ ColumnLayout {
             Muted {
                 color: Theme.text
                 text: profileRow.modelData.name + "\n" + (profileRow.modelData.method === "auto" ? "DHCP" : profileRow.modelData.address
-                      + (profileRow.modelData.gateway ? " · шлюз " + profileRow.modelData.gateway : "")
-                      + (profileRow.modelData.neverDefault ? " · без маршрута в интернет" : ""))
+                      + (profileRow.modelData.gateway ? " · " + Lang.f(Lang.s.netGateway, profileRow.modelData.gateway) : "")
+                      + (profileRow.modelData.neverDefault ? " · " + Lang.s.netNoRoute : ""))
             }
             ShellButton {
-                text: "Применить"
+                text: Lang.s.netApply
                 enabled: !!root.adapter && !root.network.busy && !root.network.pending
                 onClicked: root.network.apply(profileRow.modelData.uuid, root.adapter.device)
             }
             ShellButton {
-                text: root.deleting === profileRow.modelData.uuid ? "Точно удалить?" : "Удалить"
+                text: root.deleting === profileRow.modelData.uuid ? Lang.s.netDeleteConfirm : Lang.s.netDelete
                 enabled: !root.network.busy
                 onClicked: {
                     if (root.deleting === profileRow.modelData.uuid) { root.network.deleteProfile(profileRow.modelData.uuid); root.deleting = ""; }
@@ -229,7 +229,7 @@ ColumnLayout {
     }
 
     ShellButton {
-        text: root.formOpen ? "Скрыть форму" : "Новый профиль"
+        text: root.formOpen ? Lang.s.netHideForm : Lang.s.netNewProfile
         onClicked: root.formOpen = !root.formOpen
     }
     ColumnLayout {
@@ -238,23 +238,23 @@ ColumnLayout {
         Layout.fillWidth: true
         spacing: 8
         property bool manual: true
-        ShellTextField { id: profileName; Layout.fillWidth: true; placeholderText: "Имя профиля, например «Щит 3»"; label: "Имя профиля" }
+        ShellTextField { id: profileName; Layout.fillWidth: true; placeholderText: Lang.s.netProfileNamePlaceholder; label: Lang.s.netProfileName }
         RowLayout {
             spacing: 6
-            ShellButton { text: "Статический"; emphasized: form.manual; onClicked: form.manual = true }
+            ShellButton { text: Lang.s.netStatic; emphasized: form.manual; onClicked: form.manual = true }
             ShellButton { text: "DHCP"; emphasized: !form.manual; onClicked: form.manual = false }
         }
-        ShellTextField { id: profileAddress; visible: form.manual; Layout.fillWidth: true; placeholderText: "Адрес с префиксом, 10.42.0.5/24"; label: "Адрес с префиксом" }
-        ShellTextField { id: profileGateway; visible: form.manual; Layout.fillWidth: true; placeholderText: "Шлюз (необязательно)"; label: "Шлюз" }
-        ShellTextField { id: profileDns; visible: form.manual; Layout.fillWidth: true; placeholderText: "DNS через запятую (необязательно)"; label: "DNS" }
+        ShellTextField { id: profileAddress; visible: form.manual; Layout.fillWidth: true; placeholderText: Lang.s.netAddressPlaceholder; label: Lang.s.netAddressLabel }
+        ShellTextField { id: profileGateway; visible: form.manual; Layout.fillWidth: true; placeholderText: Lang.s.netGatewayPlaceholder; label: Lang.s.netGatewayLabel }
+        ShellTextField { id: profileDns; visible: form.manual; Layout.fillWidth: true; placeholderText: Lang.s.netDnsPlaceholder; label: "DNS" }
         ShellSwitch {
             id: neverDefault
             Layout.fillWidth: true
             checked: true
-            text: "Не использовать как маршрут в интернет"
+            text: Lang.s.netNeverDefault
         }
         ShellButton {
-            text: "Сохранить профиль"
+            text: Lang.s.netSaveProfile
             emphasized: true
             enabled: profileName.text.trim().length > 0 && !root.network.busy
             onClicked: {

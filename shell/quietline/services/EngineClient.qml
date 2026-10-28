@@ -12,7 +12,7 @@ Scope {
     id: root
     property var state: null
     property bool ready: false
-    property string errorMessage: "Подключение к сервису окон…"
+    property string errorMessage: Lang.s.engineConnecting
     // Ошибка команды держится дольше следующего снимка, который иначе сразу стёр бы её.
     property string commandError: ""
     readonly property string message: commandError || errorMessage
@@ -36,7 +36,7 @@ Scope {
     function switchWorkspace(number, monitor) { send("switch", {number: number, monitor: monitor}); }
     function toggle(monitor) { send("toggle", {monitor: monitor}); }
     function retry() {
-        errorMessage = "Подключение к сервису окон…";
+        errorMessage = Lang.s.engineConnecting;
         reconnect();
     }
     function reconnect() { if (!connection.connected) connection.connected = true; }
@@ -74,12 +74,12 @@ Scope {
                 flush();
                 subscriptionTimeout.restart();
             } else {
-                root.errorMessage = "Сервис окон недоступен · повторное подключение…";
+                root.errorMessage = Lang.s.engineReconnecting;
             }
         }
         onError: {
             root.ready = false;
-            root.errorMessage = "Сервис окон недоступен · повторное подключение…";
+            root.errorMessage = Lang.s.engineReconnecting;
         }
         parser: SplitParser { onRead: data => root.receive(data) }
     }
@@ -97,7 +97,7 @@ Scope {
             root.pendingId = -1;
             root.pendingMonitor = "";
             root.ready = false;
-            root.commandError = "Сервис окон не ответил. Восстанавливаем состояние…";
+            root.commandError = Lang.s.engineNoReply;
             connection.connected = false;
         }
     }

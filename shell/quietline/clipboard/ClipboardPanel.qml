@@ -19,12 +19,12 @@ ColumnLayout {
     function reset() { search.clear(); confirmWipe = false; clipboard.refresh(); search.forceActiveFocus(); }
     Connections { target: root.clipboard; function onRestored() { root.done(); } }
 
-    Text { text: "История буфера"; color: Theme.text; font.family: Theme.sans; font.pixelSize: Theme.titleFontSize; font.bold: true }
+    Text { text: Lang.s.clipboardTitle; color: Theme.text; font.family: Theme.sans; font.pixelSize: Theme.titleFontSize; font.bold: true }
     ShellTextField {
         id: search
         Layout.fillWidth: true
-        placeholderText: "Найти в истории"
-        label: "Поиск по истории буфера"
+        placeholderText: Lang.s.clipboardSearchPlaceholder
+        label: Lang.s.clipboardSearchLabel
         onAccepted: { if (root.matches.length) root.clipboard.restore(root.matches[0].id); }
     }
     Text {
@@ -53,7 +53,7 @@ ColumnLayout {
                     ShellButton {
                         Layout.fillWidth: true
                         implicitHeight: row.modelData.kind === "image" ? 56 : 28
-                        hint: "Вернуть в буфер"
+                        hint: Lang.s.clipboardRestore
                         enabled: !root.clipboard.busy
                         onClicked: root.clipboard.restore(row.modelData.id)
                         contentItem: RowLayout {
@@ -75,12 +75,12 @@ ColumnLayout {
                             }
                         }
                     }
-                    ShellButton { text: "×"; hint: "Удалить из истории"; enabled: !root.clipboard.busy; onClicked: root.clipboard.remove(row.modelData.id) }
+                    ShellButton { text: "×"; hint: Lang.s.clipboardRemove; enabled: !root.clipboard.busy; onClicked: root.clipboard.remove(row.modelData.id) }
                 }
             }
             Text {
                 visible: root.matches.length === 0
-                text: root.clipboard.entries.length ? "Ничего не найдено" : "История пуста"
+                text: root.clipboard.entries.length ? Lang.s.nothingFound : Lang.s.clipboardEmpty
                 color: Theme.muted; font.family: Theme.sans; font.pixelSize: Theme.fontSize
                 topPadding: 8
             }
@@ -89,19 +89,19 @@ ColumnLayout {
     Text {
         visible: root.clipboard.paused
         Layout.fillWidth: true
-        text: "Запись приостановлена: новые копирования не попадают в историю."
+        text: Lang.s.clipboardPausedNote
         color: Theme.muted; font.family: Theme.sans; font.pixelSize: Theme.smallFontSize
         wrapMode: Text.Wrap
     }
     RowLayout {
         spacing: 6
         ShellButton {
-            text: root.clipboard.paused ? "Возобновить запись" : "Приостановить запись"
+            text: root.clipboard.paused ? Lang.s.clipboardResume : Lang.s.clipboardPause
             enabled: !root.clipboard.busy
             onClicked: root.clipboard.setPaused(!root.clipboard.paused)
         }
         ShellButton {
-            text: root.confirmWipe ? "Точно очистить?" : "Очистить"
+            text: root.confirmWipe ? Lang.s.clipboardWipeConfirm : Lang.s.clipboardWipe
             foreground: root.confirmWipe ? Theme.danger : Theme.text
             enabled: !root.clipboard.busy && root.clipboard.entries.length > 0
             onClicked: {

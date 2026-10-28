@@ -10,7 +10,7 @@ RowLayout {
     Text {
         visible: !root.brightness.supported
         Layout.fillWidth: true
-        text: "Яркость этого экрана не управляется"
+        text: Lang.s.brightnessUnavailable
         color: Theme.muted; font.family: Theme.sans; font.pixelSize: Theme.smallFontSize
     }
     Text {
@@ -24,7 +24,7 @@ RowLayout {
     ShellSlider {
         visible: root.brightness.supported
         Layout.fillWidth: true
-        label: "Яркость"
+        label: Lang.s.brightnessLabel
         from: 1; to: 100; stepSize: 1
         value: root.brightness.percent
         onMoved: root.brightness.set(value)

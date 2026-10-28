@@ -46,11 +46,11 @@ Singleton {
         reader.running = true;
     }
     function apply(data) {
-        language = data.language === "ru" ? "ru" : "en";
-        clock = data.clock;
-        date = data.date;
-        layouts = data.layouts;
-        toggle = data.toggle;
+        if (typeof data.language === "string") language = data.language === "ru" ? "ru" : "en";
+        if (typeof data.clock === "string") clock = data.clock;
+        if (typeof data.date === "string") date = data.date;
+        if (Array.isArray(data.layouts)) layouts = data.layouts;
+        if (typeof data.toggle === "string") toggle = data.toggle;
     }
     function failure(key, detail) { error = s[key] + (detail ? ": " + detail : ""); }
 

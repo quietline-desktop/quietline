@@ -17,18 +17,20 @@ FloatingWindow {
     required property var desktop
     property string section: "network"
     readonly property var sections: [
-        {id: "network", label: "Сеть", icon: ""},
-        {id: "audio", label: "Звук", icon: ""},
-        {id: "display", label: "Экран и яркость", icon: ""},
-        {id: "bluetooth", label: "Bluetooth", icon: ""},
-        {id: "power", label: "Питание", icon: ""},
-        {id: "keyboard", label: "Клавиатура", icon: ""},
-        {id: "shortcuts", label: "Сочетания клавиш", icon: ""},
-        {id: "about", label: "О системе", icon: ""}
+        {id: "network", label: Lang.s.settingsNetwork, icon: ""},
+        {id: "audio", label: Lang.s.settingsAudio, icon: ""},
+        {id: "display", label: Lang.s.settingsDisplay, icon: ""},
+        {id: "bluetooth", label: Lang.s.settingsBluetooth, icon: ""},
+        {id: "power", label: Lang.s.settingsPower, icon: ""},
+        {id: "keyboard", label: Lang.s.settingsKeyboard, icon: ""},
+        {id: "shortcuts", label: Lang.s.settingsShortcuts, icon: ""},
+        {id: "about", label: Lang.s.settingsAbout, icon: ""}
     ]
-    property var shortcuts: []
+    // Привязки Hyprland; памятка `shortcuts` пересчитывается из них при смене языка.
+    property var binds: []
+    readonly property var shortcuts: Models.describeBinds(binds, Lang.s)
     property var info: null
-    title: "Настройки"
+    title: Lang.s.settingsTitle
     visible: false
     implicitWidth: 920
     implicitHeight: 620
@@ -53,8 +55,8 @@ FloatingWindow {
         command: ["hyprctl", "binds", "-j"]
         stdout: StdioCollector {
             onStreamFinished: {
-                try { root.shortcuts = Models.describeBinds(JSON.parse(text), Lang.s); }
-                catch (_) { root.shortcuts = []; }
+                try { root.binds = JSON.parse(text).filter(bind => bind && typeof bind === "object"); }
+                catch (_) { root.binds = []; }
             }
         }
     }
@@ -90,7 +92,7 @@ FloatingWindow {
                 keyNavigationEnabled: true
                 focus: true
                 Accessible.role: Accessible.List
-                Accessible.name: "Разделы настроек"
+                Accessible.name: Lang.s.settingsSections
                 Keys.onReturnPressed: root.section = root.sections[currentIndex].id
                 onCurrentIndexChanged: { if (currentIndex >= 0) root.section = root.sections[currentIndex].id; }
                 delegate: ShellButton {
@@ -131,24 +133,24 @@ FloatingWindow {
                 currentIndex: root.sections.findIndex(item => item.id === root.section)
                 ColumnLayout {
                     Layout.margins: 24; spacing: 14
-                    PageTitle { text: "Сеть" }
+                    PageTitle { text: Lang.s.settingsNetwork }
                     NetworkControls { network: root.services.network; compact: false; Layout.fillWidth: true; Layout.maximumWidth: 560 }
                 }
                 ColumnLayout {
                     Layout.margins: 24; spacing: 14
-                    PageTitle { text: "Звук" }
+                    PageTitle { text: Lang.s.settingsAudio }
                     AudioControls { audio: root.services.audio; compact: false; Layout.fillWidth: true; Layout.maximumWidth: 560 }
                 }
                 ColumnLayout {
                     Layout.margins: 24; spacing: 14
-                    PageTitle { text: "Экран и яркость" }
+                    PageTitle { text: Lang.s.settingsDisplay }
                     BrightnessControls {
                         visible: Quickshell.screens.some(screen => Models.isBuiltinOutput(screen.name))
                         brightness: root.services.brightness; Layout.fillWidth: true; Layout.maximumWidth: 560
                     }
                     Line {
                         visible: !Quickshell.screens.some(screen => Models.isBuiltinOutput(screen.name))
-                        color: Theme.muted; text: "Яркость подключённых мониторов этим окном не управляется."
+                        color: Theme.muted; text: Lang.s.settingsBrightnessNote
                     }
                     Repeater {
                         model: Quickshell.screens
@@ -158,7 +160,7 @@ FloatingWindow {
                                 + (modelData.model ? " · " + modelData.model : "")
                         }
                     }
-                    Line { color: Theme.muted; font.pixelSize: Theme.smallFontSize; text: "Расположение и разрешение мониторов задаются в конфигурации Hyprland." }
+                    Line { color: Theme.muted; font.pixelSize: Theme.smallFontSize; text: Lang.s.settingsDisplayNote }
                 }
                 ColumnLayout {
                     Layout.margins: 24; spacing: 14
@@ -167,21 +169,21 @@ FloatingWindow {
                 }
                 ColumnLayout {
                     Layout.margins: 24; spacing: 14
-                    PageTitle { text: "Питание" }
+                    PageTitle { text: Lang.s.settingsPower }
                     PowerControls { power: root.services.power; Layout.fillWidth: true }
                 }
                 ColumnLayout {
                     Layout.margins: 24; spacing: 14
-                    PageTitle { text: "Клавиатура" }
-                    Line { text: "Текущая раскладка: " + (root.desktop.keyboardLayoutName || root.desktop.keyboardLayout) }
-                    Line { text: "Раскладки: " + (root.desktop.keyboard && root.desktop.keyboard.layout ? root.desktop.keyboard.layout.split(",").map(item => item.trim().toUpperCase()).join(", ") : "нет данных") }
-                    Line { color: Theme.muted; text: "Переключение — левыми Alt+Shift." }
-                    ShellButton { text: "Следующая раскладка"; onClicked: root.desktop.switchLayout() }
+                    PageTitle { text: Lang.s.settingsKeyboard }
+                    Line { text: Lang.f(Lang.s.keyboardCurrent, root.desktop.keyboardLayoutName || root.desktop.keyboardLayout) }
+                    Line { text: Lang.f(Lang.s.keyboardLayouts, (root.desktop.keyboard && root.desktop.keyboard.layout ? root.desktop.keyboard.layout.split(",").map(item => item.trim().toUpperCase()).join(", ") : Lang.s.noData)) }
+                    Line { color: Theme.muted; text: Lang.s.keyboardToggleNote }
+                    ShellButton { text: Lang.s.keyboardNext; onClicked: root.desktop.switchLayout() }
                 }
                 ColumnLayout {
                     Layout.margins: 24; spacing: 8
-                    PageTitle { text: "Сочетания клавиш" }
-                    Line { visible: root.shortcuts.length === 0; color: Theme.muted; text: "Не удалось прочитать привязки Hyprland." }
+                    PageTitle { text: Lang.s.settingsShortcuts }
+                    Line { visible: root.shortcuts.length === 0; color: Theme.muted; text: Lang.s.shortcutsUnreadable }
                     Repeater {
                         model: root.shortcuts
                         delegate: RowLayout {
@@ -194,21 +196,21 @@ FloatingWindow {
                 }
                 ColumnLayout {
                     Layout.margins: 24; spacing: 8
-                    PageTitle { text: "О системе" }
+                    PageTitle { text: Lang.s.settingsAbout }
                     Repeater {
                         model: root.info ? [
-                            ["Система", root.info.os], ["Ядро", root.info.kernel], ["Имя компьютера", root.info.hostname],
-                            ["Процессор", root.info.cpu], ["Память", root.info.memoryGb ? root.info.memoryGb + " ГБ" : null],
+                            [Lang.s.aboutSystem, root.info.os], [Lang.s.aboutKernel, root.info.kernel], [Lang.s.aboutHostname, root.info.hostname],
+                            [Lang.s.aboutCpu, root.info.cpu], [Lang.s.aboutMemory, root.info.memoryGb ? root.info.memoryGb + " " + Lang.s.unitGb : null],
                             ["Hyprland", root.info.hyprland], ["Quickshell", root.info.quickshell]
                         ] : []
                         delegate: RowLayout {
                             required property var modelData
                             Layout.fillWidth: true
                             Text { Layout.preferredWidth: 160; text: modelData[0]; color: Theme.muted; font.family: Theme.sans; font.pixelSize: Theme.fontSize }
-                            Line { text: modelData[1] || "нет данных" }
+                            Line { text: modelData[1] || Lang.s.noData }
                         }
                     }
-                    Line { visible: !root.info; color: Theme.muted; text: "Сведения загружаются…" }
+                    Line { visible: !root.info; color: Theme.muted; text: Lang.s.aboutLoading }
                 }
             }
         }

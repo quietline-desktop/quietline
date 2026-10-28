@@ -1,6 +1,7 @@
 import QtQuick
 import Quickshell
 import Quickshell.Io
+import ".."
 
 // Поиск файлов для панели поиска: `quietline-shell files` с задержкой 250 мс после ввода.
 // Ответ на устаревший запрос не применяется; запрос короче двух символов файлов не ищет.
@@ -33,8 +34,8 @@ Scope {
                 try {
                     var data = JSON.parse(text);
                     root.files = data.files || [];
-                    root.errorMessage = data.error ? "Поиск файлов недоступен: " + data.error : "";
-                } catch (_) { root.errorMessage = "Поиск файлов недоступен: quietline-shell не ответил"; }
+                    root.errorMessage = data.error ? Lang.f(Lang.s.searchFilesUnavailable, data.error) : "";
+                } catch (_) { root.errorMessage = Lang.s.searchFilesNoReply; }
             }
         }
     }

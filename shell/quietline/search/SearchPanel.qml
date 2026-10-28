@@ -39,16 +39,16 @@ ColumnLayout {
         }
     }
 
-    Text { text: "Поиск"; color: Theme.text; font.family: Theme.sans; font.pixelSize: Theme.titleFontSize; font.bold: true }
+    Text { text: Lang.s.searchTitle; color: Theme.text; font.family: Theme.sans; font.pixelSize: Theme.titleFontSize; font.bold: true }
     TextField {
         id: field
         Layout.fillWidth: true
-        placeholderText: "Приложения, файлы, действия, 2+2"
+        placeholderText: Lang.s.searchPlaceholder
         font.family: Theme.sans; font.pixelSize: Theme.fontSize
         color: Theme.text; placeholderTextColor: Theme.muted; selectByMouse: true; rightPadding: 32
-        Accessible.name: "Поиск"
+        Accessible.name: Lang.s.searchTitle
         background: Rectangle { color: Theme.background; radius: Theme.controlRadius; border.color: field.activeFocus ? Theme.accent : Theme.border; border.width: 1 }
-        ShellButton { anchors.right: parent.right; anchors.verticalCenter: parent.verticalCenter; visible: field.text.length > 0; text: "×"; hint: "Очистить поиск"; onClicked: root.reset() }
+        ShellButton { anchors.right: parent.right; anchors.verticalCenter: parent.verticalCenter; visible: field.text.length > 0; text: "×"; hint: Lang.s.searchClear; onClicked: root.reset() }
         onTextChanged: { root.selected = 0; root.finder.query = text; }
         onAccepted: root.activate(root.results[Math.min(root.selected, root.results.length - 1)])
         Keys.onDownPressed: root.selected = Math.min(root.selected + 1, root.results.length - 1)
@@ -91,7 +91,7 @@ ColumnLayout {
                     }
                 }
             }
-            Text { visible: list.count === 0; text: "Ничего не найдено"; color: Theme.muted; font.family: Theme.sans; topPadding: 12 }
+            Text { visible: list.count === 0; text: Lang.s.nothingFound; color: Theme.muted; font.family: Theme.sans; topPadding: 12 }
             Text {
                 visible: root.finder.errorMessage.length > 0
                 width: scroll.availableWidth

@@ -12,7 +12,7 @@ ColumnLayout {
     spacing: 8
     Text {
         visible: !root.audio.available
-        text: "Звуковое устройство не найдено"
+        text: Lang.s.audioNotFound
         color: Theme.muted; font.family: Theme.sans; font.pixelSize: Theme.smallFontSize
     }
     RowLayout {
@@ -21,12 +21,12 @@ ColumnLayout {
         ShellButton {
             font.family: Theme.icons
             text: root.audio.available && root.audio.sink.audio.muted ? "" : ""
-            hint: root.audio.available && root.audio.sink.audio.muted ? "Включить звук" : "Выключить звук"
+            hint: root.audio.available && root.audio.sink.audio.muted ? Lang.s.audioUnmute : Lang.s.audioMute
             onClicked: root.audio.toggleMute()
         }
         ShellSlider {
             Layout.fillWidth: true
-            label: "Громкость"
+            label: Lang.s.audioVolume
             to: 1.0
             value: root.audio.available ? root.audio.sink.audio.volume : 0
             onMoved: root.audio.setVolume(value)
@@ -38,12 +38,12 @@ ColumnLayout {
         ShellButton {
             font.family: Theme.icons
             text: root.audio.micAvailable && root.audio.source.audio.muted ? "" : ""
-            hint: root.audio.micAvailable && root.audio.source.audio.muted ? "Включить микрофон" : "Выключить микрофон"
+            hint: root.audio.micAvailable && root.audio.source.audio.muted ? Lang.s.audioMicUnmute : Lang.s.audioMicMute
             onClicked: root.audio.toggleMicMute()
         }
         ShellSlider {
             Layout.fillWidth: true
-            label: "Микрофон"
+            label: Lang.s.audioMic
             to: 1.0
             value: root.audio.micAvailable ? root.audio.source.audio.volume : 0
             onMoved: root.audio.setMicVolume(value)
@@ -51,7 +51,7 @@ ColumnLayout {
     }
     Text {
         visible: !root.compact && root.audio.sinks.length > 1
-        text: "Выход звука"
+        text: Lang.s.audioOutput
         color: Theme.muted; font.family: Theme.sans; font.pixelSize: Theme.smallFontSize
     }
     Repeater {

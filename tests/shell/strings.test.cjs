@@ -41,3 +41,34 @@ test('format substitutes in order',()=>{
  assert.equal(S.format('{1}-{0}-{1}',['a','b']),'b-a-b');
  assert.equal(S.format('{0} и {2}',['x']),'x и {2}');
 });
+// Строковый литерал ('…' или "…") с кириллицей вне комментария `//`.
+function cyrillicLiterals(file){
+ const found=[];
+ fs.readFileSync(file,'utf8').split('\n').forEach((line,index)=>{
+  let quote=null, i=0;
+  while(i<line.length){
+   const c=line[i];
+   if(quote){
+    if(c==='\\'){ i+=2; continue; }
+    if(c===quote){ quote=null; }
+    else if(/[Ѐ-ӿ]/.test(c)){ found.push(`${path.relative(root,file)}:${index+1}`); break; }
+   } else if(c==='"'||c==="'"){ quote=c; }
+   else if(c==='/'&&line[i+1]==='/'){ break; }
+   i++;
+  }
+ });
+ return found;
+}
+const root=path.join(__dirname,'../..');
+function walk(dir){
+ return fs.readdirSync(dir,{withFileTypes:true}).flatMap(entry=>{
+  const full=path.join(dir,entry.name);
+  return entry.isDirectory()?walk(full):[full];
+ });
+}
+test('qml and models have no cyrillic string literals',()=>{
+ const base=path.join(root,'shell/quietline');
+ const files=walk(base).filter(f=>f.endsWith('.qml')||f.endsWith('logic/Models.js'));
+ const found=files.flatMap(cyrillicLiterals);
+ assert.deepEqual(found,[]);
+});

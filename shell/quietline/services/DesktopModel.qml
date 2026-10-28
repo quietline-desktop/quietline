@@ -40,12 +40,12 @@ Scope {
     // `quietline-shell app quit` завершает процесс, оставшийся без окон.
     function run(id, command, workingDirectory) {
         var line = Models.launchCommand(command, Models.scopeUnit(id, Math.random().toString(36).slice(2, 10)));
-        if (!line) { errorMessage = "У приложения нет команды запуска"; return; }
+        if (!line) { errorMessage = Lang.s.desktopNoLaunch; return; }
         Quickshell.execDetached({command: line, workingDirectory: workingDirectory});
     }
     function launch(id, monitor) {
         var entry = entryFor(id);
-        if (!entry) { errorMessage = "Приложение не установлено"; return; }
+        if (!entry) { errorMessage = Lang.s.desktopNotInstalled; return; }
         errorMessage = "";
         focusMonitor(monitor);
         run(id, entry.command, entry.workingDirectory);
@@ -65,7 +65,7 @@ Scope {
     }
     function newWindow(id, monitor) {
         var entry = entryFor(id);
-        if (!entry) { errorMessage = "Приложение не установлено"; return; }
+        if (!entry) { errorMessage = Lang.s.desktopNotInstalled; return; }
         focusMonitor(monitor);
         var action = entry.actions.find(action => action.id === "new-window" || action.id === "new-empty-window");
         run(id, action ? action.command : entry.command, entry.workingDirectory);
@@ -79,7 +79,7 @@ Scope {
         targets.map(window => window.pid).filter((pid, index, pids) => pid > 1 && pids.indexOf(pid) === index).forEach(pid => {
             Quickshell.execDetached(["quietline-shell", "app", "quit", "--pid", String(pid), "--notify"]);
         });
-        notice = targets.length ? "Запрос выхода отправлен. Сохраните документы в открытых окнах." : "У приложения нет открытых окон";
+        notice = targets.length ? Lang.s.desktopQuitRequested : Lang.s.desktopNoWindows;
     }
     function savePins(ids) {
         if (saving) return;
@@ -97,12 +97,12 @@ Scope {
     function switchLayout() { Quickshell.execDetached(["hyprctl", "switchxkblayout", "all", "next"]); }
     function receivePreferences(text) {
         preferencesAnswered = true;
-        var action = pinsLoaded ? "сохранить" : "загрузить";
+        var saving = pinsLoaded;
         try {
             var response = JSON.parse(text);
-            if (response.error) { errorMessage = "Не удалось " + action + " закрепления: " + response.error; return; }
+            if (response.error) { errorMessage = Lang.f(saving ? Lang.s.pinsSaveFailed : Lang.s.pinsLoadFailed, response.error); return; }
             if (Array.isArray(response.pinned)) { pinned = response.pinned; pinsLoaded = true; errorMessage = ""; }
-        } catch (_) { errorMessage = "Не удалось " + action + " закреплённые приложения"; }
+        } catch (_) { errorMessage = saving ? Lang.s.pinsSaveFailedApps : Lang.s.pinsLoadFailedApps; }
     }
     Process {
         id: preferences
@@ -115,7 +115,7 @@ Scope {
             Qt.callLater(function() {
                 root.saving = false;
                 if (!root.preferencesAnswered && !root.errorMessage)
-                    root.errorMessage = "Не удалось " + (root.pinsLoaded ? "сохранить" : "загрузить") + " закреплённые приложения: quietline-shell не ответил";
+                    root.errorMessage = root.pinsLoaded ? Lang.s.pinsSaveNoReply : Lang.s.pinsLoadNoReply;
             });
         }
     }

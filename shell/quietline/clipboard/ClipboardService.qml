@@ -1,6 +1,7 @@
 import QtQuick
 import Quickshell
 import Quickshell.Io
+import ".."
 
 // История буфера через `quietline-shell clipboard`: список, восстановление, удаление,
 // очистка и пауза записи. Превью картинок запрашиваются по одной и кешируются в `images`.
@@ -43,8 +44,8 @@ Scope {
         stdout: StdioCollector {
             onStreamFinished: {
                 var data;
-                try { data = JSON.parse(text); } catch (_) { root.errorMessage = "История буфера недоступна: quietline-shell не ответил"; return; }
-                if (data.error) { root.errorMessage = "История буфера недоступна: " + data.error; return; }
+                try { data = JSON.parse(text); } catch (_) { root.errorMessage = Lang.s.clipboardNoReply; return; }
+                if (data.error) { root.errorMessage = Lang.f(Lang.s.clipboardUnavailable, data.error); return; }
                 root.entries = data.entries || [];
                 root.paused = !!data.paused;
                 // Превью есть только у записей из текущего списка: после очистки при блокировке
@@ -66,7 +67,7 @@ Scope {
                 action.answered = true;
                 var data;
                 try { data = JSON.parse(text); } catch (_) { data = {error: "quietline-shell returned no JSON"}; }
-                if (data.error) root.errorMessage = "Действие с историей буфера не выполнено: " + data.error;
+                if (data.error) root.errorMessage = Lang.f(Lang.s.clipboardActionFailed, data.error);
                 else if (action.kind === "restore") root.restored();
                 else if (action.kind === "wipe") root.images = ({});
             }
@@ -75,7 +76,7 @@ Scope {
         onRunningChanged: {
             if (running) return;
             Qt.callLater(function() {
-                if (!action.answered) root.errorMessage = "Действие с историей буфера не выполнено: quietline-shell did not respond";
+                if (!action.answered) root.errorMessage = Lang.f(Lang.s.clipboardActionFailed, "quietline-shell did not respond");
                 root.busy = false;
                 root.refresh();
             });
