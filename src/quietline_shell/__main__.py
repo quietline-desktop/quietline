@@ -20,8 +20,8 @@ from collections.abc import Sequence
 from pathlib import Path
 from typing import Any
 
-from quietline_shell import network, system_info
-from quietline_shell.config import default_pins_path, load_pins, reduced_motion, save_pins
+from quietline_shell import network
+from quietline_shell.config import about, default_pins_path, load_pins, reduced_motion, save_pins
 
 
 def _parser() -> argparse.ArgumentParser:
@@ -41,7 +41,7 @@ def _run(args: argparse.Namespace) -> dict[str, Any]:
         case "motion":
             return {"reducedMotion": reduced_motion()}
         case "about":
-            return system_info.about()
+            return about()
         case "network":
             return network.run(args, sys.stdin)
         case _:

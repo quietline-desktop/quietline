@@ -57,7 +57,8 @@ shell/quietline/logic/    — чистые функции `Models.js` (общи�
 src/quietline_engine/     — Python-пакет движка пространств и окон
 src/quietline_shell/      — Python-пакет `quietline-shell`: закрепления дока, ограничение анимаций, NetworkManager, «О системе»
 tests/engine/             — модульные тесты движка (pytest, без Hyprland)
-tests/shell/              — тесты `quietline-shell` (pytest) и моделей оболочки (`node --test`)
+tests/helper/             — тесты `quietline-shell` (pytest, без NetworkManager и Hyprland)
+tests/shell/              — тесты моделей оболочки (`node --test`), правила polkit и контракта протокола движка
 pyproject.toml            — пакет `quietline-engine` (CLI `quietline-engine` и `quietline-shell`), Python ≥ 3.14, тестовая зависимость pytest
 DESIGN.md                 — визуальный контракт оболочки; runtime-токены — `shell/quietline/Theme.qml`
 LICENSE                   — GPL-3.0

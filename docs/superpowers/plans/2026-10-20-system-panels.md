@@ -22,7 +22,7 @@ Python-помощник `quietline-shell network …` обслуживает Net
 
 Поведение и внешний вид — как на ветке-источнике. Что меняется при переносе:
 
-1. **Пакет Python.** Сетевой помощник — `src/quietline_shell/network.py`, сводка «О системе» — `src/quietline_shell/system_info.py`, подкоманды подключаются в `src/quietline_shell/__main__.py`. Атомарная запись JSON выносится из `save_pins` в `config.atomic_write_json(path, value)` и используется для `pins.json` и `network.json`. Python ≥ 3.14, тесты — `uv run --python 3.14 pytest`.
+1. **Пакет Python.** Сетевой помощник — `src/quietline_shell/network.py`, сводка «О системе» — `src/quietline_shell/config.py` (`about`), подкоманды подключаются в `src/quietline_shell/__main__.py`. Атомарная запись JSON выносится из `save_pins` в `config.atomic_write_json(path, value)` и используется для `pins.json` и `network.json`. Python ≥ 3.14, тесты — `uv run --python 3.14 pytest`.
 2. **Язык сообщений.** Ошибки `quietline-shell` — по-английски, как у `pins` (`AGENTS.md`). Ошибка проверки формы профиля дополнительно несёт поле `field` (`name`, `method`, `address`, `prefix`, `gateway`, `dns`); панель показывает русский текст по `field` (`Models.networkErrorText`), остальные ошибки — русский префикс действия и подробность по-английски, как ошибки движка в панели (план этапа 2, «Решения при выполнении», п. 2).
 3. **`network` без подкоманды убирается.** Прежняя сводка `quietline-shell network` заменяется `network status`; `Indicators.qml` больше не читает сеть и `Quickshell.Networking` — сеть, Bluetooth и батарею панель берёт из сервисов этого этапа.
 4. **Раскладка папок QML** (правило папок `AGENTS.md`, не больше восьми записей):
@@ -58,11 +58,11 @@ Python-помощник `quietline-shell network …` обслуживает Net
 
 ## Файлы
 
-- `src/quietline_shell/network.py`, `src/quietline_shell/system_info.py`, `src/quietline_shell/config.py` (`atomic_write_json`), `src/quietline_shell/__main__.py`.
+- `src/quietline_shell/network.py`, `src/quietline_shell/config.py` (`about`), `src/quietline_shell/config.py` (`atomic_write_json`), `src/quietline_shell/__main__.py`.
 - `config/polkit/50-quietline-network.rules` — права NetworkManager для активного локального пользователя из `wheel`.
 - `shell/quietline/system/`, `panels/`, `settings/`, `inputs/` — см. «Перенос», п. 4; правки `controls/ShellPopup.qml`, `bar/TopBar.qml`, `services/Indicators.qml`, `shell.qml`, `logic/Models.js`.
 - `config/hyprland/quietline.lua` — `Super+I`.
-- Тесты: `tests/shell/test_network.py`, `tests/shell/test_system_info.py`, `tests/shell/test_shell_config.py`, `tests/shell/models.test.cjs`, `tests/shell/polkit.test.cjs`, `tests/engine/test_server.py` (Lua-привязка).
+- Тесты: `tests/helper/test_network.py`, `tests/helper/test_shell_config.py`, `tests/helper/test_shell_config.py`, `tests/shell/models.test.cjs`, `tests/shell/polkit.test.cjs`, `tests/engine/test_server.py` (Lua-привязка).
 - `scripts/smoke-system-panels.md`, `docs/backlog.md`, `README.md`, `DESIGN.md`, `CHANGELOG.md`, `AGENTS.md` (раскладка папок).
 
 ## Review Focus
@@ -77,7 +77,7 @@ Python-помощник `quietline-shell network …` обслуживает Net
 
 - [x] Перенести `network.py` в `src/quietline_shell/` с английскими ошибками и полем `field` у ошибок формы, `atomic_write_json` в `config.py`, подкоманды `network …` в `__main__.py`; убрать `network_devices()` и `network` без подкоманды.
 - [x] Перенести правило polkit и `tests/shell/polkit.test.cjs`.
-- [x] Перенести тесты в `tests/shell/test_network.py` (состояние, профили, Wi-Fi, контрольные точки, DHCP, недавние профили, CLI) с проверкой `field`; старые тесты `network` в `test_shell_config.py` удалить.
+- [x] Перенести тесты в `tests/helper/test_network.py` (состояние, профили, Wi-Fi, контрольные точки, DHCP, недавние профили, CLI) с проверкой `field`; старые тесты `network` в `test_shell_config.py` удалить.
 - [x] `uv run --python 3.14 pytest`, `node --test 'tests/shell/*.test.cjs'` → PASS.
 
 ## Task 2: Сетевая панель
@@ -96,7 +96,7 @@ Python-помощник `quietline-shell network …` обслуживает Net
 ## Task 4: Окно «Настройки»
 
 - [x] `settings/SettingsWindow.qml`, IPC `settings(section)` в `shell.qml`, `Super+I` в Lua-конфиге с проверкой в `tests/engine/test_server.py`.
-- [x] `system_info.py` и подкоманда `about` с `tests/shell/test_system_info.py`; `Models.describeBinds` с тестами.
+- [x] `system_info.py` и подкоманда `about` с `tests/helper/test_shell_config.py`; `Models.describeBinds` с тестами.
 - [x] Тесты → PASS, статическая проверка QML.
 
 ## Task 5: Документация и проверка

@@ -20,7 +20,8 @@
 | `src/quietline_engine/`   | Python-пакет движка пространств и окон                                            |
 | `src/quietline_shell/`    | Python-пакет `quietline-shell`: закрепления дока, NetworkManager, «О системе»     |
 | `tests/engine/`           | модульные тесты движка, запускаются без Hyprland                                  |
-| `tests/shell/`            | тесты `quietline-shell` и моделей оболочки                                        |
+| `tests/helper/`           | тесты `quietline-shell`                                                           |
+| `tests/shell/`            | тесты моделей оболочки, правила polkit и протокола движка                         |
 
 ## Документация
 

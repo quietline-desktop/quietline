@@ -1,4 +1,4 @@
-"""Данные оболочки: закреплённые приложения и настройка ограничения анимаций.
+"""Данные оболочки: закреплённые приложения, ограничение анимаций и сводка «О системе».
 
 Закрепления хранятся в `pins.json` вида `{"version": 1, "pinned": [desktop ID, …]}`.
 Запись атомарная: новый файл с правами `0600` пишется рядом и заменяет старый, поэтому
@@ -7,7 +7,9 @@
 
 import json
 import os
+import platform
 import re
+import socket
 import subprocess
 import tempfile
 from pathlib import Path
@@ -101,3 +103,47 @@ def reduced_motion() -> bool:
         return False
     return result.returncode == 0 and re.search(r"\buint32\s+1\b", result.stdout) is not None
 
+
+def _read_text(path: Path) -> str:
+    try:
+        return path.read_text(encoding="utf-8", errors="replace")
+    except OSError:
+        return ""
+
+
+def _output(args: list[str]) -> str | None:
+    """stdout команды с кодом 0; иначе, без программы или по таймауту — `None`."""
+    try:
+        result = subprocess.run(args, capture_output=True, text=True, timeout=3, check=False)
+    except (OSError, subprocess.TimeoutExpired):
+        return None
+    return result.stdout if result.returncode == 0 else None
+
+
+def _hyprland() -> str | None:
+    output = _output(["hyprctl", "version", "-j"])
+    try:
+        return json.loads(output).get("tag") if output else None
+    except (ValueError, AttributeError):
+        return None
+
+
+def about(
+    os_release: Path = Path("/etc/os-release"),
+    cpuinfo: Path = Path("/proc/cpuinfo"),
+    meminfo: Path = Path("/proc/meminfo"),
+) -> dict[str, Any]:
+    """`{os, kernel, hostname, cpu, memoryGb, hyprland, quickshell}`."""
+    name = re.search(r'^PRETTY_NAME="?([^"\n]*)"?', _read_text(os_release), re.M)
+    cpu = re.search(r"^model name\s*:\s*(.+)$", _read_text(cpuinfo), re.M)
+    memory = re.search(r"^MemTotal:\s+(\d+) kB", _read_text(meminfo), re.M)
+    quickshell = _output(["qs", "--version"])
+    return {
+        "os": name.group(1) if name else None,
+        "kernel": platform.release(),
+        "hostname": socket.gethostname(),
+        "cpu": cpu.group(1).strip() if cpu else None,
+        "memoryGb": round(int(memory.group(1)) / 1048576, 1) if memory else None,
+        "hyprland": _hyprland(),
+        "quickshell": quickshell.strip().splitlines()[0] if quickshell and quickshell.strip() else None,
+    }

@@ -41,7 +41,7 @@ Quickshell 0.3.2, Qt Quick Controls, стандартная библиотека
 - `src/quietline_shell/config.py` — `load_pins(path)`, `save_pins(path, ids)` с проверкой desktop ID, дедупликацией, атомарной записью; `reduced_motion()`, `network_devices()`. `src/quietline_shell/__main__.py` — CLI `quietline-shell pins [--set JSON] [--path PATH]`, `motion`, `network`: одна строка JSON в stdout.
 - `config/hyprland/quietline.lua` — запуск `qs -c quietline` после движка, `Super+Space`, параметры `scrolling`, теги диалогов.
 - `scripts/run-shell` — запуск `quickshell -p <абсолютная папка shell/quietline>`; `scripts/smoke-quickshell.md` — живые сценарии и результаты.
-- `tests/shell/models.test.cjs`, `tests/shell/test_shell_config.py`, `tests/shell/test_engine_protocol.py`, `tests/shell/engine-protocol.json` — контрактные регрессии; живой Quickshell в тестовом Arch-сеансе проверяет QML и поверхности.
+- `tests/shell/models.test.cjs`, `tests/helper/test_shell_config.py`, `tests/shell/test_engine_protocol.py`, `tests/shell/engine-protocol.json` — контрактные регрессии; живой Quickshell в тестовом Arch-сеансе проверяет QML и поверхности.
 
 ## Review Focus
 

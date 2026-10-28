@@ -79,7 +79,7 @@ QML (`shell/quietline/`):
 
 ## Task 1: Сеанс
 
-- [ ] Перенести `system_info.py` в `config.py`, Python-тесты оболочки — в `tests/helper/`; обновить `AGENTS.md`.
+- [x] Перенести `system_info.py` в `config.py`, Python-тесты оболочки — в `tests/helper/`; обновить `AGENTS.md`.
 - [ ] `session.py`: `lock` (единственный экземпляр, запуск `qs -p`), `session logout|reboot|poweroff` с ожиданием окон; тесты на поддельных `hyprctl`, `systemctl`, `qs`.
 - [ ] `lock/`: экран блокировки с полем пароля, `PamContext`, сообщениями PAM и часами; поверхность на каждом экране.
 - [ ] `session/PowerMenu.qml`, `SessionService.qml`, кнопка питания последней на панели цветом `danger`, подтверждение второй строкой, список оставшихся приложений.
