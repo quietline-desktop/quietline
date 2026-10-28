@@ -2,6 +2,8 @@
 
 // Чистые функции оболочки: проверка состояния движка, кнопки пространств, группы дока,
 // CPU/RAM, закрепления и раскладка клавиатуры. Используются в QML и в тестах Node.
+// Функции, возвращающие видимый текст, получают последним параметром таблицу строк `s`
+// (`Lang.s`, `table()` из Strings.js).
 //
 // Состояние движка — `PublicState.to_json()` из src/quietline_engine/controller.py:
 // `{revision, monitors: [{key, name, focused, active_workspace_id, active_number, mode}],
@@ -39,25 +41,39 @@ function validState(state) {
     return true;
 }
 
+// Подстановка `{n}` из `args[n]` в строку таблицы — как `format` в Strings.js, который
+// Models.js не импортирует: таблица приходит параметром.
+function format(template, args) {
+    return String(template).replace(/\{(\d+)\}/g, function(match, index) {
+        var value = args[Number(index)];
+        return value === undefined || value === null ? match : String(value);
+    });
+}
+
+// Ключ таблицы строк по коду из `keys`; неизвестный код — `fallback`.
+function textKey(keys, code, fallback) {
+    return Object.prototype.hasOwnProperty.call(keys, code) ? keys[code] : fallback;
+}
+
 // Текст ошибки ответа движка для панели: по коду из протокола, с подробностью от движка.
-var ERROR_TEXTS = {
-    invalid_number: "Нет такого пространства: номера от 1 до 10",
-    command_failed: "Сервис окон не выполнил команду",
-    invalid_request: "Сервис окон не принял команду",
-    unknown_method: "Сервис окон не знает эту команду",
-    internal_error: "Внутренняя ошибка сервиса окон"
+var ERROR_KEYS = {
+    invalid_number: "engineInvalidNumber",
+    command_failed: "engineCommandFailed",
+    invalid_request: "engineInvalidRequest",
+    unknown_method: "engineUnknownMethod",
+    internal_error: "engineInternalError"
 };
 
-function errorText(error) {
+function errorText(error, s) {
     var code = error && typeof error.code === "string" ? error.code : "";
     var detail = error && typeof error.message === "string" ? error.message : "";
-    if (code === "invalid_number") return ERROR_TEXTS.invalid_number;
-    var text = ERROR_TEXTS[code] || "Команда не выполнена";
+    if (code === "invalid_number") return s.engineInvalidNumber;
+    var text = s[textKey(ERROR_KEYS, code, "engineCommandNotDone")];
     return detail ? text + ": " + detail : text;
 }
 
 // Ошибка последней команды или сверки из подтверждённого состояния.
-function stateError(state) { return state && state.error ? "Ошибка сервиса окон: " + state.error : ""; }
+function stateError(state, s) { return state && state.error ? format(s.engineStateError, [state.error]) : ""; }
 
 // Разбор одной строки сокета движка. `revision` — ревизия принятого состояния,
 // `freshConnection` — подписка этого соединения ещё не дала состояния: после перезапуска
@@ -69,23 +85,23 @@ function stateError(state) { return state && state.error ? "Ошибка сер�
 // - `invalid` — строка не по протоколу: `message` для панели.
 // Событие `{event: "state", state}` с той же ревизией принимается: оно несёт новый текст ошибки.
 // Ответ `{id, result}` с той же ревизией повторяет уже принятое событие и пропускается.
-function decodeMessage(line, revision, freshConnection) {
+function decodeMessage(line, revision, freshConnection, s) {
     var message;
-    try { message = JSON.parse(line); } catch (_) { return {kind: "invalid", id: null, message: "Не удалось прочитать ответ сервиса окон"}; }
+    try { message = JSON.parse(line); } catch (_) { return {kind: "invalid", id: null, message: s.engineUnreadable}; }
     if (!message || typeof message !== "object" || Array.isArray(message))
-        return {kind: "invalid", id: null, message: "Некорректный ответ сервиса окон"};
+        return {kind: "invalid", id: null, message: s.engineMalformed};
     if (message.event !== undefined) {
         if (message.event !== "state") return {kind: "ignore", id: null};
-        if (!validState(message.state)) return {kind: "invalid", id: null, message: "Сервис окон прислал неполное состояние"};
+        if (!validState(message.state)) return {kind: "invalid", id: null, message: s.engineIncompleteEvent};
         if (!freshConnection && message.state.revision < revision) return {kind: "ignore", id: null};
         return {kind: "state", id: null, state: message.state};
     }
     var id = message.id === undefined ? null : message.id;
     if (message.error !== undefined) {
         var error = message.error && typeof message.error === "object" ? message.error : {};
-        return {kind: "error", id: id, code: typeof error.code === "string" ? error.code : "", message: errorText(error)};
+        return {kind: "error", id: id, code: typeof error.code === "string" ? error.code : "", message: errorText(error, s)};
     }
-    if (!validState(message.result)) return {kind: "invalid", id: id, message: "Сервис окон вернул неполное состояние"};
+    if (!validState(message.result)) return {kind: "invalid", id: id, message: s.engineIncompleteResult};
     if (!freshConnection && message.result.revision <= revision) return {kind: "ignore", id: id};
     return {kind: "state", id: id, state: message.result};
 }
@@ -124,7 +140,7 @@ function monitorLabel(key) {
 // Кнопки пространств монитора `name`: свои `1`…N (не меньше трёх, на одну больше
 // старшего занятого номера, не больше десяти) и затем пространства отключённых мониторов,
 // которые сейчас показаны на этом мониторе.
-function workspaceItems(state, name) {
+function workspaceItems(state, name, s) {
     var monitor = monitorFor(state, name);
     if (!monitor) return [];
     var own = state.workspaces.filter(function(workspace) { return workspace.monitor_key === monitor.key; });
@@ -139,7 +155,7 @@ function workspaceItems(state, name) {
     for (var ref of state.workspaces) {
         if (ref.monitor_key !== monitor.key && ref.display_monitor_key === monitor.key)
             result.push({number: ref.number, monitor: ref.monitor_key, workspace_id: ref.workspace_id,
-                        label: ref.number + " · " + monitorLabel(ref.monitor_key), migrated: true,
+                        label: format(s.workspaceMigrated, [ref.number, monitorLabel(ref.monitor_key)]), migrated: true,
                         active: ref.workspace_id === monitor.active_workspace_id});
     }
     return result;
@@ -154,7 +170,7 @@ function desktopFor(appId, entries) {
     }) || null;
 }
 
-function groupApps(windows, monitor, pinned, entries) {
+function groupApps(windows, monitor, pinned, entries, s) {
     var groups = {};
     for (var id of pinned) {
         var entry = entries.find(function(candidate) { return candidate.id === id; }) || null;
@@ -167,7 +183,7 @@ function groupApps(windows, monitor, pinned, entries) {
         if (window.workspace_id < 0) continue;
         var entry = desktopFor(window.appId || window.className, entries);
         var id = entry ? entry.id : normalizedId(window.appId || window.className || window.address);
-        if (!groups[id]) groups[id] = {id: id, name: entry ? entry.name : (window.appId || window.title || "Приложение"),
+        if (!groups[id]) groups[id] = {id: id, name: entry ? entry.name : (window.appId || window.title || s.appUnnamed),
                                       icon: entry ? entry.icon : "application-x-executable", pinned: false, available: !!entry, windows: []};
         groups[id].windows.push(window);
     }
@@ -269,25 +285,25 @@ function parseXkbRules(text) {
     return names;
 }
 
-function layoutCode(keyboard, names) {
-    if (!keyboard) return "…";
+function layoutCode(keyboard, names, s) {
+    if (!keyboard) return s.layoutUnknown;
     var code = names[keyboard.active_keymap];
     if (!code) {
         var layouts = String(keyboard.layout || "").split(",").map(function(layout) { return layout.trim(); }).filter(Boolean);
         var index = keyboard.active_layout_index;
         code = layouts[index] || (layouts.length === 1 ? layouts[0] : "");
     }
-    return code ? code.toUpperCase() : "…";
+    return code ? code.toUpperCase() : s.layoutUnknown;
 }
 
 // Подпись сетевого устройства. «Подключено» — только с адресом: NetworkManager сообщает
 // состояние 100 чуть раньше; отсутствие кабеля важнее любого состояния.
-function deviceLabel(device) {
-    if (device.type === "ethernet" && device.cable === false) return "Нет кабеля";
-    if (device.state === "connected") return (device.addresses || []).length ? "Подключено" : "Подключение…";
-    if (device.state === "connecting") return "Подключение…";
-    if (device.state === "disconnected") return "Отключено";
-    return "Недоступно";
+function deviceLabel(device, s) {
+    if (device.type === "ethernet" && device.cable === false) return s.deviceNoCable;
+    if (device.state === "connected") return (device.addresses || []).length ? s.deviceConnected : s.deviceConnecting;
+    if (device.state === "connecting") return s.deviceConnecting;
+    if (device.state === "disconnected") return s.deviceDisconnected;
+    return s.deviceUnavailable;
 }
 
 // Секунды до отката: округление вверх, не меньше 0.
@@ -302,35 +318,36 @@ function pendingFromStatus(status, current) {
     return {checkpoint: paths[0], deadline: null};
 }
 
-// Русский текст ошибки формы профиля по полю `field` ответа `quietline-shell network`.
-var PROFILE_FIELD_TEXTS = {
-    name: "Укажите имя профиля длиной до 64 символов",
-    method: "Неизвестный способ настройки адреса",
-    prefix: "Укажите префикс сети, например 10.42.0.5/24",
-    address: "Некорректный адрес IPv4",
-    gateway: "Некорректный адрес шлюза",
-    dns: "Некорректный адрес DNS",
-    profile: "Некорректные данные профиля"
+// Текст ошибки формы профиля по полю `field` ответа `quietline-shell network`.
+var PROFILE_FIELD_KEYS = {
+    name: "profileFieldName",
+    method: "profileFieldMethod",
+    prefix: "profileFieldPrefix",
+    address: "profileFieldAddress",
+    gateway: "profileFieldGateway",
+    dns: "profileFieldDns",
+    profile: "profileFieldProfile"
 };
 
 // Что не получилось, по виду сетевого действия `NetworkService`.
-var NETWORK_ACTION_TEXTS = {
-    status: "Состояние сети недоступно",
-    scan: "Не удалось найти сети Wi-Fi",
-    radio: "Не удалось переключить Wi-Fi",
-    connect: "Не удалось подключиться к Wi-Fi",
-    save: "Профиль не сохранён",
-    delete: "Профиль не удалён",
-    apply: "Конфигурация не применена",
-    confirm: "Конфигурация не подтверждена",
-    rollback: "Конфигурация не возвращена"
+var NETWORK_ACTION_KEYS = {
+    status: "networkStatusFailed",
+    scan: "networkScanFailed",
+    radio: "networkRadioFailed",
+    connect: "networkConnectFailed",
+    save: "networkSaveFailed",
+    delete: "networkDeleteFailed",
+    apply: "networkApplyFailed",
+    confirm: "networkConfirmFailed",
+    rollback: "networkRollbackFailed"
 };
 
-// Текст ошибки для сетевой панели: по полю формы — русский текст поля, иначе русская
-// фраза действия и подробность `quietline-shell` (по-английски) через двоеточие.
-function networkErrorText(kind, response) {
-    if (response && PROFILE_FIELD_TEXTS[response.field]) return PROFILE_FIELD_TEXTS[response.field];
-    var text = NETWORK_ACTION_TEXTS[kind] || "Сетевое действие не выполнено";
+// Текст ошибки для сетевой панели: по полю формы — текст поля, иначе фраза действия
+// и подробность `quietline-shell` (по-английски) через двоеточие.
+function networkErrorText(kind, response, s) {
+    var field = response ? textKey(PROFILE_FIELD_KEYS, response.field, "") : "";
+    if (field) return s[field];
+    var text = s[textKey(NETWORK_ACTION_KEYS, kind, "networkActionFailed")];
     var detail = response && typeof response.error === "string" ? response.error : "";
     return detail ? text + ": " + detail : text;
 }
@@ -359,67 +376,67 @@ function isBuiltinOutput(name) { return /^(eDP|LVDS|DSI)-/.test(name || ""); }
 function clampVolume(value) { return Math.max(0, Math.min(1.5, value)); }
 
 // Время батареи: «1 ч 20 мин» или «10 мин», не меньше минуты.
-function formatDuration(seconds) {
+function formatDuration(seconds, s) {
     var minutes = Math.max(1, Math.round(seconds / 60)), hours = Math.floor(minutes / 60);
-    return hours ? hours + " ч " + (minutes % 60) + " мин" : minutes + " мин";
+    return hours ? format(s.durationHoursMinutes, [hours, minutes % 60]) : format(s.durationMinutes, [minutes]);
 }
 
 // Биты `modmask` Hyprland в том порядке, в каком модификаторы называют.
 var MODIFIERS = [[64, "Super"], [4, "Ctrl"], [8, "Alt"], [1, "Shift"]];
 
-// Русское описание известной команды привязки; неизвестная остаётся как есть.
-function bindAction(command) {
+// Описание известной команды привязки; неизвестная остаётся как есть.
+function bindAction(command, s) {
     var match;
-    if ((match = /^quietline-engine switch (\d+)$/.exec(command))) return "Открыть пространство " + match[1];
-    if ((match = /^quietline-engine move (\d+)$/.exec(command))) return "Перенести окно на пространство " + match[1];
-    if (command === "quietline-engine toggle") return "Сменить режим «Окна / Тайлы»";
-    if (command === "ghostty") return "Открыть терминал";
-    if (command === "quietline-shell lock") return "Заблокировать сеанс";
-    if (/^quietline-shell app quit/.test(command)) return "Выйти из приложения";
-    if (/ipc call quietline confirmKill$/.test(command)) return "Принудительно завершить приложение";
-    if (/ipc call quietline clipboard$/.test(command)) return "История буфера";
-    if (command === "quietline-shell screenshot output") return "Снимок монитора в файл и буфер";
-    if (command === "quietline-shell screenshot region") return "Снимок области с разметкой";
-    if (/ipc call quietline launcher$/.test(command)) return "Открыть поиск";
-    if (/ipc call quietline settings shortcuts$/.test(command)) return "Памятка сочетаний клавиш";
-    if (/ipc call quietline settings/.test(command)) return "Открыть окно «Настройки»";
-    if (command === "dolphin") return "Открыть Dolphin";
+    if ((match = /^quietline-engine switch (\d+)$/.exec(command))) return format(s.bindSwitch, [match[1]]);
+    if ((match = /^quietline-engine move (\d+)$/.exec(command))) return format(s.bindMove, [match[1]]);
+    if (command === "quietline-engine toggle") return s.bindToggle;
+    if (command === "ghostty") return s.bindTerminal;
+    if (command === "quietline-shell lock") return s.bindLock;
+    if (/^quietline-shell app quit/.test(command)) return s.bindQuit;
+    if (/ipc call quietline confirmKill$/.test(command)) return s.bindKill;
+    if (/ipc call quietline clipboard$/.test(command)) return s.bindClipboard;
+    if (command === "quietline-shell screenshot output") return s.bindScreenshotOutput;
+    if (command === "quietline-shell screenshot region") return s.bindScreenshotRegion;
+    if (/ipc call quietline launcher$/.test(command)) return s.bindSearch;
+    if (/ipc call quietline settings shortcuts$/.test(command)) return s.bindShortcuts;
+    if (/ipc call quietline settings/.test(command)) return s.bindSettings;
+    if (command === "dolphin") return s.bindDolphin;
     return command;
 }
 
 // Памятка сочетаний из `hyprctl binds -j`: `[{keys: "Super+Shift+1", action}]`.
-function describeBinds(binds) {
+function describeBinds(binds, s) {
     return (binds || []).map(function(bind) {
         var keys = MODIFIERS.filter(function(item) { return (bind.modmask & item[0]) !== 0; })
             .map(function(item) { return item[1]; });
         keys.push(bind.key);
-        return {keys: keys.join("+"), action: bindAction(bind.arg || bind.dispatcher || "")};
+        return {keys: keys.join("+"), action: bindAction(bind.arg || bind.dispatcher || "", s)};
     });
 }
 
 // Действия сеанса после корректного закрытия окон (`quietline-shell session`).
 var SESSION_ACTIONS = ["logout", "reboot", "poweroff"];
-var SESSION_LABELS = {logout: "Выйти из сеанса", reboot: "Перезагрузить", poweroff: "Выключить"};
-var SESSION_QUESTIONS = {
-    logout: "Закрыть все приложения и выйти из сеанса?",
-    reboot: "Закрыть все приложения и перезагрузить компьютер?",
-    poweroff: "Закрыть все приложения и выключить компьютер?"
-};
+var SESSION_LABEL_KEYS = {logout: "sessionLogout", reboot: "sessionReboot", poweroff: "sessionPoweroff"};
+var SESSION_QUESTION_KEYS = {logout: "sessionLogoutQuestion", reboot: "sessionRebootQuestion", poweroff: "sessionPoweroffQuestion"};
+
+// Подпись и вопрос подтверждения действия сеанса; неизвестное действие — пустая строка.
+function sessionLabel(action, s) { var key = textKey(SESSION_LABEL_KEYS, action, ""); return key ? s[key] : ""; }
+function sessionQuestion(action, s) { var key = textKey(SESSION_QUESTION_KEYS, action, ""); return key ? s[key] : ""; }
 
 // Приложения, окна которых не закрылись: «Не завершились: Code (notes.md), Telegram».
-function remainingText(remaining) {
+function remainingText(remaining, s) {
     var names = [];
     (remaining || []).forEach(function(window) {
-        var name = window.app || "окно без названия";
+        var name = window.app || s.sessionUntitledWindow;
         var label = window.title && window.title !== name ? name + " (" + window.title + ")" : name;
         if (names.indexOf(label) < 0) names.push(label);
     });
-    return names.length ? "Не завершились: " + names.join(", ") + ". Сохраните документы и повторите." : "";
+    return names.length ? format(s.sessionRemaining, [names.join(", ")]) : "";
 }
 
-function sessionErrorText(action, detail) {
-    var label = SESSION_LABELS[action] || "Действие сеанса";
-    return label + " не удалось" + (detail ? ": " + detail : "");
+function sessionErrorText(action, detail, s) {
+    var label = sessionLabel(action, s) || s.sessionAction;
+    return format(s.sessionActionFailed, [label]) + (detail ? ": " + detail : "");
 }
 
 // Группа процессов systemd для приложения, запущенного оболочкой: `app-quietline-<id>-<token>`.
@@ -444,20 +461,20 @@ function notificationTimeout(expireTimeout, urgency) {
     return requested > 0 ? Math.min(requested, NOTIFICATION_MS) : NOTIFICATION_MS;
 }
 
-// Записи истории буфера, подходящие под запрос: по тексту превью, картинки — по слову «изображение».
-function clipboardMatches(entries, query) {
+// Записи истории буфера, подходящие под запрос: по тексту превью, картинки — по слову «изображение» или «image».
+function clipboardMatches(entries, query, s) {
     var needle = String(query || "").trim().toLowerCase();
     return (entries || []).filter(function(entry) {
         if (!needle) return true;
-        var text = entry.kind === "image" ? "изображение image " + entry.preview : entry.preview;
+        var text = entry.kind === "image" ? s.clipboardImageKeywords + " " + entry.preview : entry.preview;
         return String(text).toLowerCase().indexOf(needle) >= 0;
     });
 }
 
 // Подпись картинки из превью cliphist «[[ binary data 14 KiB png 120x80 ]]»: «Изображение PNG · 120×80».
-function clipboardImageLabel(preview) {
+function clipboardImageLabel(preview, s) {
     var match = /binary data .* (\w+) (\d+)x(\d+)/.exec(String(preview || ""));
-    return match ? "Изображение " + match[1].toUpperCase() + " · " + match[2] + "×" + match[3] : "Изображение";
+    return match ? format(s.clipboardImageDetails, [match[1].toUpperCase(), match[2], match[3]]) : s.clipboardImage;
 }
 
 // Простые вычисления поиска: числа (дробная часть через точку или запятую), `+ - * / % ^`
@@ -518,24 +535,25 @@ function calculate(text) {
 // Число для показа и копирования: без хвостов двоичной арифметики (0.1 + 0.2 → 0.3).
 function formatNumber(value) { return String(parseFloat(Number(value).toPrecision(12))); }
 
-// Разделы окна «Настройки» и системные действия для поиска; `keywords` — дополнительные слова.
+// Разделы окна «Настройки» и системные действия для поиска: ключи подписи и ключевых слов
+// таблицы строк. Ключевые слова содержат слова обоих языков.
 var SETTINGS_SECTIONS = [
-    {id: "network", label: "Сеть", keywords: "wi-fi wifi ethernet интернет профиль адрес"},
-    {id: "audio", label: "Звук", keywords: "громкость микрофон динамики"},
-    {id: "display", label: "Экран и яркость", keywords: "монитор яркость дисплей"},
-    {id: "bluetooth", label: "Bluetooth", keywords: "наушники блютуз"},
-    {id: "power", label: "Питание", keywords: "батарея энергосбережение"},
-    {id: "keyboard", label: "Клавиатура", keywords: "раскладка язык"},
-    {id: "shortcuts", label: "Сочетания клавиш", keywords: "клавиши горячие памятка"},
-    {id: "about", label: "О системе", keywords: "версия система компьютер"}
+    {id: "network", label: "settingsNetwork", keywords: "settingsNetworkKeywords"},
+    {id: "audio", label: "settingsAudio", keywords: "settingsAudioKeywords"},
+    {id: "display", label: "settingsDisplay", keywords: "settingsDisplayKeywords"},
+    {id: "bluetooth", label: "settingsBluetooth", keywords: "settingsBluetoothKeywords"},
+    {id: "power", label: "settingsPower", keywords: "settingsPowerKeywords"},
+    {id: "keyboard", label: "settingsKeyboard", keywords: "settingsKeyboardKeywords"},
+    {id: "shortcuts", label: "settingsShortcuts", keywords: "settingsShortcutsKeywords"},
+    {id: "about", label: "settingsAbout", keywords: "settingsAboutKeywords"}
 ];
 var SEARCH_ACTIONS = [
-    {id: "lock", title: "Заблокировать", keywords: "блокировка экран lock"},
-    {id: "logout", title: "Выйти из сеанса", keywords: "выход logout"},
-    {id: "reboot", title: "Перезагрузить", keywords: "перезагрузка reboot restart"},
-    {id: "poweroff", title: "Выключить", keywords: "выключение shutdown poweroff"},
-    {id: "screenshot", title: "Снимок области экрана", keywords: "скриншот screenshot снимок"},
-    {id: "clipboard", title: "История буфера", keywords: "буфер обмена clipboard"}
+    {id: "lock", title: "actionLock", keywords: "actionLockKeywords"},
+    {id: "logout", title: "actionLogout", keywords: "actionLogoutKeywords"},
+    {id: "reboot", title: "actionReboot", keywords: "actionRebootKeywords"},
+    {id: "poweroff", title: "actionPoweroff", keywords: "actionPoweroffKeywords"},
+    {id: "screenshot", title: "actionScreenshot", keywords: "actionScreenshotKeywords"},
+    {id: "clipboard", title: "actionClipboard", keywords: "actionClipboardKeywords"}
 ];
 
 // Насколько `text` подходит под `needle`: начало строки — 3, начало слова — 2, где-то внутри — 1.
@@ -548,27 +566,29 @@ function matchScore(text, needle) {
 
 // Результаты поиска: вычисление, затем приложения, действия и разделы настроек по совпадению,
 // затем файлы. Пустой запрос — все приложения. `home` сокращается до «~» в путях файлов.
-function searchResults(query, apps, files, home, limit) {
+function searchResults(query, apps, files, home, limit, s) {
     var needle = String(query || "").trim().toLowerCase();
     var max = limit || 40;
-    if (!needle) return (apps || []).slice(0, max).map(function(app) { return {kind: "app", id: app.id, title: app.name, subtitle: "Приложение"}; });
+    if (!needle) return (apps || []).slice(0, max).map(function(app) { return {kind: "app", id: app.id, title: app.name, subtitle: s.searchApp}; });
     var scored = [];
     (apps || []).forEach(function(app) {
         var score = Math.max(matchScore(app.name, needle), matchScore(app.id, needle) - 0.5);
-        if (score > 0) scored.push({kind: "app", id: app.id, title: app.name, subtitle: "Приложение", score: score + 0.2});
+        if (score > 0) scored.push({kind: "app", id: app.id, title: app.name, subtitle: s.searchApp, score: score + 0.2});
     });
     SEARCH_ACTIONS.forEach(function(action) {
-        var score = Math.max(matchScore(action.title, needle), matchScore(action.keywords, needle) - 0.5);
-        if (score > 0) scored.push({kind: "action", id: action.id, title: action.title, subtitle: "Действие", score: score + 0.1});
+        var title = s[action.title];
+        var score = Math.max(matchScore(title, needle), matchScore(s[action.keywords], needle) - 0.5);
+        if (score > 0) scored.push({kind: "action", id: action.id, title: title, subtitle: s.searchAction, score: score + 0.1});
     });
     SETTINGS_SECTIONS.forEach(function(section) {
-        var score = Math.max(matchScore(section.label, needle), matchScore(section.keywords, needle) - 0.5);
-        if (score > 0) scored.push({kind: "settings", id: section.id, title: section.label, subtitle: "Настройки", score: score});
+        var label = s[section.label];
+        var score = Math.max(matchScore(label, needle), matchScore(s[section.keywords], needle) - 0.5);
+        if (score > 0) scored.push({kind: "settings", id: section.id, title: label, subtitle: s.searchSettings, score: score});
     });
     scored.sort(function(a, b) { return b.score - a.score; });
     var results = [];
     var value = calculate(query);
-    if (value !== null) results.push({kind: "calc", id: "calc", title: "= " + formatNumber(value), value: formatNumber(value), subtitle: "Enter — скопировать результат"});
+    if (value !== null) results.push({kind: "calc", id: "calc", title: "= " + formatNumber(value), value: formatNumber(value), subtitle: s.searchCalcHint});
     results = results.concat(scored.map(function(item) { delete item.score; return item; }));
     (files || []).forEach(function(path) {
         var slash = path.lastIndexOf("/");

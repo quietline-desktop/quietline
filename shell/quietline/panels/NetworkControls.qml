@@ -91,7 +91,7 @@ ColumnLayout {
     }
     Muted {
         visible: !!root.network.wifiDevice
-        text: root.network.wifiDevice ? root.network.wifiDevice.device + " · " + Models.deviceLabel(root.network.wifiDevice)
+        text: root.network.wifiDevice ? root.network.wifiDevice.device + " · " + Models.deviceLabel(root.network.wifiDevice, Lang.s)
             + (root.network.wifiDevice.profile ? " · " + root.network.wifiDevice.profile : "") : ""
     }
     Muted { visible: !root.network.wifiDevice; text: "Wi-Fi-адаптер не найден." }
@@ -163,7 +163,7 @@ ColumnLayout {
             delegate: ShellButton {
                 required property var modelData
                 text: modelData.device
-                hint: "Адаптер " + modelData.device + " · " + Models.deviceLabel(modelData)
+                hint: "Адаптер " + modelData.device + " · " + Models.deviceLabel(modelData, Lang.s)
                 emphasized: root.adapter && root.adapter.device === modelData.device
                 onClicked: root.selectedDevice = modelData.device
             }
@@ -175,7 +175,7 @@ ColumnLayout {
         spacing: 6
         Muted {
             color: Theme.text
-            text: root.adapter ? root.adapter.device + " · " + Models.deviceLabel(root.adapter)
+            text: root.adapter ? root.adapter.device + " · " + Models.deviceLabel(root.adapter, Lang.s)
                 + (root.adapter.profile ? " · " + root.adapter.profile : "")
                 + (root.adapter.addresses.length ? "\n" + root.adapter.addresses.join(", ") : "")
                 + (root.adapter.gateway ? " · шлюз " + root.adapter.gateway : "") : ""

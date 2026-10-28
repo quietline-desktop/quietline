@@ -21,7 +21,7 @@ ColumnLayout {
     component ActionButton: ShellButton {
         required property string action
         Layout.fillWidth: true
-        text: Models.SESSION_LABELS[action]
+        text: Models.sessionLabel(action, Lang.s)
         emphasized: root.confirming === action
         enabled: !root.session.busy
         onClicked: root.confirming = action
@@ -45,14 +45,14 @@ ColumnLayout {
         spacing: 6
         Text {
             Layout.fillWidth: true
-            text: Models.SESSION_QUESTIONS[root.confirming] || ""
+            text: Models.sessionQuestion(root.confirming, Lang.s)
             color: Theme.text; font.family: Theme.sans; font.pixelSize: Theme.smallFontSize
             wrapMode: Text.Wrap
         }
         RowLayout {
             spacing: 6
             ShellButton {
-                text: Models.SESSION_LABELS[root.confirming] || ""
+                text: Models.sessionLabel(root.confirming, Lang.s)
                 emphasized: true
                 onClicked: root.session.end(root.confirming)
             }
@@ -71,7 +71,7 @@ ColumnLayout {
         spacing: 6
         Text {
             Layout.fillWidth: true
-            text: Models.remainingText(root.session.remaining)
+            text: Models.remainingText(root.session.remaining, Lang.s)
             color: Theme.danger; font.family: Theme.sans; font.pixelSize: Theme.smallFontSize
             wrapMode: Text.Wrap
         }

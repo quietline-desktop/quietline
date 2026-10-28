@@ -6,6 +6,10 @@ const vm=require('node:vm');
 const path=require('node:path');
 const source=fs.readFileSync(path.join(__dirname,'../../shell/quietline/logic/Models.js'),'utf8').replace(/^\.pragma library\s*/, '');
 const M=vm.createContext({}); vm.runInContext(source,M);
+// Таблицы строк передаются функциям аргументом, как `Lang.s` в QML.
+const stringsSource=fs.readFileSync(path.join(__dirname,'../../shell/quietline/logic/Strings.js'),'utf8').replace(/^\.pragma library\s*/, '');
+const S=vm.createContext({}); vm.runInContext(stringsSource,S);
+const ru=S.table('ru'), en=S.table('en');
 const plain=value=>JSON.parse(JSON.stringify(value));
 // Строки сокета движка из test_engine_protocol.py: подписка, отказы, события и ответы.
 const protocol=require('./engine-protocol.json').lines;
@@ -20,7 +24,7 @@ const state={revision:9,error:null,
 function replay(lines,connection={revision:-1,fresh:true,state:null}){
  const seen=[];
  for(const message of lines){
-  const response=M.decodeMessage(line(message),connection.revision,connection.fresh);
+  const response=M.decodeMessage(line(message),connection.revision,connection.fresh,ru);
   seen.push(response);
   if(response.kind==='state'){connection.state=response.state;connection.revision=response.state.revision;connection.fresh=false;}
  }
@@ -41,13 +45,13 @@ test('every message the engine sends is understood by the shell',()=>{
 test('an event with the same revision carries a new error text and a later one clears it',()=>{
  const {seen}=replay(protocol);
  assert.equal(seen[2].state.revision,seen[0].state.revision);
- assert.match(M.stateError(seen[2].state),/^Ошибка сервиса окон: mode switch failed/);
- assert.equal(M.stateError(seen[4].state),'');
+ assert.match(M.stateError(seen[2].state,ru),/^Ошибка сервиса окон: mode switch failed/);
+ assert.equal(M.stateError(seen[4].state,ru),'');
 });
 test('engine state fields drive the panel: local buttons, migrated workspace and foreign workspace',()=>{
  const current=protocol[0].result;
  assert.equal(M.validState(current),true);
- const dp=plain(M.workspaceItems(current,'DP-1'));
+ const dp=plain(M.workspaceItems(current,'DP-1',ru));
  assert.deepEqual(dp.map(r=>r.label),['1','2','3','3 · Dell Inc. U2723QE']);
  assert.deepEqual(dp.map(r=>r.active),[true,false,false,false]);
  assert.equal(dp[3].monitor,'Dell Inc.|U2723QE|SN2');
@@ -58,26 +62,26 @@ test('engine state fields drive the panel: local buttons, migrated workspace and
  assert.equal(M.monitorKey(current,'DP-9'),'');
  const after=replay(protocol).connection.state;
  assert.equal(plain(M.activeWorkspace(after,'DP-1')).workspace_id,1003);
- assert.equal(plain(M.workspaceItems(after,'DP-1'))[3].active,true);
+ assert.equal(plain(M.workspaceItems(after,'DP-1',ru))[3].active,true);
 });
 test('a restarted engine starts over at a lower revision and a fresh subscription accepts it',()=>{
  const {connection}=replay(protocol);
  const restarted={...protocol[0],result:{...protocol[0].result,revision:0}};
- assert.equal(M.decodeMessage(line(restarted),connection.revision,false).kind,'ignore');
+ assert.equal(M.decodeMessage(line(restarted),connection.revision,false,ru).kind,'ignore');
  const fresh=replay([restarted],{revision:-1,fresh:true,state:null});
  assert.equal(fresh.connection.revision,0);
  assert.equal(fresh.seen[0].kind,'state');
 });
 test('stale events are ignored on a live subscription but accepted on a fresh one',()=>{
  const event=line({event:'state',state});
- assert.equal(M.decodeMessage(event,12,false).kind,'ignore');
- assert.equal(M.decodeMessage(event,12,true).kind,'state');
- assert.equal(M.decodeMessage(event,9,false).kind,'state');
- assert.equal(M.decodeMessage(line({id:3,result:state}),9,false).kind,'ignore');
- assert.equal(M.decodeMessage(line({event:'other',state}),1,false).kind,'ignore');
+ assert.equal(M.decodeMessage(event,12,false,ru).kind,'ignore');
+ assert.equal(M.decodeMessage(event,12,true,ru).kind,'state');
+ assert.equal(M.decodeMessage(event,9,false,ru).kind,'state');
+ assert.equal(M.decodeMessage(line({id:3,result:state}),9,false,ru).kind,'ignore');
+ assert.equal(M.decodeMessage(line({event:'other',state}),1,false,ru).kind,'ignore');
 });
 test('snapshot validation rejects malformed state without replacing confirmed state',()=>{
- assert.equal(M.decodeMessage(line({id:1,result:state}),8,false).kind,'state');
+ assert.equal(M.decodeMessage(line({id:1,result:state}),8,false,ru).kind,'state');
  const broken=[
   {...state,workspaces:[{...state.workspaces[0],mode:'unknown'}]},
   {...state,workspaces:[{...state.workspaces[0],number:11}]},
@@ -91,18 +95,18 @@ test('snapshot validation rejects malformed state without replacing confirmed st
   {...state,revision:-1},
  ];
  for(const bad of broken){
-  assert.equal(M.decodeMessage(line({id:1,result:bad}),8,false).kind,'invalid');
-  assert.equal(M.decodeMessage(line({event:'state',state:bad}),8,false).kind,'invalid');
+  assert.equal(M.decodeMessage(line({id:1,result:bad}),8,false,ru).kind,'invalid');
+  assert.equal(M.decodeMessage(line({event:'state',state:bad}),8,false,ru).kind,'invalid');
  }
- assert.equal(M.decodeMessage('not-json',8,false).kind,'invalid');
- assert.equal(M.decodeMessage('[1]',8,false).kind,'invalid');
+ assert.equal(M.decodeMessage('not-json',8,false,ru).kind,'invalid');
+ assert.equal(M.decodeMessage('[1]',8,false,ru).kind,'invalid');
 });
 test('request errors remain errors and never pretend to be state',()=>{
- const result=M.decodeMessage('{"id":7,"error":{"code":"unknown_method","message":"unknown method \'x\'"}}',9,false);
+ const result=M.decodeMessage('{"id":7,"error":{"code":"unknown_method","message":"unknown method \'x\'"}}',9,false,ru);
  assert.equal(result.kind,'error'); assert.equal(result.id,7);
  assert.equal(result.message,"Сервис окон не знает эту команду: unknown method 'x'");
- assert.equal(M.decodeMessage('{"id":null,"error":{"code":"invalid_request","message":"bad"}}',9,false).id,null);
- assert.equal(M.decodeMessage('{"id":8,"error":{}}',9,false).message,'Команда не выполнена');
+ assert.equal(M.decodeMessage('{"id":null,"error":{"code":"invalid_request","message":"bad"}}',9,false,ru).id,null);
+ assert.equal(M.decodeMessage('{"id":8,"error":{}}',9,false,ru).message,'Команда не выполнена');
 });
 test('monitor labels follow the engine keys',()=>{
  assert.equal(M.monitorLabel('connector:DP-1'),'DP-1');
@@ -112,7 +116,7 @@ test('monitor labels follow the engine keys',()=>{
 });
 test('workspace buttons use local keys and preserve disconnected ownership',()=>{
  const s={...state,monitors:[state.monitors[0]],workspaces:[state.workspaces[0],{...state.workspaces[1],display_monitor_key:'left'}]};
- const rows=plain(M.workspaceItems(s,'DP-1'));
+ const rows=plain(M.workspaceItems(s,'DP-1',ru));
  assert.equal(rows[0].monitor,'left');assert.equal(rows[0].number,1);assert.equal(rows[0].active,true);
  assert.equal(rows.filter(row=>row.migrated).length,1);
  assert.equal(rows.find(row=>row.migrated).monitor,'right');
@@ -122,12 +126,12 @@ test('workspace buttons use local keys and preserve disconnected ownership',()=>
 const entries=[{id:'org.kde.dolphin',name:'Файлы',icon:'system-file-manager',startupClass:'dolphin'},{id:'code',name:'Code',icon:'code',startupClass:'Code'}];
 const windows=[{address:'0x1',appId:'dolphin',monitor:'DP-1',workspace_id:1,focusHistoryID:4},{address:'0x2',appId:'dolphin',monitor:'DP-1',workspace_id:3,focusHistoryID:0},{address:'0x3',appId:'dolphin',monitor:'DP-2',workspace_id:2,focusHistoryID:0}];
 test('dock groups local windows and focuses most recent even on another workspace',()=>{
- const groups=plain(M.groupApps(windows,'DP-1',['org.kde.dolphin','code'],entries));
+ const groups=plain(M.groupApps(windows,'DP-1',['org.kde.dolphin','code'],entries,ru));
  assert.equal(groups.length,2);assert.equal(groups[0].windows.length,2);assert.equal(groups[0].lastWindow.address,'0x2');
  assert.equal(groups[1].running,false);assert.equal(groups[1].available,true);
 });
 test('a foreign-monitor application is not treated as running locally',()=>{
- const groups=plain(M.groupApps(windows,'DP-3',['org.kde.dolphin','missing'],entries));
+ const groups=plain(M.groupApps(windows,'DP-3',['org.kde.dolphin','missing'],entries,ru));
  assert.equal(groups[0].running,false);assert.equal(groups[0].lastWindow,null);
  assert.equal(groups[1].available,false);
 });
@@ -159,11 +163,11 @@ test('Lua dispatch accepts only literal compositor addresses',()=>{
 });
 test('stable keys let delegates survive snapshot and title refreshes',()=>{
  const s={...state,workspaces:[...state.workspaces,{monitor_key:'right',display_monitor_key:'left',number:2,workspace_id:5,mode:'windows'}]};
- const keys=M.workspaceItems(s,'DP-1').map(M.workspaceKey);
+ const keys=M.workspaceItems(s,'DP-1',ru).map(M.workspaceKey);
  assert.equal(new Set(keys).size,keys.length);
  assert.deepEqual(plain(keys.slice(0,4)),['left:1','left:2','left:3','right:2']);
  const renamed={...s,revision:10};
- assert.deepEqual(plain(M.workspaceItems(renamed,'DP-1').map(M.workspaceKey)),plain(keys));
+ assert.deepEqual(plain(M.workspaceItems(renamed,'DP-1',ru).map(M.workspaceKey)),plain(keys));
  const groups=[{id:'code',name:'Code'},{id:'ghostty',name:'Ghostty'}];
  const map=M.keyed(groups,group=>group.id);
  assert.equal(map.code.name,'Code');
@@ -186,14 +190,14 @@ test('keyboard layout code comes from the XKB rule descriptions',()=>{
  assert.equal(names['Russian'],'ru');
  assert.equal(names['Russian (phonetic)'],'ru');
  assert.equal(names['Generic 105-key PC'],undefined);
- assert.equal(M.layoutCode({active_keymap:'Russian (phonetic)',layout:'us,ru'},names),'RU');
- assert.equal(M.layoutCode({active_keymap:'English (US)',layout:'us,ru'},names),'US');
+ assert.equal(M.layoutCode({active_keymap:'Russian (phonetic)',layout:'us,ru'},names,ru),'RU');
+ assert.equal(M.layoutCode({active_keymap:'English (US)',layout:'us,ru'},names,ru),'US');
 });
 test('unknown keymap falls back to the active layout index, then to a placeholder',()=>{
- assert.equal(M.layoutCode({active_keymap:'Custom',layout:'us, de',active_layout_index:1},{}),'DE');
- assert.equal(M.layoutCode({active_keymap:'Custom',layout:'fr'},{}),'FR');
- assert.equal(M.layoutCode({active_keymap:'Custom',layout:'us,ru'},{}),'…');
- assert.equal(M.layoutCode(null,{}),'…');
+ assert.equal(M.layoutCode({active_keymap:'Custom',layout:'us, de',active_layout_index:1},{},ru),'DE');
+ assert.equal(M.layoutCode({active_keymap:'Custom',layout:'fr'},{},ru),'FR');
+ assert.equal(M.layoutCode({active_keymap:'Custom',layout:'us,ru'},{},ru),'…');
+ assert.equal(M.layoutCode(null,{},ru),'…');
 });
 const dockWindows=[
  {address:'0xa',appId:'org.kde.dolphin',monitor:'DP-1',workspace_id:1,activated:true,focusHistoryID:0},
@@ -203,30 +207,30 @@ const dockWindows=[
 ];
 const dockEntries=[{id:'org.kde.dolphin',name:'Dolphin',icon:'system-file-manager'}];
 test('special workspaces are not shown as running applications in the dock',()=>{
- const group=plain(M.groupApps(dockWindows,'DP-1',[],dockEntries))[0];
+ const group=plain(M.groupApps(dockWindows,'DP-1',[],dockEntries,ru))[0];
  assert.deepEqual(group.windows.map(w=>w.address),['0xa','0xc','0xb']);
 });
 test('clicking an active application moves to its next recent window',()=>{
- const group=plain(M.groupApps(dockWindows,'DP-1',[],dockEntries))[0];
+ const group=plain(M.groupApps(dockWindows,'DP-1',[],dockEntries,ru))[0];
  assert.equal(M.clickTarget(group).address,'0xc');
  const inactive={...group,active:false,windows:group.windows.map(w=>({...w,activated:false}))};
  assert.equal(M.clickTarget(inactive).address,'0xa');
  assert.equal(M.clickTarget({windows:[]}),null);
 });
 test('wheel cycles the application windows in both directions',()=>{
- const group=plain(M.groupApps(dockWindows,'DP-1',[],dockEntries))[0];
+ const group=plain(M.groupApps(dockWindows,'DP-1',[],dockEntries,ru))[0];
  assert.equal(M.cycleTarget(group,1).address,'0xc');
  assert.equal(M.cycleTarget(group,-1).address,'0xb');
  assert.equal(M.cycleTarget({windows:[]},1),null);
 });
 test('device label never claims a connection without one',()=>{
- assert.equal(M.deviceLabel({type:'ethernet',state:'connected',cable:true,addresses:[]}),'Подключение…');
- assert.equal(M.deviceLabel({type:'ethernet',state:'unavailable',cable:false,addresses:[]}),'Нет кабеля');
- assert.equal(M.deviceLabel({type:'ethernet',state:'connected',cable:false,addresses:['10.42.0.5/24']}),'Нет кабеля');
- assert.equal(M.deviceLabel({type:'ethernet',state:'connected',cable:true,addresses:['10.42.0.5/24']}),'Подключено');
- assert.equal(M.deviceLabel({type:'wifi',state:'connecting',cable:null,addresses:[]}),'Подключение…');
- assert.equal(M.deviceLabel({type:'wifi',state:'disconnected',cable:null,addresses:[]}),'Отключено');
- assert.equal(M.deviceLabel({type:'wifi',state:'unavailable',cable:null,addresses:[]}),'Недоступно');
+ assert.equal(M.deviceLabel({type:'ethernet',state:'connected',cable:true,addresses:[]},ru),'Подключение…');
+ assert.equal(M.deviceLabel({type:'ethernet',state:'unavailable',cable:false,addresses:[]},ru),'Нет кабеля');
+ assert.equal(M.deviceLabel({type:'ethernet',state:'connected',cable:false,addresses:['10.42.0.5/24']},ru),'Нет кабеля');
+ assert.equal(M.deviceLabel({type:'ethernet',state:'connected',cable:true,addresses:['10.42.0.5/24']},ru),'Подключено');
+ assert.equal(M.deviceLabel({type:'wifi',state:'connecting',cable:null,addresses:[]},ru),'Подключение…');
+ assert.equal(M.deviceLabel({type:'wifi',state:'disconnected',cable:null,addresses:[]},ru),'Отключено');
+ assert.equal(M.deviceLabel({type:'wifi',state:'unavailable',cable:null,addresses:[]},ru),'Недоступно');
 });
 test('countdown rounds up and stops at zero',()=>{
  assert.equal(M.secondsLeft(30000,0),30);
@@ -241,11 +245,11 @@ test('pendingCheckpoint survives shell restart',()=>{
  assert.equal(M.pendingFromStatus({pendingCheckpoints:[]},own),null);
 });
 test('network errors are Russian with the helper detail',()=>{
- assert.equal(M.networkErrorText('save',{error:"address needs a network prefix, for example 10.42.0.5/24: '10.42.0.5'",field:'prefix'}),'Укажите префикс сети, например 10.42.0.5/24');
- assert.equal(M.networkErrorText('save',{error:'invalid DNS server address',field:'dns'}),'Некорректный адрес DNS');
- assert.equal(M.networkErrorText('apply',{error:'network adapter enx0 not found'}),'Конфигурация не применена: network adapter enx0 not found');
- assert.equal(M.networkErrorText('apply',{error:'x',field:'unknown'}),'Конфигурация не применена: x');
- assert.equal(M.networkErrorText('',{}),'Сетевое действие не выполнено');
+ assert.equal(M.networkErrorText('save',{error:"address needs a network prefix, for example 10.42.0.5/24: '10.42.0.5'",field:'prefix'},ru),'Укажите префикс сети, например 10.42.0.5/24');
+ assert.equal(M.networkErrorText('save',{error:'invalid DNS server address',field:'dns'},ru),'Некорректный адрес DNS');
+ assert.equal(M.networkErrorText('apply',{error:'network adapter enx0 not found'},ru),'Конфигурация не применена: network adapter enx0 not found');
+ assert.equal(M.networkErrorText('apply',{error:'x',field:'unknown'},ru),'Конфигурация не применена: x');
+ assert.equal(M.networkErrorText('',{},ru),'Сетевое действие не выполнено');
 });
 test('brightness parse yields null without backlight',()=>{
  assert.equal(M.parseBrightness(''),null);
@@ -268,9 +272,9 @@ test('volume is clamped to the safe range',()=>{
  assert.equal(M.clampVolume(0.42),0.42);
 });
 test('battery time reads in hours and minutes',()=>{
- assert.equal(M.formatDuration(4800),'1 ч 20 мин');
- assert.equal(M.formatDuration(600),'10 мин');
- assert.equal(M.formatDuration(30),'1 мин');
+ assert.equal(M.formatDuration(4800,ru),'1 ч 20 мин');
+ assert.equal(M.formatDuration(600,ru),'10 мин');
+ assert.equal(M.formatDuration(30,ru),'1 мин');
 });
 test('binds are described in Russian with modifier names',()=>{
  const rows=plain(M.describeBinds([
@@ -280,25 +284,27 @@ test('binds are described in Russian with modifier names',()=>{
   {modmask:64,key:'I',dispatcher:'exec',arg:"qs -c quietline ipc call quietline settings ''"},
   {modmask:12,key:'T',dispatcher:'exec',arg:'my-tool --flag'},
   {modmask:64,key:'L',dispatcher:'exec',arg:'quietline-shell lock'},
- ]));
+ ],ru));
  assert.deepEqual(rows[5],{keys:'Super+L',action:'Заблокировать сеанс'});
- assert.equal(M.bindAction('qs -c quietline ipc call quietline settings shortcuts'),'Памятка сочетаний клавиш');
- assert.equal(M.bindAction('dolphin'),'Открыть Dolphin');
+ assert.equal(M.bindAction('qs -c quietline ipc call quietline settings shortcuts',ru),'Памятка сочетаний клавиш');
+ assert.equal(M.bindAction('dolphin',ru),'Открыть Dolphin');
  assert.deepEqual(rows[0],{keys:'Super+M',action:'Сменить режим «Окна / Тайлы»'});
  assert.deepEqual(rows[1],{keys:'Super+Shift+1',action:'Перенести окно на пространство 1'});
  assert.deepEqual(rows[2],{keys:'Super+0',action:'Открыть пространство 10'});
  assert.deepEqual(rows[3],{keys:'Super+I',action:'Открыть окно «Настройки»'});
  assert.deepEqual(rows[4],{keys:'Ctrl+Alt+T',action:'my-tool --flag'});
- assert.deepEqual(plain(M.describeBinds(null)),[]);
+ assert.deepEqual(plain(M.describeBinds(null,ru)),[]);
 });
 test('session menu names the applications that did not quit',()=>{
- assert.equal(M.remainingText([{app:'code',title:'notes.md'},{app:'code',title:'notes.md'},{app:'Telegram',title:'Telegram'}]),
+ assert.equal(M.remainingText([{app:'code',title:'notes.md'},{app:'code',title:'notes.md'},{app:'Telegram',title:'Telegram'}],ru),
   'Не завершились: code (notes.md), Telegram. Сохраните документы и повторите.');
- assert.equal(M.remainingText([]),'');
- assert.equal(M.remainingText([{app:'',title:''}]),'Не завершились: окно без названия. Сохраните документы и повторите.');
- assert.equal(M.sessionErrorText('poweroff','systemctl failed'),'Выключить не удалось: systemctl failed');
- assert.equal(M.sessionErrorText('x',''),'Действие сеанса не удалось');
- for(const action of M.SESSION_ACTIONS){ assert.ok(M.SESSION_LABELS[action]); assert.ok(M.SESSION_QUESTIONS[action]); }
+ assert.equal(M.remainingText([],ru),'');
+ assert.equal(M.remainingText([{app:'',title:''}],ru),'Не завершились: окно без названия. Сохраните документы и повторите.');
+ assert.equal(M.sessionErrorText('poweroff','systemctl failed',ru),'Выключить не удалось: systemctl failed');
+ assert.equal(M.sessionErrorText('x','',ru),'Действие сеанса не удалось');
+ for(const action of M.SESSION_ACTIONS){ assert.ok(M.sessionLabel(action,ru)); assert.ok(M.sessionQuestion(action,ru)); assert.ok(M.sessionLabel(action,en)); }
+ assert.equal(M.sessionLabel('poweroff',ru),'Выключить');
+ assert.equal(M.sessionLabel('x',ru),'');
 });
 test('applications start in their own quietline scope',()=>{
  assert.equal(M.scopeUnit('org.kde.dolphin','a1b2c3'),'app-quietline-org.kde.dolphin-a1b2c3');
@@ -317,11 +323,11 @@ test('notifications never cover the screen for long',()=>{
 });
 test('clipboard search matches text and images',()=>{
  const entries=[{id:'3',kind:'text',preview:'Привет, мир'},{id:'2',kind:'image',preview:'[[ binary data 14 KiB png 120x80 ]]'},{id:'1',kind:'text',preview:'ssh host'}];
- assert.deepEqual(plain(M.clipboardMatches(entries,'')).map(e=>e.id),['3','2','1']);
- assert.deepEqual(plain(M.clipboardMatches(entries,'МИР')).map(e=>e.id),['3']);
- assert.deepEqual(plain(M.clipboardMatches(entries,'изобр')).map(e=>e.id),['2']);
- assert.equal(M.clipboardImageLabel('[[ binary data 14 KiB png 120x80 ]]'),'Изображение PNG · 120×80');
- assert.equal(M.clipboardImageLabel('junk'),'Изображение');
+ assert.deepEqual(plain(M.clipboardMatches(entries,'',ru)).map(e=>e.id),['3','2','1']);
+ assert.deepEqual(plain(M.clipboardMatches(entries,'МИР',ru)).map(e=>e.id),['3']);
+ assert.deepEqual(plain(M.clipboardMatches(entries,'изобр',ru)).map(e=>e.id),['2']);
+ assert.equal(M.clipboardImageLabel('[[ binary data 14 KiB png 120x80 ]]',ru),'Изображение PNG · 120×80');
+ assert.equal(M.clipboardImageLabel('junk',ru),'Изображение');
 });
 test('search calculator is arithmetic only',()=>{
  assert.equal(M.calculate('(1+2)*3'),9);
@@ -336,15 +342,32 @@ test('search calculator is arithmetic only',()=>{
 });
 test('search ranks apps, actions, settings and files',()=>{
  const apps=[{id:'org.kde.dolphin',name:'Dolphin'},{id:'code',name:'Visual Studio Code'},{id:'org.telegram.desktop',name:'Telegram'}];
- assert.deepEqual(plain(M.searchResults('',apps,[],'/home/k')).map(r=>r.title),['Dolphin','Visual Studio Code','Telegram']);
- const code=plain(M.searchResults('code',apps,['/home/k/src/code.txt'],'/home/k'));
+ assert.deepEqual(plain(M.searchResults('',apps,[],'/home/k',undefined,ru)).map(r=>r.title),['Dolphin','Visual Studio Code','Telegram']);
+ const code=plain(M.searchResults('code',apps,['/home/k/src/code.txt'],'/home/k',undefined,ru));
  assert.equal(code[0].title,'Visual Studio Code');
  assert.deepEqual(code[code.length-1],{kind:'file',id:'/home/k/src/code.txt',title:'code.txt',subtitle:'~/src',path:'/home/k/src/code.txt'});
- const lock=plain(M.searchResults('блок',apps,[],'/home/k'));
+ const lock=plain(M.searchResults('блок',apps,[],'/home/k',undefined,ru));
  assert.equal(lock[0].kind,'action'); assert.equal(lock[0].id,'lock');
- const wifi=plain(M.searchResults('wi-fi',apps,[],'/home/k'));
+ const wifi=plain(M.searchResults('wi-fi',apps,[],'/home/k',undefined,ru));
  assert.equal(wifi[0].kind,'settings'); assert.equal(wifi[0].id,'network');
- const calc=plain(M.searchResults('2+2',apps,[],'/home/k'));
+ const calc=plain(M.searchResults('2+2',apps,[],'/home/k',undefined,ru));
  assert.deepEqual(calc[0],{kind:'calc',id:'calc',title:'= 4',value:'4',subtitle:'Enter — скопировать результат'});
- assert.equal(M.searchResults('a',apps.concat(Array.from({length:60},(_,i)=>({id:'a'+i,name:'App '+i}))),[],'',10).length,10);
+ assert.equal(M.searchResults('a',apps.concat(Array.from({length:60},(_,i)=>({id:'a'+i,name:'App '+i}))),[],'',10,ru).length,10);
+});
+test('texts follow the English table',()=>{
+ assert.equal(M.errorText({code:'invalid_number',message:'x'},en),'No such workspace: numbers 1 to 10');
+ assert.equal(M.errorText({code:'unknown_method',message:"unknown method 'x'"},en),"The window service does not know this command: unknown method 'x'");
+ assert.equal(M.errorText({},en),'Command failed');
+ assert.equal(M.bindAction('quietline-engine toggle',en),'Switch “Windows / Tiles” mode');
+ assert.equal(M.bindAction('quietline-engine move 3',en),'Move window to workspace 3');
+ assert.equal(M.bindAction('my-tool --flag',en),'my-tool --flag');
+ assert.equal(M.remainingText([{app:'code',title:'notes.md'},{app:'',title:''}],en),
+  'Still running: code (notes.md), untitled window. Save your documents and try again.');
+ for(const query of ['сеть','network']){
+  const rows=plain(M.searchResults(query,[],[],'/home/k',undefined,en));
+  assert.equal(rows[0].kind,'settings',query); assert.equal(rows[0].id,'network',query);
+  assert.equal(rows[0].title,'Network',query); assert.equal(rows[0].subtitle,'Settings',query);
+ }
+ const network=plain(M.searchResults('network',[],[],'/home/k',undefined,ru));
+ assert.equal(network[0].id,'network'); assert.equal(network[0].title,'Сеть');
 });

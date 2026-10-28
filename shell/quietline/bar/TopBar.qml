@@ -34,7 +34,7 @@ PanelWindow {
     property real modeProgress: workspace && workspace.mode === "tiles" ? 1 : 0
     Behavior on modeProgress { NumberAnimation { duration: root.indicators.reducedMotion ? 0 : Theme.modeDuration; easing.type: Easing.OutCubic } }
     readonly property string modeLabel: !engine.ready ? "Нет связи" : workspace ? workspace.mode === "tiles" ? "Тайлы" : "Окна" : "—"
-    readonly property var buttons: engine.ready ? Models.workspaceItems(engine.state, monitorName) : []
+    readonly property var buttons: engine.ready ? Models.workspaceItems(engine.state, monitorName, Lang.s) : []
     readonly property var buttonsByKey: Models.keyed(buttons, Models.workspaceKey)
     readonly property string activeTitle: {
         var active = desktop.windows.find(window => window.monitor === monitorName && window.activated);

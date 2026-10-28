@@ -53,7 +53,7 @@ FloatingWindow {
         command: ["hyprctl", "binds", "-j"]
         stdout: StdioCollector {
             onStreamFinished: {
-                try { root.shortcuts = Models.describeBinds(JSON.parse(text)); }
+                try { root.shortcuts = Models.describeBinds(JSON.parse(text), Lang.s); }
                 catch (_) { root.shortcuts = []; }
             }
         }

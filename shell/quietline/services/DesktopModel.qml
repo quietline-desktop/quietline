@@ -2,6 +2,7 @@ import QtQuick
 import Quickshell
 import Quickshell.Io
 import Quickshell.Hyprland
+import ".."
 import "../logic/Models.js" as Models
 
 // Окна Hyprland, приложения из desktop entries, закрепления дока и раскладка клавиатуры.
@@ -13,7 +14,7 @@ Scope {
     property bool saving: true
     property var keyboard: null
     property var xkbNames: ({})
-    readonly property string keyboardLayout: Models.layoutCode(keyboard, xkbNames)
+    readonly property string keyboardLayout: Models.layoutCode(keyboard, xkbNames, Lang.s)
     readonly property string keyboardLayoutName: keyboard ? keyboard.active_keymap : ""
     property var pendingPins: []
     property bool pinsLoaded: false
@@ -30,7 +31,7 @@ Scope {
                 focusHistoryID: data.focusHistoryID, mapped: data.mapped !== false, hidden: data.hidden || false,
                 pid: data.pid || -1};
     })
-    function groups(name) { return Models.groupApps(windows, name, pinned, entries); }
+    function groups(name) { return Models.groupApps(windows, name, pinned, entries, Lang.s); }
     function entryFor(id) { return DesktopEntries.byId(id); }
     function focusMonitor(name) {
         if (/^[A-Za-z0-9_.:-]+$/.test(name || "")) Hyprland.dispatch('hl.dsp.focus({monitor="' + name + '"})');

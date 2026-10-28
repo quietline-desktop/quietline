@@ -1,6 +1,7 @@
 import QtQuick
 import Quickshell
 import Quickshell.Io
+import ".."
 import "../logic/Models.js" as Models
 
 // Действия сеанса через `quietline-shell`: блокировка сразу, выход, перезагрузка и
@@ -36,8 +37,8 @@ Scope {
                 ending.answered = true;
                 var data;
                 try { data = JSON.parse(text); }
-                catch (_) { root.errorMessage = Models.sessionErrorText(root.action, "quietline-shell returned no JSON"); return; }
-                if (data.error) root.errorMessage = Models.sessionErrorText(root.action, data.error);
+                catch (_) { root.errorMessage = Models.sessionErrorText(root.action, "quietline-shell returned no JSON", Lang.s); return; }
+                if (data.error) root.errorMessage = Models.sessionErrorText(root.action, data.error, Lang.s);
                 else if (!data.done) root.remaining = data.remaining || [];
             }
         }
@@ -45,7 +46,7 @@ Scope {
         onRunningChanged: {
             if (running) return;
             Qt.callLater(function() {
-                if (!ending.answered) root.errorMessage = Models.sessionErrorText(root.action, "quietline-shell did not respond");
+                if (!ending.answered) root.errorMessage = Models.sessionErrorText(root.action, "quietline-shell did not respond", Lang.s);
                 root.busy = false;
             });
         }

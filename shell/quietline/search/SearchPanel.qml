@@ -15,7 +15,7 @@ ColumnLayout {
     required property var finder
     required property string monitorName
     property int selected: 0
-    readonly property var results: Models.searchResults(field.text, desktop.entries, finder.files, finder.home, 40)
+    readonly property var results: Models.searchResults(field.text, desktop.entries, finder.files, finder.home, 40, Lang.s)
     signal done()
     // Выход, перезагрузка и выключение подтверждаются в меню питания.
     signal sessionRequested(string action)

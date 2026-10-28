@@ -1,6 +1,7 @@
 import QtQuick
 import Quickshell
 import Quickshell.Io
+import ".."
 import "../logic/Models.js" as Models
 
 // Клиент IPC движка: подписка на подтверждённое состояние, команды switch и toggle, переподключение.
@@ -41,7 +42,7 @@ Scope {
     function reconnect() { if (!connection.connected) connection.connected = true; }
     function dismiss() { commandError = ""; if (ready) errorMessage = ""; }
     function receive(line) {
-        var response = Models.decodeMessage(line, revision, freshConnection);
+        var response = Models.decodeMessage(line, revision, freshConnection, Lang.s);
         if (response.id === pendingId) {
             pendingId = -1;
             pendingMonitor = "";
@@ -53,7 +54,7 @@ Scope {
             freshConnection = false;
             subscriptionTimeout.stop();
             ready = true;
-            errorMessage = Models.stateError(state);
+            errorMessage = Models.stateError(state, Lang.s);
         } else if (response.kind === "error" || response.kind === "invalid") {
             commandError = response.message;
         }

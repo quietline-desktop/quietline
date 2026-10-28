@@ -1,6 +1,7 @@
 import QtQuick
 import Quickshell
 import Quickshell.Io
+import ".."
 import "../logic/Models.js" as Models
 
 // Состояние NetworkManager для панели, сетевой панели и страницы «Сеть» окна «Настройки».
@@ -24,12 +25,12 @@ Scope {
     readonly property int secondsLeft: pending && pending.deadline ? Models.secondsLeft(pending.deadline, now) : -1
     readonly property var ethernet: devices.filter(device => device.type === "ethernet")
     readonly property var wifiDevice: devices.find(device => device.type === "wifi") || null
-    readonly property bool connected: devices.some(device => Models.deviceLabel(device) === "Подключено")
+    readonly property bool connected: devices.some(device => Models.deviceLabel(device, Lang.s) === Lang.s.deviceConnected)
     // Подсказка значка сети: активные интерфейсы, профиль и адреса.
     readonly property string summary: {
         var lines = devices.filter(device => device.state === "connected" || device.state === "connecting")
             .map(device => device.device + (device.profile ? " · " + device.profile : "") + " · "
-                 + (device.addresses.length ? device.addresses.join(", ") : Models.deviceLabel(device)));
+                 + (device.addresses.length ? device.addresses.join(", ") : Models.deviceLabel(device, Lang.s)));
         return lines.join("\n") || statusError || "Нет подключения";
     }
     // Вид последнего запущенного действия (`scan`, `connect`, `save`, `apply`…).
@@ -79,8 +80,8 @@ Scope {
     function finish(text, kind) {
         var data;
         try { data = JSON.parse(text); }
-        catch (_) { errorMessage = Models.networkErrorText(kind, {error: "quietline-shell returned no JSON"}); return; }
-        if (data.error) { errorMessage = Models.networkErrorText(kind, data); return; }
+        catch (_) { errorMessage = Models.networkErrorText(kind, {error: "quietline-shell returned no JSON"}, Lang.s); return; }
+        if (data.error) { errorMessage = Models.networkErrorText(kind, data, Lang.s); return; }
         if (kind === "scan") networks = data.networks || [];
         else if (kind === "apply") {
             // Срок в панели на секунду раньше срока отката NetworkManager.
@@ -105,7 +106,7 @@ Scope {
         onRunningChanged: {
             if (running) return;
             Qt.callLater(function() {
-                if (!action.answered) root.errorMessage = Models.networkErrorText(action.kind, {error: "quietline-shell did not respond"});
+                if (!action.answered) root.errorMessage = Models.networkErrorText(action.kind, {error: "quietline-shell did not respond"}, Lang.s);
                 if (action.kind === "scan") root.scanning = false;
                 action.payload = null;
                 root.actionGeneration += 1;
@@ -123,7 +124,7 @@ Scope {
         onRunningChanged: {
             if (running) { answered = false; return; }
             Qt.callLater(function() {
-                if (!statusProcess.answered) root.statusFailed(Models.networkErrorText("status", {error: "quietline-shell did not respond"}));
+                if (!statusProcess.answered) root.statusFailed(Models.networkErrorText("status", {error: "quietline-shell did not respond"}, Lang.s));
                 if (root.refreshQueued) { root.refreshQueued = false; root.refresh(); }
             });
         }
@@ -133,8 +134,8 @@ Scope {
                 if (statusProcess.generation !== root.actionGeneration || root.busy) { root.refreshQueued = true; return; }
                 var data;
                 try { data = JSON.parse(text); }
-                catch (_) { root.statusFailed(Models.networkErrorText("status", {error: "quietline-shell returned no JSON"})); return; }
-                if (data.error) { root.statusFailed(Models.networkErrorText("status", data)); return; }
+                catch (_) { root.statusFailed(Models.networkErrorText("status", {error: "quietline-shell returned no JSON"}, Lang.s)); return; }
+                if (data.error) { root.statusFailed(Models.networkErrorText("status", data, Lang.s)); return; }
                 root.statusError = "";
                 var hadDeadline = root.pending && root.pending.deadline;
                 root.devices = data.devices || [];

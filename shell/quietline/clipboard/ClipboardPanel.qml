@@ -12,7 +12,7 @@ ColumnLayout {
     id: root
     required property var clipboard
     property bool confirmWipe: false
-    readonly property var matches: Models.clipboardMatches(clipboard.entries, search.text)
+    readonly property var matches: Models.clipboardMatches(clipboard.entries, search.text, Lang.s)
     signal done()
     spacing: 10
 
@@ -68,7 +68,7 @@ ColumnLayout {
                             }
                             Text {
                                 Layout.fillWidth: true
-                                text: row.modelData.kind === "image" ? Models.clipboardImageLabel(row.modelData.preview) : row.modelData.preview
+                                text: row.modelData.kind === "image" ? Models.clipboardImageLabel(row.modelData.preview, Lang.s) : row.modelData.preview
                                 color: Theme.text; font.family: Theme.sans; font.pixelSize: Theme.fontSize
                                 elide: Text.ElideRight; textFormat: Text.PlainText
                                 verticalAlignment: Text.AlignVCenter
