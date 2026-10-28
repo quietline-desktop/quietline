@@ -2,15 +2,16 @@
 корректный выход из приложения и его принудительное завершение.
 
 Экран блокировки — отдельный процесс Quickshell `qs -p <конфигурация>/lock/LockScreen.qml`,
-не зависящий от панели; запущенный экземпляр записан в `$XDG_RUNTIME_DIR/quietline/lock.pid`.
+не зависящий от панели; запущенный экземпляр записан в `$XDG_RUNTIME_DIR/quietline/lock.pid`,
+а метка `lock.secure` рядом означает, что блокировка подтверждена.
 Выход, перезагрузка и выключение сначала корректно закрывают все окна Hyprland и
 выполняются, только когда окон не осталось: окно с несохранённым документом останавливает
 действие, и ответ называет оставшиеся приложения.
 
 Приложения, запущенные оболочкой, живут в группе процессов systemd `app-quietline-*.scope`.
 Корректный выход закрывает окна процесса; процессу, оставшемуся без окон, `SIGTERM`
-посылается, только если он из такой группы. Процесс с открытым окном (в том числе
-с диалогом сохранения) сигнала не получает; `SIGKILL` — только у `app kill`.
+посылается, только если он из такой группы и ни у одного процесса группы нет окна (в том
+числе диалога сохранения). `SIGKILL` — только у `app kill`, после подтверждения на панели.
 """
 
 import json
@@ -18,6 +19,7 @@ import os
 import re
 import signal
 import subprocess
+import tempfile
 import time
 from pathlib import Path
 from typing import Any
@@ -27,6 +29,10 @@ CLOSE_TIMEOUT = 20.0
 QUIT_TIMEOUT = 10.0
 # Сколько процесс без окон может завершаться сам, прежде чем получит `SIGTERM`.
 EXIT_GRACE = 3.0
+# Сколько ждать подтверждения блокировки от экрана блокировки.
+LOCK_WAIT = 5.0
+# Имена программы Quickshell: её окна не закрываются и не завершаются как приложения.
+SHELL_PROGRAMS = {"qs", "quickshell"}
 # Команды выхода приложений по классу окна: используются вместо закрытия окон.
 KNOWN_QUIT: dict[str, list[str]] = {}
 _ADDRESS = re.compile(r"0x[0-9a-fA-F]+")
@@ -94,21 +100,53 @@ def close_window(address: str) -> None:
     hyprland_dispatch(f'hl.dsp.window.close({{window = "address:{address}"}})')
 
 
-def wait_closed(addresses: set[str], timeout: float) -> list[dict[str, Any]]:
-    """Ждёт закрытия окон `addresses`; оставшиеся к сроку окна — список."""
+def wait_for_windows(blocking, timeout: float) -> list[dict[str, Any]]:
+    """Ждёт, пока среди окон не останется ни одного, для которого `blocking(window)` истинно.
+
+    Окна каждый раз читаются заново: окно, открытое во время ожидания (например, диалог
+    сохранения), тоже задерживает. Оставшиеся к сроку окна — список.
+    """
     deadline = time.monotonic() + timeout
     while True:
-        remaining = [window for window in windows() if window["address"] in addresses]
+        remaining = [window for window in windows() if blocking(window)]
         if not remaining or time.monotonic() >= deadline:
             return remaining
         time.sleep(0.5)
 
 
-def _process_alive(pid: int) -> bool:
+def copy_to_clipboard(data: bytes, mime: str | None = None) -> None:
+    """Кладёт `data` в буфер через `wl-copy`.
+
+    `wl-copy` оставляет в фоне процесс, который держит буфер и унаследованный stderr,
+    поэтому stderr идёт во временный файл, а ожидание — только до выхода первого процесса.
+    """
+    command = ["wl-copy", *(["--type", mime] if mime else [])]
+    with tempfile.TemporaryFile() as errors:
+        try:
+            result = subprocess.run(command, input=data, stdout=subprocess.DEVNULL, stderr=errors, timeout=10, check=False)
+        except FileNotFoundError as error:
+            raise RuntimeError("wl-copy is not installed") from error
+        except subprocess.TimeoutExpired as error:
+            raise RuntimeError("wl-copy did not respond") from error
+        if result.returncode:
+            errors.seek(0)
+            detail = errors.read(4096).decode(errors="replace").strip() or f"exit code {result.returncode}"
+            raise RuntimeError(f"wl-copy failed: {detail}")
+
+
+def _remaining(found: list[dict[str, Any]]) -> list[dict[str, str]]:
+    return [{"app": window["app"], "title": window["title"]} for window in found]
+
+
+def _lock_running(pidfile: Path) -> int | None:
+    """pid запущенного экрана блокировки, если он есть."""
     try:
-        return Path(f"/proc/{pid}/cmdline").read_bytes().find(b"LockScreen.qml") >= 0
-    except OSError:
-        return False
+        pid = int(pidfile.read_text(encoding="utf-8").strip())
+        if Path(f"/proc/{pid}/cmdline").read_bytes().find(b"LockScreen.qml") >= 0:
+            return pid
+    except (OSError, ValueError):
+        pass
+    return None
 
 
 def _wipe_clipboard() -> None:
@@ -122,46 +160,62 @@ def _wipe_clipboard() -> None:
 
 
 def lock() -> dict[str, bool]:
-    """Очищает историю буфера и запускает экран блокировки, если он ещё не запущен."""
-    _wipe_clipboard()
+    """Запускает экран блокировки, ждёт подтверждения блокировки и очищает историю буфера.
+
+    Экран блокировки создаёт файл-метку `lock.secure`, когда Hyprland подтвердил, что все
+    экраны закрыты. Без метки за `LOCK_WAIT` секунд процесс экрана блокировки завершается,
+    ответ — ошибка.
+    """
     state = runtime_dir()
-    pidfile = state / "lock.pid"
-    try:
-        if _process_alive(int(pidfile.read_text(encoding="utf-8").strip())):
-            return {"locked": True}
-    except (OSError, ValueError):
-        pass
+    pidfile, marker = state / "lock.pid", state / "lock.secure"
+    running = _lock_running(pidfile)
+    if running is not None and marker.exists():
+        _wipe_clipboard()
+        return {"locked": True}
+    if running is not None:
+        os.kill(running, signal.SIGTERM)
     screen = lock_screen_path()
     if not screen.is_file():
         raise RuntimeError(f"lock screen not found: {screen}")
+    state.mkdir(parents=True, exist_ok=True, mode=0o700)
+    marker.unlink(missing_ok=True)
     try:
         process = subprocess.Popen(
             ["qs", "-p", str(screen)], stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL,
-            stderr=subprocess.DEVNULL, start_new_session=True,
+            stderr=subprocess.DEVNULL, start_new_session=True, env={**os.environ, "QUIETLINE_LOCK_MARKER": str(marker)},
         )
     except FileNotFoundError as error:
         raise RuntimeError("qs (Quickshell) is not installed") from error
-    state.mkdir(parents=True, exist_ok=True, mode=0o700)
     pidfile.write_text(f"{process.pid}\n", encoding="utf-8")
+    deadline = time.monotonic() + LOCK_WAIT
+    while not marker.exists():
+        if process.poll() is not None:
+            notify("Не удалось заблокировать сеанс", "The lock screen exited.", urgency="critical")
+            raise RuntimeError("the lock screen exited before locking")
+        if time.monotonic() >= deadline:
+            process.terminate()
+            notify("Не удалось заблокировать сеанс", "The lock screen did not lock in time.", urgency="critical")
+            raise RuntimeError("the lock screen did not lock in time")
+        time.sleep(0.1)
+    _wipe_clipboard()
     return {"locked": True}
 
 
 def end_session(action: str, timeout: float = CLOSE_TIMEOUT) -> dict[str, Any]:
     """Корректно закрывает все окна и выполняет `logout`, `reboot` или `poweroff`.
 
-    Если к сроку остались окна, действие не выполняется: `{"done": false, "remaining": […]}`.
+    Действие выполняется, только когда окон не осталось совсем, в том числе открытых во
+    время ожидания; иначе — `{"done": false, "remaining": […]}`.
     """
     if action not in SESSION_ACTIONS:
         raise ValueError(f"unknown session action: {action!r}")
-    opened = windows()
-    for window in opened:
+    for window in windows():
         close_window(window["address"])
-    remaining = wait_closed({window["address"] for window in opened}, timeout) if opened else []
+    remaining = wait_for_windows(lambda window: True, timeout)
+    if not remaining:
+        remaining = windows()
     if remaining:
-        return {
-            "action": action, "done": False,
-            "remaining": [{"app": window["app"], "title": window["title"]} for window in remaining],
-        }
+        return {"action": action, "done": False, "remaining": _remaining(remaining)}
     match action:
         case "logout":
             _wipe_clipboard()
@@ -199,9 +253,20 @@ def quietline_scope(pid: int) -> str | None:
     return match.group(1) if match else None
 
 
+def is_shell_process(pid: int) -> bool:
+    """`pid` — процесс самой оболочки Quickshell (её окно «Настройки»)."""
+    try:
+        program = Path(f"/proc/{pid}/cmdline").read_bytes().split(b"\0", 1)[0]
+    except OSError:
+        return False
+    return Path(program.decode(errors="replace")).name in SHELL_PROGRAMS
+
+
 def _valid_pid(pid: int) -> int:
     if not isinstance(pid, int) or pid <= 1:
         raise ValueError(f"invalid process id: {pid!r}")
+    if is_shell_process(pid):
+        raise RuntimeError("this window belongs to the Quietline shell; close it with Super+W")
     return pid
 
 
@@ -209,7 +274,8 @@ def quit_app(pid: int | None = None, timeout: float = QUIT_TIMEOUT) -> dict[str,
     """Корректный выход из приложения процесса `pid` (по умолчанию — процесса активного окна).
 
     Ответ: `closed` — закрыто окон, `remaining` — оставшиеся окна (сигнал не посылался),
-    `background` — процесс остался без окон и не из группы Quietline.
+    `background` — процесс остался без окон и не из группы Quietline. `SIGTERM` получает
+    только сам `pid` и только когда ни у одного процесса его группы нет окон.
     """
     if pid is None:
         target = active_window()
@@ -224,10 +290,15 @@ def quit_app(pid: int | None = None, timeout: float = QUIT_TIMEOUT) -> dict[str,
     else:
         for window in opened:
             close_window(window["address"])
-    remaining = wait_closed({window["address"] for window in opened}, timeout) if opened else []
+    scope = quietline_scope(pid)
+
+    def blocking(window: dict[str, Any]) -> bool:
+        return window["pid"] == pid or (scope is not None and quietline_scope(window["pid"]) == scope)
+
+    remaining = wait_for_windows(blocking, timeout)
     result: dict[str, Any] = {
-        "closed": len(opened) - len(remaining),
-        "remaining": [{"app": window["app"], "title": window["title"]} for window in remaining],
+        "closed": len([window for window in opened if window not in remaining]),
+        "remaining": _remaining(remaining),
         "background": False,
     }
     if remaining:
@@ -237,26 +308,28 @@ def quit_app(pid: int | None = None, timeout: float = QUIT_TIMEOUT) -> dict[str,
         time.sleep(0.25)
     if not process_alive(pid):
         return result
-    scope = quietline_scope(pid)
-    if scope:
-        run(["systemctl", "--user", "kill", "--signal=SIGTERM", scope])
-    else:
+    if scope is None:
         result["background"] = True
         result["app"] = app
+        return result
+    late = [window for window in windows() if blocking(window)]
+    if late:
+        result["remaining"] = _remaining(late)
+        return result
+    try:
+        os.kill(pid, signal.SIGTERM)
+    except ProcessLookupError:
+        pass
     return result
 
 
 def kill_app(pid: int) -> dict[str, int]:
-    """Принудительно завершает процесс `pid` (`SIGKILL`), а с группой Quietline — всю группу."""
+    """Принудительно завершает процесс `pid` сигналом `SIGKILL`."""
     _valid_pid(pid)
-    scope = quietline_scope(pid)
-    if scope:
-        run(["systemctl", "--user", "kill", "--signal=SIGKILL", scope])
-    else:
-        try:
-            os.kill(pid, signal.SIGKILL)
-        except ProcessLookupError as error:
-            raise RuntimeError(f"process {pid} is not running") from error
-        except PermissionError as error:
-            raise RuntimeError(f"process {pid} belongs to another user") from error
+    try:
+        os.kill(pid, signal.SIGKILL)
+    except ProcessLookupError as error:
+        raise RuntimeError(f"process {pid} is not running") from error
+    except PermissionError as error:
+        raise RuntimeError(f"process {pid} belongs to another user") from error
     return {"killed": pid}

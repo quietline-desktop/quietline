@@ -61,6 +61,13 @@ def test_secrets_and_paused_recording_are_skipped(fake, monkeypatch, setup, reas
     assert not any(args == ["store"] for args, _ in fake.cliphist())
 
 
+@pytest.mark.parametrize("state", ["clear", "nil"])
+def test_cleared_clipboard_is_not_stored(fake, monkeypatch, state):
+    monkeypatch.setenv("CLIPBOARD_STATE", state)
+    assert clipboard.store(b"") == {"stored": False, "reason": "empty"}
+    assert fake.cliphist() == []
+
+
 def test_resuming_records_again(fake):
     clipboard.set_paused(True)
     clipboard.set_paused(False)

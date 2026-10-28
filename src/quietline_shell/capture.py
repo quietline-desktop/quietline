@@ -14,7 +14,7 @@ from datetime import datetime
 from pathlib import Path
 from typing import Any
 
-from quietline_shell.session import notify, run
+from quietline_shell.session import copy_to_clipboard, notify, run
 
 FILE_PATTERN = "Screenshot_%Y-%m-%d_%H-%M-%S"
 
@@ -43,9 +43,9 @@ def screenshots_dir() -> Path:
     return Path(pictures or Path.home() / "Pictures") / "Screenshots"
 
 
-def _bytes(args: list[str], step: str, data: bytes | None = None) -> bytes:
+def _bytes(args: list[str], step: str) -> bytes:
     try:
-        result = subprocess.run(args, input=data, capture_output=True, timeout=15, check=False)
+        result = subprocess.run(args, capture_output=True, timeout=15, check=False)
     except FileNotFoundError as error:
         raise CaptureError(step, f"{args[0]} is not installed") from error
     except subprocess.TimeoutExpired as error:
@@ -96,7 +96,10 @@ def capture_output(now: datetime | None = None) -> dict[str, Any]:
     try:
         png = _bytes(["grim", "-o", focused_output(), "-"], "capture")
         path = _save(png, now or datetime.now())
-        _bytes(["wl-copy", "--type", "image/png"], "copy", png)
+        try:
+            copy_to_clipboard(png, "image/png")
+        except RuntimeError as error:
+            raise CaptureError("copy", str(error)) from error
     except CaptureError as error:
         notify(_STEP_TEXTS[error.step], str(error), urgency="critical")
         raise

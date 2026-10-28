@@ -13,7 +13,7 @@ import subprocess
 from pathlib import Path
 from typing import Any
 
-from quietline_shell.session import active_window, runtime_dir
+from quietline_shell.session import active_window, copy_to_clipboard, runtime_dir
 
 PASSWORD_MANAGERS = {"1password"}
 _ID = re.compile(r"\d{1,12}")
@@ -54,8 +54,11 @@ def store(data: bytes) -> dict[str, Any]:
     """Сохраняет запись буфера, если её не нужно пропустить; ответ называет причину пропуска."""
     if pause_flag().exists():
         return {"stored": False, "reason": "paused"}
-    if os.environ.get("CLIPBOARD_STATE") == "sensitive":
+    state = os.environ.get("CLIPBOARD_STATE", "data")
+    if state == "sensitive":
         return {"stored": False, "reason": "sensitive"}
+    if state != "data":
+        return {"stored": False, "reason": "empty"}
     try:
         app = active_window()["app"]
     except RuntimeError:
@@ -82,13 +85,7 @@ def _decode(entry_id: str) -> bytes:
 
 def restore(entry_id: str) -> dict[str, bool]:
     """Возвращает запись в буфер обмена через `wl-copy`."""
-    data = _decode(entry_id)
-    try:
-        result = subprocess.run(["wl-copy"], input=data, capture_output=True, timeout=10, check=False)
-    except FileNotFoundError as error:
-        raise RuntimeError("wl-copy is not installed") from error
-    if result.returncode:
-        raise RuntimeError(f"wl-copy failed: {result.stderr.decode(errors='replace').strip()}")
+    copy_to_clipboard(_decode(entry_id))
     return {"ok": True}
 
 
