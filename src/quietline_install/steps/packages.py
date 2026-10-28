@@ -57,31 +57,38 @@ def repo_step(packages: list[str]) -> Step:
                 lambda ctx: _installed(ctx, packages), lambda ctx: _install(ctx, packages))
 
 
-def gpu_vendor(ctx: Ctx, drm: Path | None = None) -> str:
-    """intel | amd | nvidia | virtual | unknown; на гибридах побеждает NVIDIA (её драйвер ставится вручную)."""
+def gpu_vendors(ctx: Ctx, drm: Path | None = None) -> set[str]:
+    """Производители видеокарт: intel | amd | nvidia; в виртуальной машине — {'virtual'}; без данных — {'unknown'}."""
     virt = ctx.system.run(['systemd-detect-virt'], check=False).strip()
     if virt and virt != 'none':
-        return 'virtual'
+        return {'virtual'}
     found = {VENDORS.get(path.read_text().strip())
-             for path in Path(drm or '/sys/class/drm').glob('card*/device/vendor')}
-    for vendor in ('nvidia', 'intel', 'amd'):
-        if vendor in found:
-            return vendor
-    return 'unknown'
+             for path in Path(drm or '/sys/class/drm').glob('card*/device/vendor')} - {None}
+    return found or {'unknown'}
+
+
+def _graphics_packages(vendors: set[str]) -> list[str]:
+    names = [name for vendor in ('intel', 'amd', 'virtual', 'unknown') if vendor in vendors
+             for name in GRAPHICS[vendor]]
+    return list(dict.fromkeys(names)) or ['mesa']
 
 
 def graphics_step() -> Step:
+    """Пакеты графики для Intel и AMD; драйвер NVIDIA ставится вручную, шаг ждёт `nvidia-utils`."""
+    def nvidia_ready(ctx: Ctx, vendors: set[str]) -> bool:
+        return 'nvidia' not in vendors or _installed(ctx, ['nvidia-utils'])
+
     def check(ctx: Ctx) -> bool:
-        vendor = gpu_vendor(ctx)
-        return vendor != 'nvidia' and _installed(ctx, GRAPHICS[vendor])
+        vendors = gpu_vendors(ctx)
+        return nvidia_ready(ctx, vendors) and _installed(ctx, _graphics_packages(vendors))
 
     def run(ctx: Ctx) -> None:
-        vendor = gpu_vendor(ctx)
-        if vendor == 'nvidia':
+        vendors = gpu_vendors(ctx)
+        if not nvidia_ready(ctx, vendors):
             raise StepFailed('an NVIDIA graphics card needs a manually installed driver',
                              'Install it as described at https://wiki.archlinux.org/title/NVIDIA, '
                              'then run ./install.sh --from graphics')
-        _install(ctx, GRAPHICS[vendor])
+        _install(ctx, _graphics_packages(vendors))
 
     return Step('graphics', 'step.graphics', ARCH, check, run)
 

@@ -49,12 +49,12 @@ class CursesScreens:
     def show_final(self, ctx, lines):
         return self._show(screen_module.show_final, ctx, lines)
 
-    def ask_resume(self, ctx, failed_step):
-        return self._show(screen_module.ask_resume, ctx, failed_step)
+    def ask_resume(self, ctx, failed_step, reason=''):
+        return self._show(screen_module.ask_resume, ctx, failed_step, reason)
 
 
 def preflight(ctx: Ctx, info: snapshot.RootInfo) -> list[CheckResult]:
-    """Arch, не root, сеть, sudo — обязательны; Btrfs — предупреждение с причиной."""
+    """Arch, не root, сеть, sudo, не загруженный снимок — обязательны; Btrfs — предупреждение с причиной."""
     release = read_system_file(ctx, '/etc/os-release') or ''
     kind, reason = snapshot.snapshot_plan(info)
     return [
@@ -62,6 +62,7 @@ def preflight(ctx: Ctx, info: snapshot.RootInfo) -> list[CheckResult]:
         CheckResult('not-root', os.geteuid() != 0),
         CheckResult('network', ctx.system.ok(['curl', '-fsI', '--max-time', '5', 'https://archlinux.org'])),
         CheckResult('sudo', shutil.which('sudo') is not None),
+        CheckResult('booted-snapshot', not info.overlay),
         CheckResult('btrfs', kind != 'none', blocking=False, detail='' if kind != 'none' else ctx.t(reason)),
     ]
 
@@ -135,8 +136,9 @@ def _questions(ctx: Ctx, screens) -> tuple[set[str], set[str]] | None:
 
 
 def _snapshot(ctx: Ctx) -> None:
+    """Снимок корня перед шагами; без `grub-btrfs` или хука снимок всё равно делается, только для записи."""
     kind = snapshot.snapshot_plan(snapshot.inspect_root(ctx))[0]
-    if kind == 'btrfs-ro':
+    if kind in ('btrfs-ro', 'btrfs-rw'):
         try:
             snapshot.prepare(ctx)
         except StepFailed as exc:
@@ -149,16 +151,26 @@ def _snapshot(ctx: Ctx) -> None:
         snapshot.take(ctx, kind)
 
 
-def rollback(ctx: Ctx) -> int:
+def rollback(ctx: Ctx, confirm: bool = True) -> int:
+    """Откат к снимку или по журналу; `confirm` — спросить пользователя (команда `rollback`)."""
     state = ctx.state
+    if ctx.dry_run:
+        ctx.out(ctx.t('rollback.dryRun'))
+        return 1
     if state.rolled_back:
         ctx.out(ctx.t('rollback.already'))
         return 1
     if not state.selection and not state.changes:
         ctx.out(ctx.t('rollback.nothing'))
         return 1
+    kind = (state.snapshot or {}).get('kind', 'none')
+    if confirm:
+        question = (ctx.t('rollback.confirmSnapshot', name=state.snapshot['name'])
+                    if kind in ('btrfs-ro', 'btrfs-rw') else ctx.t('rollback.confirm'))
+        if not ctx.ask(question):
+            ctx.out(ctx.t('rollback.declined'))
+            return 1
     try:
-        kind = (state.snapshot or {}).get('kind', 'none')
         if kind in ('btrfs-ro', 'btrfs-rw'):
             broken = snapshot.rollback_btrfs(ctx, state.snapshot['name'])
             ctx.out(ctx.t('rollback.broken', name=broken))
@@ -174,9 +186,20 @@ def rollback(ctx: Ctx) -> int:
     return 0
 
 
+def _missing_packages(ctx: Ctx, plan: Plan) -> list[str]:
+    return [name for name in plan.repo if not ctx.system.ok(['pacman', '-Si', name])]
+
+
 def _install(ctx: Ctx, screens, runner_log: Path, start: str | None) -> int:
+    """Снимок (если его ещё нет) и шаги; без снимка или его явного отсутствия шаги не начинаются."""
     catalog = load_catalog(ctx.repo / 'installer/catalog.toml')
     plan = _plan(catalog, ctx.state)
+    if not ctx.dry_run and ctx.state.snapshot is None:
+        missing = _missing_packages(ctx, plan)
+        if missing:
+            ctx.out(ctx.t('checks.missingPackages', names=', '.join(missing)))
+            return 1
+        _snapshot(ctx)
     while True:
         runner = Runner(build_steps(plan), ctx, runner_log)
         try:
@@ -186,9 +209,9 @@ def _install(ctx: Ctx, screens, runner_log: Path, start: str | None) -> int:
             return 1
         if finished:
             break
-        choice = screens.ask_resume(ctx, ctx.state.failed)
+        choice = screens.ask_resume(ctx, ctx.state.failed, ctx.state.error or '')
         if choice == 'rollback':
-            return rollback(ctx)
+            return rollback(ctx, confirm=False)
         if choice != 'continue':
             return 1
         start = ctx.state.failed
@@ -255,10 +278,13 @@ def main(argv=None, screens=None, system=None, home: Path | None = None, root: P
         if state.selection and not state.finished and not state.rolled_back:
             failed = state.failed or next((step.id for step in build_steps(_plan(load_catalog(catalog_path), state))
                                            if step.id not in state.done), '')
-            choice = screens.ask_resume(ctx, failed)
+            choice = screens.ask_resume(ctx, failed, state.error or '')
             if choice == 'rollback':
-                return rollback(ctx)
+                return rollback(ctx, confirm=False)
             if choice != 'continue':
+                return 1
+            if snapshot.inspect_root(ctx).overlay:
+                out(ctx.t('resume.bootedSnapshot'))
                 return 1
             return _install(ctx, screens, logger.log_path, args.start or state.failed)
         answers = _questions(ctx, screens)
@@ -272,7 +298,6 @@ def main(argv=None, screens=None, system=None, home: Path | None = None, root: P
         ctx.state = state
         if not args.dry_run:
             state.save()
-            _snapshot(ctx)
         return _install(ctx, screens, logger.log_path, args.start)
     except StepFailed as exc:
         out(f'{exc} {exc.action}')

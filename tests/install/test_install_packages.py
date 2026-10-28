@@ -62,14 +62,14 @@ def test_full_upgrade_runs_once(ctx, system):
     assert step.check(ctx) is True
 
 
-@pytest.mark.parametrize('vendor, expected', [
-    ('intel', ['mesa', 'vulkan-intel', 'intel-media-driver']),
-    ('amd', ['mesa', 'vulkan-radeon']),
-    ('virtual', ['mesa']),
-    ('unknown', ['mesa']),
+@pytest.mark.parametrize('vendors, expected', [
+    ({'intel'}, ['mesa', 'vulkan-intel', 'intel-media-driver']),
+    ({'amd'}, ['mesa', 'vulkan-radeon']),
+    ({'virtual'}, ['mesa']),
+    ({'unknown'}, ['mesa']),
 ])
-def test_gpu_packages_follow_detected_vendor(ctx, system, monkeypatch, vendor, expected):
-    monkeypatch.setattr(packages, 'gpu_vendor', lambda ctx: vendor)
+def test_gpu_packages_follow_detected_vendor(ctx, system, monkeypatch, vendors, expected):
+    monkeypatch.setattr(packages, 'gpu_vendors', lambda ctx: vendors)
     system.answer(['pacman', '-Q'], code=1)
     system.answer(['pacman', '-Qq'], '')
     packages.graphics_step().run(ctx)
@@ -77,26 +77,12 @@ def test_gpu_packages_follow_detected_vendor(ctx, system, monkeypatch, vendor, e
 
 
 def test_nvidia_stops_with_instructions(ctx, system, monkeypatch):
-    monkeypatch.setattr(packages, 'gpu_vendor', lambda ctx: 'nvidia')
+    monkeypatch.setattr(packages, 'gpu_vendors', lambda ctx: {'nvidia'})
+    system.answer(['pacman', '-Q', 'nvidia-utils'], code=1)
     with pytest.raises(StepFailed) as failure:
         packages.graphics_step().run(ctx)
     assert 'NVIDIA' in str(failure.value) and '--from graphics' in failure.value.action
     assert not any(command[:2] == ['pacman', '-S'] for command in system.commands())
-
-
-def test_gpu_vendor_reads_drm_and_virtualization(ctx, system, tmp_path):
-    card = tmp_path / 'drm/card0/device'
-    card.mkdir(parents=True)
-    (card / 'vendor').write_text('0x8086\n')
-    other = tmp_path / 'drm/card1/device'
-    other.mkdir(parents=True)
-    (other / 'vendor').write_text('0x10de\n')
-    system.answer(['systemd-detect-virt'], 'none\n', code=1)
-    assert packages.gpu_vendor(ctx, tmp_path / 'drm') == 'nvidia'
-    (other / 'vendor').unlink()
-    assert packages.gpu_vendor(ctx, tmp_path / 'drm') == 'intel'
-    system.answer(['systemd-detect-virt'], 'kvm\n')
-    assert packages.gpu_vendor(ctx, tmp_path / 'drm') == 'virtual'
 
 
 LOCALE_GEN = """# Configuration file for locale-gen

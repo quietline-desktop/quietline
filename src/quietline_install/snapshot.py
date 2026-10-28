@@ -162,15 +162,20 @@ def _installed(ctx: Ctx, package: str) -> bool:
 
 
 def prepare(ctx: Ctx) -> None:
-    """Ставит `grub-btrfs` и добавляет хук overlayfs в конец `HOOKS`; только для снимка `btrfs-ro`."""
+    """Ставит `grub-btrfs` (пункт снимка в меню GRUB); для `btrfs-ro` ещё добавляет хук overlayfs в конец `HOOKS`."""
     kind, reason = snapshot_plan(inspect_root(ctx))
-    if kind != 'btrfs-ro':
-        raise StepFailed(f'read-only snapshots are not possible here ({reason})',
-                         'The installer takes a writable snapshot instead.')
+    if kind == 'none':
+        raise StepFailed(f'snapshots are not possible here ({reason})')
     new_package = not _installed(ctx, 'grub-btrfs')
-    ctx.system.run(['pacman', '-S', '--needed', '--noconfirm', 'grub-btrfs'], sudo=True)
+    try:
+        ctx.system.run(['pacman', '-S', '--needed', '--noconfirm', 'grub-btrfs'], sudo=True)
+    except subprocess.CalledProcessError as exc:
+        raise StepFailed('could not install grub-btrfs',
+                         'The snapshot is taken without a GRUB menu entry.') from exc
     if new_package:
         ctx.record({'kind': 'package', 'name': 'grub-btrfs'})
+    if kind != 'btrfs-ro':
+        return
     if not _local(ctx, f'/usr/lib/initcpio/install/{HOOK}').exists():
         raise StepFailed(f'the {HOOK} mkinitcpio hook is missing after installing grub-btrfs',
                          'Check the grub-btrfs package, then run ./install.sh again.')
@@ -252,7 +257,18 @@ def _entries(ctx: Ctx, folder: str) -> set[str]:
 
 
 def take(ctx: Ctx, kind: str) -> str:
-    """Снимок `@` в `@snapshots/quietline-pre-<время>` (`btrfs-ro` — только для чтения); имя — в состоянии."""
+    """Снимок `@` в `@snapshots/quietline-pre-<время>` (`btrfs-ro` — только для чтения); имя — в состоянии.
+
+    Сбой любой команды снимка — StepFailed: установка без обещанного снимка не продолжается.
+    """
+    try:
+        return _take(ctx, kind)
+    except subprocess.CalledProcessError as exc:
+        raise StepFailed(f'the root snapshot was not taken: {" ".join(map(str, exc.cmd))} failed',
+                         'Fix the cause, then run ./install.sh again: it takes the snapshot before any step.') from exc
+
+
+def _take(ctx: Ctx, kind: str) -> str:
     if kind not in ('btrfs-ro', 'btrfs-rw'):
         raise ValueError(kind)
     info = inspect_root(ctx)
@@ -279,7 +295,10 @@ def take(ctx: Ctx, kind: str) -> str:
     except subprocess.CalledProcessError:
         ctx.log(f'{GRUB_CFG} not found: the snapshot is not added to the GRUB menu')
         return name
-    ctx.system.run(['grub-mkconfig', '-o', GRUB_CFG], sudo=True)
+    try:
+        ctx.system.run(['grub-mkconfig', '-o', GRUB_CFG], sudo=True)
+    except subprocess.CalledProcessError as exc:
+        ctx.log(f'grub-mkconfig failed, the snapshot is not in the GRUB menu yet: {exc}')
     return name
 
 
@@ -447,7 +466,7 @@ def _restore_system_file(ctx: Ctx, path: str, backup: str | None) -> None:
 
 
 def rollback_journal(ctx: Ctx) -> None:
-    """Откат по журналу без снимка: файлы, службы, Flatpak, затем один `pacman -Rns` новых пакетов."""
+    """Откат по журналу без снимка: файлы, оболочка входа, службы, Flatpak, затем один `pacman -Rns` новых пакетов."""
     failures = []
     packages = []
     for change in reversed(ctx.state.changes):
@@ -458,6 +477,8 @@ def rollback_journal(ctx: Ctx) -> None:
                     _restore_home_file(ctx, change['path'], change.get('backup'))
                 else:
                     _restore_system_file(ctx, change['path'], change.get('backup'))
+            elif kind == 'shell':
+                ctx.system.run(['chsh', '-s', change['previous']], interactive=True)
             elif kind == 'service':
                 ctx.system.run(['systemctl', 'disable', change['unit']], sudo=True)
             elif kind == 'flatpak':

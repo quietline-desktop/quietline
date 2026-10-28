@@ -363,12 +363,15 @@ def show_final(stdscr, ctx, lines: list[str]) -> bool:
     return True
 
 
-def ask_resume(stdscr, ctx, failed_step: str) -> str:
-    """Незавершённая установка: 'continue', 'rollback' или 'quit'."""
+def ask_resume(stdscr, ctx, failed_step: str, reason: str = '') -> str:
+    """Незавершённая установка: 'continue', 'rollback' или 'quit'; `reason` — причина сбоя шага."""
     title = ctx.t(f'step.{failed_step}') if f'step.{failed_step}' in TEXTS['en'] else failed_step
     options = [ctx.t('resume.continue'), ctx.t('resume.rollback'), ctx.t('resume.quit')]
+    intro = ctx.t('resume.failed', step=title)
+    if reason:
+        intro += ' ' + ctx.t('resume.reason', reason=reason)
     try:
-        index = _menu(stdscr, ctx.t('resume.title'), ctx.t('resume.failed', step=title), options, ctx.t('hint.menu'))
+        index = _menu(stdscr, ctx.t('resume.title'), intro, options, ctx.t('hint.menu'))
     except (GoBack, Quit):
         return 'quit'
     return ['continue', 'rollback', 'quit'][index]

@@ -17,6 +17,8 @@ from quietline_install.runner import Ctx, Step, StepFailed
 ONEPASSWORD_KEY = 'https://downloads.1password.com/linux/keys/1password.asc'
 # Передача медленнее 1 КБ/с дольше 30 секунд прерывается.
 GIT_TIMEOUT = {'GIT_HTTP_LOW_SPEED_LIMIT': '1000', 'GIT_HTTP_LOW_SPEED_TIME': '30'}
+# Строк инструкций на одной странице консоли.
+PAGE = 20
 
 
 def _clone(ctx: Ctx, name: str) -> Path:
@@ -34,12 +36,23 @@ def _clone(ctx: Ctx, name: str) -> Path:
 
 
 def _show(ctx: Ctx, name: str, directory: Path) -> None:
+    """Инструкции по страницам `PAGE` строк: в консоли без прокрутки длинный текст иначе не прочитать."""
     shown = [directory / 'PKGBUILD', *sorted(directory.glob('*.install'))]
+    lines = []
     for path in shown:
         if path.exists():
-            ctx.out(f'---- {name}/{path.name} ----')
-            for line in path.read_text(encoding='utf-8', errors='replace').splitlines():
-                ctx.out(line)
+            lines.append(f'---- {name}/{path.name} ----')
+            lines += path.read_text(encoding='utf-8', errors='replace').splitlines()
+    printed = 0
+    for line in lines:
+        if line.startswith('---- ') or printed < PAGE:
+            ctx.out(line)
+            printed += 0 if line.startswith('---- ') else 1
+            continue
+        if not ctx.ask(ctx.t('aur.more', name=name)):
+            break
+        ctx.out(line)
+        printed = 1
     others = sorted(str(path.relative_to(directory)) for path in directory.rglob('*')
                     if path.is_file() and path not in shown and '.git' not in path.relative_to(directory).parts)
     if others:

@@ -11,7 +11,7 @@ packages = [
   "xdg-user-dirs", "xdg-utils", "flatpak",
   "ttf-ibm-plex", "ttf-jetbrains-mono-nerd", "noto-fonts", "noto-fonts-emoji",
   "grim", "slurp", "satty", "wl-clipboard", "cliphist", "plocate",
-  "ghostty", "fish", "starship", "micro", "git", "openssh", "curl", "unzip",
+  "ghostty", "fish", "starship", "micro", "git", "openssh", "curl", "base-devel", "unzip",
 ]
 services = ["NetworkManager.service", "bluetooth.service", "power-profiles-daemon.service"]
 # Терминал основы закрепляется в доке всегда.

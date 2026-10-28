@@ -55,8 +55,9 @@ class FakeScreens:
         self.calls.append('final')
         return self.final
 
-    def ask_resume(self, ctx, failed_step):
+    def ask_resume(self, ctx, failed_step, reason=''):
         self.calls.append(f'resume:{failed_step}')
+        self.reason = reason
         return self.resume
 
 
@@ -86,9 +87,9 @@ def env(tmp_path, system, monkeypatch):
 
     monkeypatch.setattr(main_module, 'build_steps', steps)
 
-    def call(argv, screens):
+    def call(argv, screens, ask=lambda question: True):
         return main_module.main(argv, screens=screens, system=system, home=home, root=tmp_path / 'root',
-                                ask=lambda question: True, out=lambda line: None)
+                                ask=ask, out=lambda line: None)
 
     return {'home': home, 'events': events, 'call': call,
             'state': home / '.local/state/quietline/install.json'}
@@ -226,3 +227,53 @@ def test_install_sh_never_syncs_databases_alone():
     assert 'pacman -S --needed python git' in text
     assert '-Sy ' not in text and '-Sy\n' not in text and '--noconfirm' not in text
     assert 'setfont cyr-sun16' in text
+
+
+def test_rerun_takes_the_missing_snapshot_before_any_step(env, monkeypatch):
+    original = main_module.snapshot.take
+    calls = {'n': 0}
+
+    def flaky(ctx, kind):
+        calls['n'] += 1
+        if calls['n'] == 1:
+            raise StepFailed('mount failed')
+        return original(ctx, kind)
+
+    monkeypatch.setattr(main_module.snapshot, 'take', flaky)
+    assert env['call']([], FakeScreens()) != 0
+    assert not any(event.startswith('step:') for event in env['events'])
+    assert State.load(env['state']).snapshot is None
+    assert env['call']([], FakeScreens(resume='continue')) == 0
+    first_step = env['events'].index('step:one')
+    assert 'take:btrfs-ro' in env['events'][:first_step]
+
+
+def test_missing_catalog_package_stops_before_the_snapshot(env, system):
+    system.answer(['pacman', '-Si', 'quickshell'], code=1)
+    assert env['call']([], FakeScreens()) != 0
+    assert env['events'] == []
+
+
+def test_resume_is_refused_while_booted_into_a_snapshot(env, monkeypatch):
+    from quietline_install.snapshot import RootInfo
+    state = State(path=env['state'], installer_language='en', system_language='en',
+                  selection={'ids': [], 'previous': []}, failed='two',
+                  snapshot={'kind': 'btrfs-ro', 'name': 'quietline-pre-20261028-120000'})
+    state.save()
+    overlay = RootInfo(fstype='overlay', device='/dev/x', subvol=None, boot_inside=True, systemd_hook=False,
+                       overlay=True, swapfile_in_root=False)
+    monkeypatch.setattr(main_module.snapshot, 'inspect_root', lambda ctx: overlay)
+    assert env['call']([], FakeScreens(resume='continue')) != 0
+    assert not any(event.startswith('step:') for event in env['events'])
+
+
+def test_resume_screen_shows_the_failure_reason(env, monkeypatch):
+    def failing(ctx):
+        raise StepFailed('network is down')
+
+    original = main_module.build_steps
+    monkeypatch.setattr(main_module, 'build_steps', lambda plan: [
+        original(plan)[0], Step('two', 'step.greetd', 'test', lambda ctx: False, failing)])
+    screens = FakeScreens(resume='quit')
+    env['call']([], screens)
+    assert 'network is down' in screens.reason

@@ -4,6 +4,7 @@ import fcntl
 import json
 import os
 import re
+import signal
 import subprocess
 import tempfile
 import time
@@ -70,7 +71,7 @@ class System:
         self.log('$ ' + ' '.join(command))
         try:
             if interactive:
-                result = subprocess.run(command, cwd=cwd, check=False, env=self._env(env))
+                result = self._interactive(command, cwd, env)
                 output = ''
             else:
                 result = subprocess.run(command, cwd=cwd, input=input, capture_output=True, text=True,
@@ -84,6 +85,25 @@ class System:
         if check and result.returncode:
             raise subprocess.CalledProcessError(result.returncode, command, output, getattr(result, 'stderr', ''))
         return output
+
+    def _interactive(self, command: list[str], cwd, env):
+        """Ctrl+C достаётся только дочерней команде: установщик не убивает pacman посреди транзакции.
+
+        Прерванная пользователем команда (код 130 или SIGINT) останавливает установщик.
+        """
+        try:
+            previous = signal.signal(signal.SIGINT, signal.SIG_IGN)
+        except ValueError:
+            previous = None
+        try:
+            result = subprocess.run(command, cwd=cwd, check=False, env=self._env(env))
+        finally:
+            if previous is not None:
+                signal.signal(signal.SIGINT, previous)
+        if result.returncode in (130, -signal.SIGINT):
+            self.log(f'interrupted: {" ".join(command)}')
+            raise KeyboardInterrupt
+        return result
 
     @staticmethod
     def _env(extra: dict | None):
@@ -250,6 +270,15 @@ class Runner:
         self.ctx.out(redact(line))
         self.log(line)
 
+    def _report(self, step: Step, status: str, **values) -> None:
+        """Ход шага: на экран — на языке установщика, в журнал — по-английски с id шага."""
+        try:
+            title = self.ctx.t(step.title_key)
+        except KeyError:
+            title = step.id
+        self.ctx.out(redact(self.ctx.t(f'progress.{status}', step=f'{title} [{step.source}]', **values)))
+        self.log(text('en', f'progress.{status}', step=f'{step.id} [{step.source}]', **values))
+
     def _done(self, step: Step) -> bool:
         """Проверка, которая не может выполниться (нет программы), означает «не сделано», а не падение."""
         try:
@@ -289,14 +318,13 @@ class Runner:
     def _run(self, begin: int) -> bool:
         state = self.ctx.state
         for step in self.steps[begin:]:
-            label = f'{step.id} [{step.source}]'
             if self._done(step):
-                self._say(f'{label}: skipped (already done)')
+                self._report(step, 'skipped')
                 continue
             if self.ctx.dry_run:
-                self._say(f'{label}: will run')
+                self._report(step, 'willRun')
                 continue
-            self._say(f'{label}: running')
+            self._report(step, 'running')
             try:
                 step.run(self.ctx)
                 if not self._done(step):
@@ -307,14 +335,14 @@ class Runner:
                 reason = (getattr(exc, 'stderr', '') or '').strip().splitlines()[-3:]
                 if reason:
                     action = f'Reason: {" / ".join(reason)}. {action}'
-                state.failed, state.error, state.finished = step.id, redact(str(exc)), False
+                state.failed, state.error, state.finished = step.id, redact(f'{exc}. {action}'), False
                 state.save()
-                self._say(f'{label}: failed: {exc}. {action} Run ./install.sh again to continue.')
+                self._report(step, 'failed', reason=f'{exc}. {action}')
                 return False
             state.done[step.id] = time.strftime('%Y-%m-%dT%H:%M:%S')
             state.failed = state.error = None
             state.save()
-            self._say(f'{label}: done')
+            self._report(step, 'done')
         if not self.ctx.dry_run:
             state.failed = state.error = None
             state.finished = True

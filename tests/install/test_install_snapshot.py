@@ -176,8 +176,10 @@ def test_dropin_hooks_override_gives_writable_snapshot(ctx, system, tmp_path):
     (ctx.root / 'etc/mkinitcpio.conf.d').mkdir()
     (ctx.root / 'etc/mkinitcpio.conf.d/10-hooks.conf').write_text('HOOKS=(base udev block filesystems)\n')
     assert snapshot.snapshot_plan(snapshot.inspect_root(ctx)) == ('btrfs-rw', 'snapshot.reason.hooksElsewhere')
-    with pytest.raises(StepFailed):
-        snapshot.prepare(ctx)
+    snapshot.prepare(ctx)
+    commands = [call['args'] for call in system.calls]
+    assert ['pacman', '-S', '--needed', '--noconfirm', 'grub-btrfs'] in commands
+    assert not any(command[:1] in (['mkinitcpio'], ['tee'], ['cp']) for command in commands)
 
 
 def test_failed_mkinitcpio_restores_config_and_rebuilds(ctx, system, tmp_path):
@@ -236,7 +238,7 @@ def test_writable_snapshot_and_existing_snapshots_subvolume(ctx, system, tmp_pat
 def test_snapshot_unmounts_after_failure(ctx, system, tmp_path):
     make_root(ctx, system, tmp_path)
     system.answer(['btrfs', 'subvolume', 'snapshot'], code=1)
-    with pytest.raises(subprocess.CalledProcessError):
+    with pytest.raises(StepFailed, match='snapshot was not taken'):
         snapshot.take(ctx, 'btrfs-ro')
     assert calls(system) == INSPECT + MOUNT + [
         (['ls', '-A', TOP], True),

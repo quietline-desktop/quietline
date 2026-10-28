@@ -61,13 +61,19 @@ def greetd_step() -> Step:
 
 
 def default_shell_step() -> Step:
+    def current(ctx: Ctx) -> str:
+        return ctx.system.run(['getent', 'passwd', getpass.getuser()], check=False).strip().rsplit(':', 1)[-1]
+
     def check(ctx: Ctx) -> bool:
-        entry = ctx.system.run(['getent', 'passwd', getpass.getuser()], check=False).strip()
-        return entry.endswith(':/usr/bin/fish') or declined(ctx, 'default-shell')
+        return current(ctx) == '/usr/bin/fish' or declined(ctx, 'default-shell')
 
     def run(ctx: Ctx) -> None:
         if ctx.ask(ctx.t('session.shellQuestion')):
+            previous = current(ctx)
             ctx.system.run(['chsh', '-s', '/usr/bin/fish'], interactive=True)
+            # Откат возвращает прежнюю оболочку до удаления fish, иначе вход станет невозможен.
+            if previous:
+                ctx.record({'kind': 'shell', 'previous': previous})
         else:
             decline(ctx, 'default-shell')
 
