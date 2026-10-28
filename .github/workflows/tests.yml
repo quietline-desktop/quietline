@@ -1,0 +1,30 @@
+# Тесты движка, оболочки и установщика и проверка имён пакетов каталога в репозиториях Arch.
+name: tests
+
+on:
+  push:
+
+jobs:
+  python:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v6
+      - run: uv run --python 3.14 pytest -q
+
+  shell-models:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - run: node --test 'tests/shell/*.test.cjs'
+
+  catalog:
+    runs-on: ubuntu-latest
+    container: archlinux:latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: pacman -Syu --noconfirm python
+      - run: python scripts/check-catalog.py

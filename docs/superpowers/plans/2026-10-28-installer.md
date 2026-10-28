@@ -2,7 +2,7 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Статус:** выполняется (ветка `feature/installer-v2`).
+**Статус:** выполнен, ждёт живой проверки (ветка `feature/installer-v2`): `./install.sh`, каталог, снимок и откат, гайд — `scripts/smoke-installer.md`, `docs/backlog.md`.
 
 **Goal:** `./install.sh` на Arch после archinstall (Minimal, корень на Btrfs) спрашивает язык установщика и язык системы, даёт выбрать программы из каталога, делает снимок корня, ставит окружение Quietline и при падении предлагает «Продолжить» или «Откатить».
 
@@ -104,11 +104,11 @@ docs/install/2026-10-20-arch-install.md, docs/install/updating.md, scripts/smoke
   - `redact(text) -> str`; замок `install.lock` (`fcntl.flock`) — второй запуск получает `StepFailed("another installer is running")`.
 - Журнал `install.log` — английский: `YYYY-mm-dd HH:MM:SS <redact(строка)>`, команды `$ …`, результаты `<id> [<source>]: skipped (already done) | will run | running | done | failed: <причина>`.
 
-- [ ] **Step 1: Перенести и дописать тесты** `test_install_runner.py`: из старых `test_steps.py` — `test_done_steps_are_not_repeated`, `test_resume_starts_at_failed_step`, `test_dry_run_changes_nothing`, `test_log_redacts_secrets`, `test_status_reports_each_step`, `test_missing_command_is_a_failed_command_not_a_crash`, `test_crashing_check_counts_as_not_done` (с английскими статусами журнала); новые — `test_unknown_start_step_is_an_error`, `test_second_runner_is_refused_while_locked`, `test_corrupt_state_is_kept_aside_and_starts_empty`, `test_changes_journal_survives_reload` (`record` трёх видов → `State.load` возвращает их в порядке), `test_state_and_log_are_private` (0600).
-- [ ] **Step 2: Убедиться, что тесты падают.** `uv run --python 3.14 pytest tests/install -v` → FAIL: нет модуля.
-- [ ] **Step 3: Реализовать** `runner.py` (атомарная запись — своя функция, без импорта `quietline_shell`).
-- [ ] **Step 4: Убедиться, что тесты проходят.** `uv run --python 3.14 pytest -q` → PASS.
-- [ ] **Step 5: Коммит** `feat(installer): ядро установщика с продолжением и журналом изменений`.
+- [x] **Step 1: Перенести и дописать тесты** `test_install_runner.py`: из старых `test_steps.py` — `test_done_steps_are_not_repeated`, `test_resume_starts_at_failed_step`, `test_dry_run_changes_nothing`, `test_log_redacts_secrets`, `test_status_reports_each_step`, `test_missing_command_is_a_failed_command_not_a_crash`, `test_crashing_check_counts_as_not_done` (с английскими статусами журнала); новые — `test_unknown_start_step_is_an_error`, `test_second_runner_is_refused_while_locked`, `test_corrupt_state_is_kept_aside_and_starts_empty`, `test_changes_journal_survives_reload` (`record` трёх видов → `State.load` возвращает их в порядке), `test_state_and_log_are_private` (0600).
+- [x] **Step 2: Убедиться, что тесты падают.** `uv run --python 3.14 pytest tests/install -v` → FAIL: нет модуля.
+- [x] **Step 3: Реализовать** `runner.py` (атомарная запись — своя функция, без импорта `quietline_shell`).
+- [x] **Step 4: Убедиться, что тесты проходят.** `uv run --python 3.14 pytest -q` → PASS.
+- [x] **Step 5: Коммит** `feat(installer): ядро установщика с продолжением и журналом изменений`.
 
 ### Task 2: Тексты и экраны
 
@@ -125,11 +125,11 @@ docs/install/2026-10-20-arch-install.md, docs/install/updating.md, scripts/smoke
   - Клавиши: стрелки, пробел — отметить, Enter — дальше/раскрыть, `r` или кнопка «Рекомендуемый набор — установить» первой строкой, Esc — назад, `q` — выход без изменений.
 - Ключи текстов: экраны, названия разделов каталога (`sectionBrowsers`, `sectionMessengers`, `sectionFiles`, `sectionCode`, `sectionPasswords`, `sectionVpn`, `sectionRemote`, `sectionDocuments`, `sectionContainers`, `sectionDotnet`, `sectionNode`, `sectionPython`, `sectionDevTools`, `advanced`), проверки, предупреждение без Btrfs, сводка, итог, выбор «Продолжить/Откатить», названия шагов (`step.<id>`), действия при ошибке.
 
-- [ ] **Step 1: Написать тесты:** `test_both_languages_have_the_same_keys_and_placeholders`; `test_locked_item_cannot_be_unchecked` (установленная программа отмечена и неактивна); `test_recommended_selection_checks_only_recommended`; `test_advanced_children_are_hidden_until_expanded`; `test_selected_includes_checked_children` (выбранная версия .NET в «Расширенных» попадает в выбор); `test_moving_past_the_ends_stays_in_range`.
-- [ ] **Step 2: Убедиться, что тесты падают.** `uv run --python 3.14 pytest tests/install/test_install_screens.py -v` → FAIL.
-- [ ] **Step 3: Реализовать** тексты, модели и отрисовку (отрисовка — без логики выбора; длинные списки прокручиваются; строки обрезаются по ширине экрана).
-- [ ] **Step 4: Убедиться, что тесты проходят.** `uv run --python 3.14 pytest -q` → PASS.
-- [ ] **Step 5: Коммит** `feat(installer): экраны установщика на русском и английском`.
+- [x] **Step 1: Написать тесты:** `test_both_languages_have_the_same_keys_and_placeholders`; `test_locked_item_cannot_be_unchecked` (установленная программа отмечена и неактивна); `test_recommended_selection_checks_only_recommended`; `test_advanced_children_are_hidden_until_expanded`; `test_selected_includes_checked_children` (выбранная версия .NET в «Расширенных» попадает в выбор); `test_moving_past_the_ends_stays_in_range`.
+- [x] **Step 2: Убедиться, что тесты падают.** `uv run --python 3.14 pytest tests/install/test_install_screens.py -v` → FAIL.
+- [x] **Step 3: Реализовать** тексты, модели и отрисовку (отрисовка — без логики выбора; длинные списки прокручиваются; строки обрезаются по ширине экрана).
+- [x] **Step 4: Убедиться, что тесты проходят.** `uv run --python 3.14 pytest -q` → PASS.
+- [x] **Step 5: Коммит** `feat(installer): экраны установщика на русском и английском`.
 
 ### Task 3: Каталог программ
 
@@ -162,11 +162,11 @@ docs/install/2026-10-20-arch-install.md, docs/install/updating.md, scripts/smoke
 | python | system; advanced: 3.12, 3.13 | repo `python python-pip uv` / uv `3.12` / `3.13` | — | system |
 | devtools | tools | repo `base-devel jq ripgrep fzf` | — | да |
 
-- [ ] **Step 1: Написать тесты:** `test_catalog_is_valid`; `test_recommended_set_matches_the_spec` (ровно chrome, telegram, dolphin, vscode, 1password, amneziavpn, remmina, onlyoffice, docker, dotnet latest, node lts, python system, devtools); `test_plan_always_contains_core`; `test_plan_splits_sources` (brave → flatpak, slack → aur, docker-desktop → manual); `test_pins_follow_selection_order` (firefox+brave, без code → `["org.kde.dolphin", "firefox", "com.mitchellh.ghostty", "org.telegram.desktop"]`); `test_unknown_source_is_rejected`; `test_no_aur_package_for_hyprland_or_quickshell` (ни один `aur`-вариант не содержит `hyprland*`/`quickshell*`).
-- [ ] **Step 2: Убедиться, что тесты падают.** `uv run --python 3.14 pytest tests/install/test_install_catalog.py -v` → FAIL.
-- [ ] **Step 3: Реализовать** каталог, `catalog.py` и `scripts/check-catalog.py`.
-- [ ] **Step 4: Убедиться, что тесты проходят.** `uv run --python 3.14 pytest -q` → PASS.
-- [ ] **Step 5: Коммит** `feat(installer): каталог программ с источниками и рекомендуемым набором`.
+- [x] **Step 1: Написать тесты:** `test_catalog_is_valid`; `test_recommended_set_matches_the_spec` (ровно chrome, telegram, dolphin, vscode, 1password, amneziavpn, remmina, onlyoffice, docker, dotnet latest, node lts, python system, devtools); `test_plan_always_contains_core`; `test_plan_splits_sources` (brave → flatpak, slack → aur, docker-desktop → manual); `test_pins_follow_selection_order` (firefox+brave, без code → `["org.kde.dolphin", "firefox", "com.mitchellh.ghostty", "org.telegram.desktop"]`); `test_unknown_source_is_rejected`; `test_no_aur_package_for_hyprland_or_quickshell` (ни один `aur`-вариант не содержит `hyprland*`/`quickshell*`).
+- [x] **Step 2: Убедиться, что тесты падают.** `uv run --python 3.14 pytest tests/install/test_install_catalog.py -v` → FAIL.
+- [x] **Step 3: Реализовать** каталог, `catalog.py` и `scripts/check-catalog.py`.
+- [x] **Step 4: Убедиться, что тесты проходят.** `uv run --python 3.14 pytest -q` → PASS.
+- [x] **Step 5: Коммит** `feat(installer): каталог программ с источниками и рекомендуемым набором`.
 
 ### Task 4: Снимок Btrfs и откат
 
@@ -185,11 +185,11 @@ docs/install/2026-10-20-arch-install.md, docs/install/updating.md, scripts/smoke
   - `rollback_journal(ctx)` — всё из журнала в обратном порядке: `file` (в том числе системные через `sudo`), `service` → `systemctl disable`, `flatpak` → `flatpak uninstall --user`, `package` → один `pacman -Rns` для пакетов, которых не было до установки.
   - Устройство при `overlay` берётся из `root=UUID=` в `/proc/cmdline`.
 
-- [ ] **Step 1: Написать тесты:** `test_snapshot_plan_follows_root_layout` (параметры: btrfs `/@` → ro; с `systemd` в HOOKS → rw; ext4 → none; `/boot` отдельно → none; `subvol=/` → none; overlay → none; swap-файл в корне → none); `test_prepare_adds_hook_once_and_never_syncs_databases` (повтор не дублирует хук; нет `-Sy`); `test_snapshot_commands_use_top_level_and_regenerate_grub` (порядок: mount subvolid=5, create @snapshots, snapshot -r, umount, grub-mkconfig); `test_btrfs_rollback_commands` (mv @, snapshot из имени, fstab: из `UUID=x / btrfs rw,noatime,subvolid=256,subvol=/@ 0 0` → `…rw,noatime,subvol=/@…`, строка `/home` не тронута); `test_rollback_restores_home_files_and_removes_created`; `test_journal_rollback_keeps_preexisting_packages`; `test_installer_never_touches_partitions` (регулярка запрещённых команд по `src/quietline_install/**/*.py` и `install.sh`).
-- [ ] **Step 2: Убедиться, что тесты падают.** `uv run --python 3.14 pytest tests/install/test_install_snapshot.py -v` → FAIL.
-- [ ] **Step 3: Реализовать** `snapshot.py`; временный каталог — `/run/quietline-top.XXXXXX` через `mktemp -d` под `sudo`.
-- [ ] **Step 4: Убедиться, что тесты проходят.** `uv run --python 3.14 pytest -q` → PASS.
-- [ ] **Step 5: Коммит** `feat(installer): снимок корня Btrfs и откат установки`.
+- [x] **Step 1: Написать тесты:** `test_snapshot_plan_follows_root_layout` (параметры: btrfs `/@` → ro; с `systemd` в HOOKS → rw; ext4 → none; `/boot` отдельно → none; `subvol=/` → none; overlay → none; swap-файл в корне → none); `test_prepare_adds_hook_once_and_never_syncs_databases` (повтор не дублирует хук; нет `-Sy`); `test_snapshot_commands_use_top_level_and_regenerate_grub` (порядок: mount subvolid=5, create @snapshots, snapshot -r, umount, grub-mkconfig); `test_btrfs_rollback_commands` (mv @, snapshot из имени, fstab: из `UUID=x / btrfs rw,noatime,subvolid=256,subvol=/@ 0 0` → `…rw,noatime,subvol=/@…`, строка `/home` не тронута); `test_rollback_restores_home_files_and_removes_created`; `test_journal_rollback_keeps_preexisting_packages`; `test_installer_never_touches_partitions` (регулярка запрещённых команд по `src/quietline_install/**/*.py` и `install.sh`).
+- [x] **Step 2: Убедиться, что тесты падают.** `uv run --python 3.14 pytest tests/install/test_install_snapshot.py -v` → FAIL.
+- [x] **Step 3: Реализовать** `snapshot.py`; временный каталог — `/run/quietline-top.XXXXXX` через `mktemp -d` под `sudo`.
+- [x] **Step 4: Убедиться, что тесты проходят.** `uv run --python 3.14 pytest -q` → PASS.
+- [x] **Step 5: Коммит** `feat(installer): снимок корня Btrfs и откат установки`.
 
 ### Task 5: Пакеты Arch, Flatpak, службы, локали, версии разработки и пакет quietline
 
@@ -211,11 +211,11 @@ docs/install/2026-10-20-arch-install.md, docs/install/updating.md, scripts/smoke
   - `quietline_package_step()` — PKGBUILD в `~/.cache/quietline/build`, `makepkg -si --cleanbuild` с `QUIETLINE_REPO`; check — `pacman -Q quietline` равна ожидаемой версии `<version>.r<count>.g<hash>`.
 - PKGBUILD: `license=('GPL-3.0-only')`, `makedepends=('git' 'python-build' 'python-installer' 'python-hatchling')`, `depends=('python' 'hyprland' 'quickshell' 'networkmanager' 'brightnessctl' 'power-profiles-daemon' 'bluez' 'pipewire' 'wireplumber' 'glib2' 'libnotify' 'wl-clipboard' 'cliphist' 'grim' 'slurp' 'satty' 'plocate' 'polkit')`; ставит wheel (`quietline-engine`, `quietline-shell`), `/usr/share/quietline/shell/` ← `shell/quietline/.`, `/usr/share/quietline/hyprland/quietline.lua`, `/usr/share/quietline/fish/quietline-locale.fish`, `/usr/share/polkit-1/rules.d/50-quietline-network.rules`, `LICENSE`; исходник — `git archive HEAD` клона.
 
-- [ ] **Step 1: Перенести и написать тесты:** из старых — `test_missing_package_stops_before_install`, `test_installed_group_is_skipped`, `test_gpu_packages_follow_detected_vendor`, `test_nvidia_stops_with_instructions`, `test_gpu_vendor_reads_drm_and_virtualization`, `test_onlyoffice_comes_from_flathub_per_user` (→ `test_flatpak_apps_install_per_user`), `test_package_is_rebuilt_for_new_commits`; новые — `test_repo_packages_install_in_one_transaction_without_sync` (`-S --needed`, без `-y`), `test_full_upgrade_runs_once`, `test_new_packages_are_journaled_but_preexisting_are_not`, `test_both_locales_are_enabled_once`, `test_fnm_installs_versions_and_sets_default`, `test_pkgbuild_installs_expected_paths` (пути выше, `GPL-3.0-only`, `python-hatchling`).
-- [ ] **Step 2: Убедиться, что тесты падают.** `uv run --python 3.14 pytest tests/install/test_install_packages.py -v` → FAIL.
-- [ ] **Step 3: Реализовать.**
-- [ ] **Step 4: Убедиться, что тесты проходят.** `uv run --python 3.14 pytest -q` → PASS.
-- [ ] **Step 5: Коммит** `feat(installer): пакеты Arch, Flatpak, локали и пакет quietline`.
+- [x] **Step 1: Перенести и написать тесты:** из старых — `test_missing_package_stops_before_install`, `test_installed_group_is_skipped`, `test_gpu_packages_follow_detected_vendor`, `test_nvidia_stops_with_instructions`, `test_gpu_vendor_reads_drm_and_virtualization`, `test_onlyoffice_comes_from_flathub_per_user` (→ `test_flatpak_apps_install_per_user`), `test_package_is_rebuilt_for_new_commits`; новые — `test_repo_packages_install_in_one_transaction_without_sync` (`-S --needed`, без `-y`), `test_full_upgrade_runs_once`, `test_new_packages_are_journaled_but_preexisting_are_not`, `test_both_locales_are_enabled_once`, `test_fnm_installs_versions_and_sets_default`, `test_pkgbuild_installs_expected_paths` (пути выше, `GPL-3.0-only`, `python-hatchling`).
+- [x] **Step 2: Убедиться, что тесты падают.** `uv run --python 3.14 pytest tests/install/test_install_packages.py -v` → FAIL.
+- [x] **Step 3: Реализовать.**
+- [x] **Step 4: Убедиться, что тесты проходят.** `uv run --python 3.14 pytest -q` → PASS.
+- [x] **Step 5: Коммит** `feat(installer): пакеты Arch, Flatpak, локали и пакет quietline`.
 
 ### Task 6: AUR
 
@@ -226,11 +226,11 @@ docs/install/2026-10-20-arch-install.md, docs/install/updating.md, scripts/smoke
 **Interfaces:**
 - Produces: `aur_step(name) -> Step` (id `aur-<name>`, source `AUR: <name>`); `aur_install(ctx, name)` — клон или `git pull --ff-only` в `~/.cache/quietline/aur/<name>` (с таймаутом), показ `PKGBUILD`, всех `*.install` и списка остальных файлов клона, вопрос, для `1password` — `curl -fsS https://downloads.1password.com/linux/keys/1password.asc` → `gpg --import`, затем `makepkg -si --cleanbuild` (interactive, без `--noconfirm`); журнал `package`; `aur_outdated(ctx, names, fetch) -> list[str]` — сетевые ошибки RPC дают пустой список и строку в журнале, не traceback.
 
-- [ ] **Step 1: Перенести тесты** `test_pkgbuild_is_shown_and_must_be_confirmed`, `test_confirmed_build_runs_makepkg_in_clone`, `test_fresh_package_is_cloned_from_aur`, `test_1password_key_imported_before_build` (с `-f`), `test_update_lists_only_newer_aur_versions`; новые — `test_other_files_in_clone_are_listed`, `test_rpc_failure_is_not_a_crash`.
-- [ ] **Step 2: Убедиться, что тесты падают.** `uv run --python 3.14 pytest tests/install/test_install_aur.py -v` → FAIL.
-- [ ] **Step 3: Реализовать.**
-- [ ] **Step 4: Убедиться, что тесты проходят.** `uv run --python 3.14 pytest -q` → PASS.
-- [ ] **Step 5: Коммит** `feat(installer): сборка AUR с показом инструкций`.
+- [x] **Step 1: Перенести тесты** `test_pkgbuild_is_shown_and_must_be_confirmed`, `test_confirmed_build_runs_makepkg_in_clone`, `test_fresh_package_is_cloned_from_aur`, `test_1password_key_imported_before_build` (с `-f`), `test_update_lists_only_newer_aur_versions`; новые — `test_other_files_in_clone_are_listed`, `test_rpc_failure_is_not_a_crash`.
+- [x] **Step 2: Убедиться, что тесты падают.** `uv run --python 3.14 pytest tests/install/test_install_aur.py -v` → FAIL.
+- [x] **Step 3: Реализовать.**
+- [x] **Step 4: Убедиться, что тесты проходят.** `uv run --python 3.14 pytest -q` → PASS.
+- [x] **Step 5: Коммит** `feat(installer): сборка AUR с показом инструкций`.
 
 ### Task 7: Файлы пользователя, язык, закрепления, папки
 
@@ -251,11 +251,11 @@ docs/install/2026-10-20-arch-install.md, docs/install/updating.md, scripts/smoke
   - `region_step()` — `quietline-shell region --set '{"language": "<ru|en>", "clock": …, "date": …}'` (clock/date по языку: ru — `24h`/`dmy`, en — `12h`/`mdy`) при первой установке; при повторной — только если язык системы изменён на экране.
   - `pins_step(pins)` — только если нет `$XDG_CONFIG_HOME/quietline/pins.json`: `quietline-shell pins --set '<JSON список>'`.
 
-- [ ] **Step 1: Написать тесты:** перенесённые `test_existing_user_config_is_backed_up_once`, `test_new_config_is_created_without_backup`, `test_quickshell_link_points_to_package_shell`, `test_micro_settings_are_merged_not_replaced`; новые — `test_example_hyprland_config_is_replaced_with_backup`, `test_hyprland_config_with_quietline_line_is_untouched`, `test_fish_snippets_include_locale_and_fnm_only_when_node_selected`, `test_existing_user_dirs_are_left_as_is`, `test_fresh_user_dirs_are_english_and_rename_is_disabled`, `test_region_is_set_through_quietline_shell`, `test_existing_pins_are_not_overwritten`, `test_lua_header_names_the_dofile_line`.
-- [ ] **Step 2: Убедиться, что тесты падают.** `uv run --python 3.14 pytest tests/install/test_install_configs.py -v` → FAIL.
-- [ ] **Step 3: Реализовать.**
-- [ ] **Step 4: Убедиться, что тесты проходят.** `uv run --python 3.14 pytest -q` → PASS.
-- [ ] **Step 5: Коммит** `feat(installer): файлы пользователя, язык системы и закрепления дока`.
+- [x] **Step 1: Написать тесты:** перенесённые `test_existing_user_config_is_backed_up_once`, `test_new_config_is_created_without_backup`, `test_quickshell_link_points_to_package_shell`, `test_micro_settings_are_merged_not_replaced`; новые — `test_example_hyprland_config_is_replaced_with_backup`, `test_hyprland_config_with_quietline_line_is_untouched`, `test_fish_snippets_include_locale_and_fnm_only_when_node_selected`, `test_existing_user_dirs_are_left_as_is`, `test_fresh_user_dirs_are_english_and_rename_is_disabled`, `test_region_is_set_through_quietline_shell`, `test_existing_pins_are_not_overwritten`, `test_lua_header_names_the_dofile_line`.
+- [x] **Step 2: Убедиться, что тесты падают.** `uv run --python 3.14 pytest tests/install/test_install_configs.py -v` → FAIL.
+- [x] **Step 3: Реализовать.**
+- [x] **Step 4: Убедиться, что тесты проходят.** `uv run --python 3.14 pytest -q` → PASS.
+- [x] **Step 5: Коммит** `feat(installer): файлы пользователя, язык системы и закрепления дока`.
 
 ### Task 8: Сеанс входа, ручные шаги, проверка готовности
 
@@ -273,11 +273,11 @@ docs/install/2026-10-20-arch-install.md, docs/install/updating.md, scripts/smoke
   - `run_checks(ctx, plan, which=shutil.which) -> tuple[list[str], bool]` — команды основы и выбранного, службы, `pacman -Q quietline`, Flatpak выбранного, `~/.config/quickshell/quietline/lock/LockScreen.qml`, строка `dofile` в `hyprland.lua`, `region.json`, обе локали.
   - `build_steps(plan, state)` — порядок: `system-upgrade`, `repo-packages`, `graphics`, `locales`, `quietline-package`, `services`, `hyprland-config`, `fish`, `micro`, `quickshell-link`, `user-dirs`, `region`, `pins`, `greetd`, `flatpak`, `fnm`, `uv`, `aur-<name>`…, `default-shell`, `docker-group`, ручные шаги последними; шаги невыбранного в список не попадают.
 
-- [ ] **Step 1: Перенести и написать тесты:** `test_greetd_config_launches_wayland_sessions`, `test_greetd_is_enabled_not_started`, `test_user_greetd_config_with_tuigreet_is_kept`, `test_manual_steps_wait_for_confirmation_and_verify`, `test_docker_group_asks_and_explains_root_equivalence`, `test_declined_optional_step_is_not_asked_again`, `test_default_shell_changes_only_with_consent`, `test_check_reports_each_item_and_fails_on_missing`, `test_login_session_comes_before_aur_and_manual_steps_last`, `test_unselected_programs_have_no_steps`.
-- [ ] **Step 2: Убедиться, что тесты падают.** `uv run --python 3.14 pytest tests/install/test_install_session.py -v` → FAIL.
-- [ ] **Step 3: Реализовать.**
-- [ ] **Step 4: Убедиться, что тесты проходят.** `uv run --python 3.14 pytest -q` → PASS.
-- [ ] **Step 5: Коммит** `feat(installer): сеанс входа, ручные шаги и проверка готовности`.
+- [x] **Step 1: Перенести и написать тесты:** `test_greetd_config_launches_wayland_sessions`, `test_greetd_is_enabled_not_started`, `test_user_greetd_config_with_tuigreet_is_kept`, `test_manual_steps_wait_for_confirmation_and_verify`, `test_docker_group_asks_and_explains_root_equivalence`, `test_declined_optional_step_is_not_asked_again`, `test_default_shell_changes_only_with_consent`, `test_check_reports_each_item_and_fails_on_missing`, `test_login_session_comes_before_aur_and_manual_steps_last`, `test_unselected_programs_have_no_steps`.
+- [x] **Step 2: Убедиться, что тесты падают.** `uv run --python 3.14 pytest tests/install/test_install_session.py -v` → FAIL.
+- [x] **Step 3: Реализовать.**
+- [x] **Step 4: Убедиться, что тесты проходят.** `uv run --python 3.14 pytest -q` → PASS.
+- [x] **Step 5: Коммит** `feat(installer): сеанс входа, ручные шаги и проверка готовности`.
 
 ### Task 9: Порядок экранов, `install.sh`, CLI
 
@@ -293,11 +293,11 @@ docs/install/2026-10-20-arch-install.md, docs/install/updating.md, scripts/smoke
   - `rollback`: `btrfs-*` → `rollback_btrfs` + предложение перезагрузки; `none` → `rollback_journal`; после отката состояние помечается `rolledBack`.
   - Слой экранов подменяется в тестах объектом с теми же методами.
 
-- [ ] **Step 1: Написать тесты:** `test_first_run_walks_screens_in_spec_order` (язык → проверки → язык системы → программы → сводка); `test_quit_before_summary_changes_nothing` (ни одной команды `System`); `test_snapshot_is_taken_before_first_changing_step`; `test_rerun_offers_continue_or_rollback`; `test_rollback_uses_btrfs_when_snapshot_exists_and_journal_otherwise`; `test_non_btrfs_requires_explicit_consent`; `test_install_sh_refuses_root_and_non_arch` (через `sh` с подменёнными `id` и `/etc/os-release` во временном каталоге).
-- [ ] **Step 2: Убедиться, что тесты падают.** `uv run --python 3.14 pytest tests/install/test_install_flow.py -v` → FAIL.
-- [ ] **Step 3: Реализовать.**
-- [ ] **Step 4: Убедиться, что тесты проходят.** `uv run --python 3.14 pytest -q` → PASS.
-- [ ] **Step 5: Коммит** `feat(installer): порядок экранов, install.sh и команды установщика`.
+- [x] **Step 1: Написать тесты:** `test_first_run_walks_screens_in_spec_order` (язык → проверки → язык системы → программы → сводка); `test_quit_before_summary_changes_nothing` (ни одной команды `System`); `test_snapshot_is_taken_before_first_changing_step`; `test_rerun_offers_continue_or_rollback`; `test_rollback_uses_btrfs_when_snapshot_exists_and_journal_otherwise`; `test_non_btrfs_requires_explicit_consent`; `test_install_sh_refuses_root_and_non_arch` (через `sh` с подменёнными `id` и `/etc/os-release` во временном каталоге).
+- [x] **Step 2: Убедиться, что тесты падают.** `uv run --python 3.14 pytest tests/install/test_install_flow.py -v` → FAIL.
+- [x] **Step 3: Реализовать.**
+- [x] **Step 4: Убедиться, что тесты проходят.** `uv run --python 3.14 pytest -q` → PASS.
+- [x] **Step 5: Коммит** `feat(installer): порядок экранов, install.sh и команды установщика`.
 
 ### Task 10: Гайд установки Arch, документация, CI
 
@@ -305,8 +305,8 @@ docs/install/2026-10-20-arch-install.md, docs/install/updating.md, scripts/smoke
 - Create: `docs/install/2026-10-20-arch-install.md` (из старой ветки с правками), `docs/install/updating.md`, `scripts/smoke-installer.md`, `.github/workflows/tests.yml`
 - Modify: основная спека («Установка на текущем компьютере», «Приложения и инструменты» — каталог и источники, расширенный список AUR, Flatpak Brave), спека этапа 5 (статус части 2), `AGENTS.md`, `README.md`, `CHANGELOG.md`, `docs/backlog.md`, этот план
 
-- [ ] **Step 1: Гайд** — `p8` форматируется в Btrfs; подтома `@ @home @log @pkg @snapshots` (последний не монтируется); `p6` монтируется в `/efi` без форматирования, `/boot` — каталог в `@`; в archinstall Pre-mount и «No bootloader»; вручную в chroot: `pacman -S grub efibootmgr os-prober btrfs-progs`, `grub-install --target=x86_64-efi --efi-directory=/efi --bootloader-id=Arch` (без `--removable`), `GRUB_DISABLE_OS_PROBER=false`, `grub-mkconfig -o /boot/grub/grub.cfg`; ожидаемый `fstab`; `rm -r /efi/EFI/ubuntu` после проверки; восстановление GRUB с `/efi`; «После установки» — `./install.sh`; устаревшее про репозиторий без remote убрать; локали генерирует установщик. Гайд — для человека, агент команды разметки не выполняет.
-- [ ] **Step 2: `updating.md`, `smoke-installer.md`** — сценарии: чистый Arch в VM (Btrfs по гайду); язык установщика en и ru (кириллица в консоли); каталог с «Рекомендуемым набором» и с «Расширенными»; обрыв сети посреди пакетов → «Продолжить»; «Откатить» на Btrfs → перезагрузка в прежний `@`; загрузка снимка из меню GRUB (overlay, изменения пропадают); корень ext4 → предупреждение и откат по журналу; свой `hyprland.lua` с примером → заменён с копией; вход через greetd, `Super+Enter` без панели; английские папки и `locale` в Ghostty; закрепления по выбору; ноутбук. В `backlog.md` — те же пункты плюс непроверенные desktop ID (`code`, `wechat`, `docker-desktop`, `AmneziaVPN`), Flatpak Brave и расширение 1Password, `rw` в строке ядра для снимка только для чтения, `--boot-directory` archinstall, `cyr-sun16` в консоли, `greetd` + `source_profile` → `locale.conf`, `fnm` в fish.
-- [ ] **Step 3: CI** `.github/workflows/tests.yml` — задачи `python` (`astral-sh/setup-uv`, `uv run --python 3.14 pytest -q`), `shell-models` (Node 22, `node --test 'tests/shell/*.test.cjs'`), `catalog` (контейнер `archlinux:latest`, `pacman -Syu --noconfirm python`, `python scripts/check-catalog.py`); триггер `push`.
-- [ ] **Step 4: `AGENTS.md`** — Layout (`install.sh`, `installer/`, `packaging/`, `.github/`, `docs/install/`, `src/quietline_install/`, `tests/install/`), исключение из «консоль — по-английски» для экранов установщика (журнал английский), команды запуска установщика и тестов, «Текущее состояние», «Куда смотреть»; `README.md` — статус и структура; `CHANGELOG.md` `Unreleased` — Added: установщик (языки, каталог, снимок и откат, гайд); основная спека — таблица приложений с источниками этого плана; статусы спеки этапа 5 и плана.
-- [ ] **Step 5: Полная проверка** `uv run --python 3.14 pytest -q`, `node --test 'tests/shell/*.test.cjs'` → PASS; коммит `docs(installer): гайд установки Arch на Btrfs, сценарии проверки и CI`. Независимое ревью ветки — по Review Focus.
+- [x] **Step 1: Гайд** — `p8` форматируется в Btrfs; подтома `@ @home @log @pkg @snapshots` (последний не монтируется); `p6` монтируется в `/efi` без форматирования, `/boot` — каталог в `@`; в archinstall Pre-mount и «No bootloader»; вручную в chroot: `pacman -S grub efibootmgr os-prober btrfs-progs`, `grub-install --target=x86_64-efi --efi-directory=/efi --bootloader-id=Arch` (без `--removable`), `GRUB_DISABLE_OS_PROBER=false`, `grub-mkconfig -o /boot/grub/grub.cfg`; ожидаемый `fstab`; `rm -r /efi/EFI/ubuntu` после проверки; восстановление GRUB с `/efi`; «После установки» — `./install.sh`; устаревшее про репозиторий без remote убрать; локали генерирует установщик. Гайд — для человека, агент команды разметки не выполняет.
+- [x] **Step 2: `updating.md`, `smoke-installer.md`** — сценарии: чистый Arch в VM (Btrfs по гайду); язык установщика en и ru (кириллица в консоли); каталог с «Рекомендуемым набором» и с «Расширенными»; обрыв сети посреди пакетов → «Продолжить»; «Откатить» на Btrfs → перезагрузка в прежний `@`; загрузка снимка из меню GRUB (overlay, изменения пропадают); корень ext4 → предупреждение и откат по журналу; свой `hyprland.lua` с примером → заменён с копией; вход через greetd, `Super+Enter` без панели; английские папки и `locale` в Ghostty; закрепления по выбору; ноутбук. В `backlog.md` — те же пункты плюс непроверенные desktop ID (`code`, `wechat`, `docker-desktop`, `AmneziaVPN`), Flatpak Brave и расширение 1Password, `rw` в строке ядра для снимка только для чтения, `--boot-directory` archinstall, `cyr-sun16` в консоли, `greetd` + `source_profile` → `locale.conf`, `fnm` в fish.
+- [x] **Step 3: CI** `.github/workflows/tests.yml` — задачи `python` (`astral-sh/setup-uv`, `uv run --python 3.14 pytest -q`), `shell-models` (Node 22, `node --test 'tests/shell/*.test.cjs'`), `catalog` (контейнер `archlinux:latest`, `pacman -Syu --noconfirm python`, `python scripts/check-catalog.py`); триггер `push`.
+- [x] **Step 4: `AGENTS.md`** — Layout (`install.sh`, `installer/`, `packaging/`, `.github/`, `docs/install/`, `src/quietline_install/`, `tests/install/`), исключение из «консоль — по-английски» для экранов установщика (журнал английский), команды запуска установщика и тестов, «Текущее состояние», «Куда смотреть»; `README.md` — статус и структура; `CHANGELOG.md` `Unreleased` — Added: установщик (языки, каталог, снимок и откат, гайд); основная спека — таблица приложений с источниками этого плана; статусы спеки этапа 5 и плана.
+- [x] **Step 5: Полная проверка** `uv run --python 3.14 pytest -q`, `node --test 'tests/shell/*.test.cjs'` → PASS; коммит `docs(installer): гайд установки Arch на Btrfs, сценарии проверки и CI`. Независимое ревью ветки — по Review Focus.

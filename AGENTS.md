@@ -6,7 +6,7 @@ Quietline — личное рабочее окружение Linux поверх 
 
 ## Текущее состояние
 
-В репозитории спека, планы первых четырёх этапов и часть «Языки и регион» пятого, утверждённый макет и визуальный контракт `DESIGN.md`. Первый этап — движок пространств и окон на Python по плану `docs/superpowers/plans/2026-10-19-window-engine.md` — реализован: адаптер Hyprland, локальные пространства мониторов, режимы «Окна / Тайлы», сверка по событиям, диалоги по тегам, сервис с IPC и CLI, клавиши Hyprland. Второй этап — оболочка Quickshell по плану `docs/superpowers/plans/2026-10-19-quickshell.md` — перенесён на этот движок: верхняя панель, док, трей, показатели, `Super+Space`, CLI `quietline-shell`. Третий этап — системные панели по плану `docs/superpowers/plans/2026-10-20-system-panels.md` — перенесён на новую оболочку: сетевая панель с профилями объекта и откатом, быстрые настройки, окно «Настройки». Четвёртый этап — ежедневные действия по плану `docs/superpowers/plans/2026-10-28-daily-actions.md`: блокировка и меню питания, корректный выход из приложений, уведомления, снимки экрана, история буфера, поиск, клавиши окон. Пятый этап — языки и регион и установщик по спеке `docs/superpowers/specs/2026-10-28-language-and-installer-design.md`: часть «Языки и регион» (план `docs/superpowers/plans/2026-10-28-language-region.md`) написана — оболочка и уведомления на русском и английском, раздел «Язык и регион», раскладки `us,ru`, док и памятка без неустановленных программ; следующий — установщик, его план ещё не написан. Живые проверки не проведены — список в `docs/backlog.md`, порядок проверки — `scripts/smoke-window-engine.md`, `scripts/smoke-quickshell.md`, `scripts/smoke-system-panels.md`, `scripts/smoke-daily-actions.md`, `scripts/smoke-language.md`.
+В репозитории спека, планы всех пяти этапов, утверждённый макет и визуальный контракт `DESIGN.md`. Первый этап — движок пространств и окон на Python по плану `docs/superpowers/plans/2026-10-19-window-engine.md` — реализован: адаптер Hyprland, локальные пространства мониторов, режимы «Окна / Тайлы», сверка по событиям, диалоги по тегам, сервис с IPC и CLI, клавиши Hyprland. Второй этап — оболочка Quickshell по плану `docs/superpowers/plans/2026-10-19-quickshell.md` — перенесён на этот движок: верхняя панель, док, трей, показатели, `Super+Space`, CLI `quietline-shell`. Третий этап — системные панели по плану `docs/superpowers/plans/2026-10-20-system-panels.md` — перенесён на новую оболочку: сетевая панель с профилями объекта и откатом, быстрые настройки, окно «Настройки». Четвёртый этап — ежедневные действия по плану `docs/superpowers/plans/2026-10-28-daily-actions.md`: блокировка и меню питания, корректный выход из приложений, уведомления, снимки экрана, история буфера, поиск, клавиши окон. Пятый этап — языки и регион и установщик по спеке `docs/superpowers/specs/2026-10-28-language-and-installer-design.md`: часть «Языки и регион» (план `docs/superpowers/plans/2026-10-28-language-region.md`) написана — оболочка и уведомления на русском и английском, раздел «Язык и регион», раскладки `us,ru`, док и памятка без неустановленных программ; установщик (план `docs/superpowers/plans/2026-10-28-installer.md`) написан — `./install.sh` с выбором языков, каталогом программ, снимком корня Btrfs, продолжением и откатом, гайд установки Arch на Btrfs `docs/install/2026-10-20-arch-install.md`. Живые проверки не проведены — список в `docs/backlog.md`, порядок проверки — `scripts/smoke-window-engine.md`, `scripts/smoke-quickshell.md`, `scripts/smoke-system-panels.md`, `scripts/smoke-daily-actions.md`, `scripts/smoke-language.md`, `scripts/smoke-installer.md`.
 
 ## Базовая система и минимальные версии
 
@@ -31,6 +31,7 @@ Quietline ставится поверх **Arch Linux** после Archinstall Mi
 | Системные панели (сеть, звук, яркость, Bluetooth, питание, окно «Настройки») | `docs/superpowers/plans/2026-10-20-system-panels.md` — границы, контракт `quietline-shell network`, перенос, Review Focus |
 | Ежедневные действия (блокировка, меню питания, выход из приложений, уведомления, снимки, буфер, поиск, клавиши окон) | `docs/superpowers/plans/2026-10-28-daily-actions.md` — решения, контракт подкоманд `quietline-shell`, Review Focus |
 | Языки и регион (язык оболочки, «Язык и регион», раскладки, док без неустановленных программ) | `docs/superpowers/plans/2026-10-28-language-region.md` — таблицы строк, `quietline-shell region`, раскладки; `docs/superpowers/specs/2026-10-28-language-and-installer-design.md` — часть 1 |
+| Установщик (`./install.sh`, каталог программ, снимок и откат, гайд установки Arch) | `docs/superpowers/plans/2026-10-28-installer.md` — решения, каталог, команды снимка и отката, Review Focus; `docs/superpowers/specs/2026-10-28-language-and-installer-design.md` — часть 2; `docs/install/` — гайд и обновление |
 | Внешний вид панели, дока, всплывающих окон | `DESIGN.md` — визуальный контракт оболочки: токены, размеры, движения, владельцы компонентов; `docs/design/quiet-line-a.html` — утверждённый макет варианта A (в том числе сетевой панели) |
 | Задача с активной спекой или планом | `docs/superpowers/specs` и `plans` — статус в шапке файла; читать только относящиеся к задаче |
 | Устройство репозитория для человека | `README.md` |
@@ -40,13 +41,14 @@ Quietline ставится поверх **Arch Linux** после Archinstall Mi
 
 ```
 docs/backlog.md           — что не подтверждено в живом сеансе и где это проверить
+docs/install/             — гайд установки Arch на этот ноутбук (Btrfs, `/efi`) и обновление по источникам
 docs/design/              — утверждённые визуальные макеты (HTML)
 docs/superpowers/specs/   — спеки: что строим и почему
 docs/superpowers/plans/   — планы реализации по шагам
 config/hyprland/          — Lua-конфигурация Hyprland: раскладка, запуск сервиса и оболочки, клавиши, теги диалогов
 config/fish/              — `quietline-locale.fish`: сообщения программ в терминале fish остаются английскими
 config/polkit/            — правило polkit для сетевых профилей и отката NetworkManager
-scripts/                  — сценарии проверки в живом сеансе (`smoke-window-engine.md`, `smoke-quickshell.md`, `smoke-system-panels.md`, `smoke-daily-actions.md`, `smoke-language.md`), запуск оболочки из репозитория `run-shell`
+scripts/                  — сценарии проверки в живом сеансе (`smoke-window-engine.md`, `smoke-quickshell.md`, `smoke-system-panels.md`, `smoke-daily-actions.md`, `smoke-language.md`, `smoke-installer.md`), запуск оболочки из репозитория `run-shell`, проверка имён пакетов каталога `check-catalog.py`
 shell/quietline/          — конфигурация Quickshell (`qs -c quietline`): `shell.qml`, тема `Theme.qml`, стенд IPC `IpcHarness.qml`
 shell/quietline/controls/ — общие элементы: кнопки, пункты меню, подсказки, всплывающие окна, полоса прокрутки
 shell/quietline/inputs/   — поля форм: текстовое поле, переключатель, ползунок
@@ -65,10 +67,16 @@ shell/quietline/Lang.qml  — синглтон языка: читает `quietli
 shell/quietline/logic/    — чистые функции `Models.js` и таблицы строк `Strings.js` на русском и английском (общие для QML и тестов Node)
 src/quietline_engine/     — Python-пакет движка пространств и окон
 src/quietline_shell/      — Python-пакет `quietline-shell`: закрепления дока, ограничение анимаций, NetworkManager, «О системе», сеанс, снимки экрана, история буфера, поиск файлов
+src/quietline_install/    — установщик (`./install.sh` → `python -m quietline_install`, в wheel не входит): ядро шагов и журнал изменений `runner.py`, экраны и тексты, каталог, снимок и откат, шаги в `steps/`
 tests/engine/             — модульные тесты движка (pytest, без Hyprland)
 tests/helper/             — тесты `quietline-shell` (pytest, без NetworkManager и Hyprland)
 tests/shell/              — тесты моделей оболочки (`node --test`), правила polkit и контракта протокола движка
+tests/install/            — тесты установщика (pytest, поддельная система: без pacman, btrfs, sudo и сети)
 pyproject.toml            — пакет `quietline-engine` (CLI `quietline-engine` и `quietline-shell`), Python ≥ 3.14, тестовая зависимость pytest
+install.sh                — вход установщика: шрифт консоли, проверки Arch, не-root и Python ≥ 3.14
+installer/                — каталог программ `catalog.toml` и шаблоны файлов `files/`
+packaging/arch/           — PKGBUILD локального пакета `quietline` из клона
+.github/workflows/        — CI: pytest, тесты моделей оболочки, имена пакетов каталога в контейнере Arch
 DESIGN.md                 — визуальный контракт оболочки; runtime-токены — `shell/quietline/Theme.qml`
 LICENSE                   — GPL-3.0
 ```
@@ -81,11 +89,12 @@ LICENSE                   — GPL-3.0
 - Тесты моделей оболочки: `node --test 'tests/shell/*.test.cjs'` (Node ≥ 22; шаблон в кавычках разворачивает сам Node, каталог аргументом не принимается). QML без Quickshell не запускается — проверяется только в живом сеансе.
 - Оболочка: ссылка `ln -s "$PWD/shell/quietline" ~/.config/quickshell/quietline`, затем `qs -c quietline`; из репозитория без ссылки — `scripts/run-shell`. Состояние — `qs -c quietline ipc call quietline status`. Нужны Quickshell, шрифты IBM Plex Sans/Mono и JetBrainsMono Nerd Font Mono, `quietline-shell` в `PATH`.
 - Сервис и CLI движка: `quietline-engine serve` (в сеансе Hyprland; журнал — в stderr), клиентские команды `quietline-engine switch N [--monitor KEY]`, `move N`, `toggle [--monitor KEY]`, `state`. Из репозитория без установки — `uv run --python 3.14 quietline-engine …`. Протокол сокета `$XDG_RUNTIME_DIR/quietline/engine.sock` и коды ошибок — в docstring `src/quietline_engine/server.py`.
+- Установщик: `./install.sh` (экраны), `./install.sh --dry-run`, `status`, `check`, `rollback`, `update`, `--from ID`; состояние и журнал — `~/.local/state/quietline/install.json` и `install.log`. Тесты — `uv run --python 3.14 pytest tests/install`. Запускать установщик на машине разработчика нельзя: он меняет систему.
 - Настройки оболочки: `quietline-shell pins [--set JSON] [--path PATH]`, `motion`, `about`, `lock`, `session logout|reboot|poweroff`, `app quit|kill`, `screenshot output|region`, `clipboard ACTION`, `files QUERY|--update`, `network ACTION`, `region [--set JSON] [--path PATH]` — одна строка JSON в stdout, ошибка — `{"error": …}` и код 1 (docstring `src/quietline_shell/__main__.py`; подкоманды `network` — docstring `src/quietline_shell/network.py`). Закрепления дока — `$XDG_CONFIG_HOME/quietline/pins.json`, недавние сетевые профили — `$XDG_CONFIG_HOME/quietline/network.json`, язык, форматы и раскладки — `$XDG_CONFIG_HOME/quietline/region.json` (при записи `region` обновляет также `$XDG_CONFIG_HOME/locale.conf` и `quietline/keyboard.lua`).
 
 ## Общие конвенции
 
-- **Язык: комментарии — по-русски, вывод в консоль — по-английски.** Комментарии и docstring — по-русски, в том числе в shell-скриптах, Lua- и QML-файлах (коротко и по делу). Всё, что видит пользователь в консоли и журналах (`echo`, сообщения CLI, ошибки установщика), — на простом английском. Документация в `docs/`, `README.md`, `CHANGELOG.md` и сообщения коммитов — по-русски.
+- **Язык: комментарии — по-русски, вывод в консоль — по-английски.** Комментарии и docstring — по-русски, в том числе в shell-скриптах, Lua- и QML-файлах (коротко и по делу). Всё, что видит пользователь в консоли и журналах (`echo`, сообщения CLI, ошибки установщика), — на простом английском. Документация в `docs/`, `README.md`, `CHANGELOG.md` и сообщения коммитов — по-русски. Исключение — экраны установщика: они на языке, выбранном в его первом экране; журнал установщика и вывод `install.sh` до выбора языка — по-английски.
 - **Видимые тексты — на двух языках.** Тексты оболочки и уведомлений `quietline-shell` задаются таблицами строк на русском и английском (`shell/quietline/logic/Strings.js` через `Lang.s`, `NOTIFICATION_TEXTS` в `src/quietline_shell/config.py`) с одинаковыми ключами. Кириллица в строковых литералах QML и `Models.js` запрещена тестом `tests/shell/strings.test.cjs`; новый текст добавляется в обе таблицы.
 - **Комментарии описывают только то, что код делает сейчас**: назначение, контракт, инвариант, наблюдаемое поведение. Никакой истории — ни исправленных багов, ни ссылок на обсуждение, ни отклонённых альтернатив, ни «почему так, а не иначе» (это в спеку или план).
 - **Папка держит либо файлы, либо папки.** Когда записей больше восьми, папка делится по смыслу. Пустые папки ради сортировки не создаются; общих `helpers`/`utils` нет. Исключения — корень репозитория, `docs/` (держит `backlog.md` рядом с папками), корень конфигурации Quickshell `shell/quietline/` (Quickshell требует `shell.qml` в корне конфигурации; рядом лежат тема, `qmldir` и папки компонентов) и хронологические реестры `docs/superpowers/specs`, `docs/superpowers/plans`.

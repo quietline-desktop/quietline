@@ -91,9 +91,11 @@ CPU показывается как сглаженный процент обще
 | Раздел | Назначение в плане |
 | --- | --- |
 | `p1`–`p5` | Windows, служебные разделы и данные NTFS: сохранить без изменений |
-| `p6` | Существующий EFI-раздел Kubuntu: использовать для Arch **без форматирования** |
+| `p6` | Существующий EFI-раздел Kubuntu: использовать для Arch **без форматирования**, монтируется в `/efi`; `/boot` — каталог внутри корня |
 | `p7` | Существующий swap: повторно использовать после проверки |
-| `p8` | Kubuntu и `/home`: заменить корневым разделом Arch только после проверенного резервного копирования |
+| `p8` | Kubuntu и `/home`: заменить корнем Arch на **Btrfs** с подтомами `@`, `@home`, `@log`, `@pkg`, `@snapshots` только после проверенного резервного копирования |
+
+Корень на Btrfs и ядро внутри `@` позволяют установщику сделать снимок системы перед установкой и откатить её целиком. Порядок установки — [гайд](../../install/2026-10-20-arch-install.md).
 
 В Archinstall выбирается ручная разметка; вариант с очисткой всего диска запрещён для этого сценария. Перед подтверждением установки сверяются устройство, номера разделов, точки монтирования и флаги форматирования. GRUB получает запись Arch на `p6`; Windows Boot Manager на `p1` должен остаться доступным и из UEFI, и из меню GRUB после отдельной проверки. Старые записи Ubuntu можно убирать только после успешной загрузки Arch и Windows.
 
@@ -105,16 +107,20 @@ CPU показывается как сглаженный процент обще
 
 | Группа | Приложения | Источник |
 | --- | --- | --- |
-| Повседневная работа | Dolphin, Ghostty, fish, Starship, Telegram Desktop, Git, micro | Репозитории Arch |
-| Удалённый доступ | Remmina, FreeRDP, GTK-VNC: сохранённые профили RDP и прямого VNC по IP без аккаунта | Репозитории Arch |
-| Браузер и редактор | Google Chrome, официальная сборка VS Code | Пакеты AUR, собираемые из выпусков разработчиков; инструкции пакетов проверяются перед установкой |
-| Пароли и VPN | 1Password, AmneziaVPN | Рекомендованный 1Password пакет AUR с проверкой подписи; стабильный `.run` с сайта Amnezia |
-| Контейнеры | Docker Engine, Docker Desktop | Engine из Arch; Docker Desktop из официального пакета Docker для Arch |
-| Документы | ONLYOFFICE Desktop Editors для DOCX/XLSX/PPTX; шрифты Carlito, Caladea, Liberation | ONLYOFFICE через Flatpak/Flathub; шрифты из Arch |
-| Разработка | .NET SDK и компоненты ASP.NET, Python 3, pip, uv, Node.js LTS, npm, pnpm, OpenSSH, base-devel, curl, unzip, jq, ripgrep, fzf | Репозитории Arch |
+| Основа (ставится всегда) | Hyprland, Quickshell, Quietline, greetd + tuigreet, PipeWire, NetworkManager, Bluetooth, порталы, polkit, шрифты, Ghostty, fish, Starship, micro, Git, OpenSSH | Репозитории Arch; Quietline — локальный пакет из клона |
 | Действия оболочки | grim, slurp, Satty, wl-clipboard, cliphist, plocate | Репозитории Arch; собственный интерфейс Quietline поверх инструментов |
+| Браузеры (по выбору, можно несколько) | Google Chrome, Firefox, Brave, Chromium | Chrome — AUR (`google-chrome`, выпуск Google); Firefox и Chromium — Arch; Brave — Flathub (verified) |
+| Общение (по выбору) | Telegram Desktop, Slack, WeChat | Telegram — Arch; Slack — AUR (`slack-desktop`, выпуск Slack); WeChat — AUR (`wechat-bin`, выпуск Tencent) |
+| Файлы и редактор | Dolphin, официальная сборка VS Code | Dolphin — Arch; VS Code — AUR (`visual-studio-code-bin`, выпуск Microsoft) |
+| Пароли и VPN | 1Password, AmneziaVPN | 1Password — AUR (`1password`, пакет 1Password с проверкой подписи); AmneziaVPN — вручную, стабильный `.run` со страницы выпусков |
+| Удалённый доступ | Remmina, FreeRDP, GTK-VNC: сохранённые профили RDP и прямого VNC по IP без аккаунта | Репозитории Arch |
+| Документы | ONLYOFFICE Desktop Editors для DOCX/XLSX/PPTX; шрифты Carlito, Caladea, Liberation | ONLYOFFICE — Flathub (verified); шрифты — Arch |
+| Контейнеры | Docker Engine, Docker Desktop | Engine — Arch; Docker Desktop — вручную, официальный пакет Docker для Arch |
+| Разработка | .NET SDK и ASP.NET (последний; в «Расширенных» 8 и 9), Node.js через fnm (последняя LTS; в «Расширенных» 22, 24, 26), pnpm, Python 3, pip, uv (в «Расширенных» Python 3.12, 3.13 через uv), base-devel, jq, ripgrep, fzf | Репозитории Arch; версии Node.js — fnm, версии Python — uv |
 
-Для Python-проектов зависимости ставятся в отдельные окружения. Дополнительные версии .NET и Node.js ставятся по требованиям конкретных проектов, а не заранее. Docker Engine и Docker Desktop могут сосуществовать, но работают с разными Docker contexts; установщик объясняет, какой контекст активен. Docker Desktop для Arch обозначен самим Docker как экспериментальный и при первом запуске требует принятия условий. AmneziaVPN также запускает свой интерактивный установщик. Эти шаги не маскируются под полностью автоматические.
+Источник выбирается в порядке: репозиторий Arch → Flathub, только приложение, проверенное издателем → AUR, только пакет, скачивающий выпуск разработчика. Chrome, VS Code и 1Password — из AUR всегда: песочница Flatpak мешает связке браузера с 1Password и работе VS Code с SDK, Docker и терминалом. Каталог с именами пакетов — `installer/catalog.toml`.
+
+Для Python-проектов зависимости ставятся в отдельные окружения. Дополнительные версии .NET, Node.js и Python выбираются в «Расширенных» каталога установщика; без выбора ставятся последние стабильные. Docker Engine и Docker Desktop могут сосуществовать, но работают с разными Docker contexts; установщик объясняет, какой контекст активен. Docker Desktop для Arch обозначен самим Docker как экспериментальный и при первом запуске требует принятия условий. AmneziaVPN также запускает свой интерактивный установщик. Эти шаги не маскируются под полностью автоматические.
 
 `micro` становится редактором терминала по умолчанию через `EDITOR` и `VISUAL` в fish, в том числе для Git. Его базовые действия — `Ctrl+S` сохранить, `Ctrl+C`/`Ctrl+V` копировать и вставить, `Ctrl+Q` выйти; мышь и системный буфер Wayland работают через уже установленный `wl-clipboard`. При редактировании по SSH локальный и удалённый буферы различаются: локальный текст вставляется через терминальное `Ctrl+Shift+V`, а копирование с удалённой машины зависит от поддержки OSC 52 или выделения текста терминалом. VS Code остаётся графическим редактором для больших проектов.
 
