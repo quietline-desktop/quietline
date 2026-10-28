@@ -111,6 +111,37 @@ TEXTS = {
         'step.amneziavpn': 'AmneziaVPN (вручную)',
         'step.snapshot-prepare': 'Подготовка снимков',
         'step.snapshot': 'Снимок системы',
+
+        # Вид снимка: причина
+        'snapshot.reason.ready': (
+            'Корень на Btrfs в подтоме @, /boot внутри него: перед установкой будет снимок только для чтения, '
+            'его можно выбрать в меню GRUB.'
+        ),
+        'snapshot.reason.systemdHook': (
+            'В HOOKS файла /etc/mkinitcpio.conf есть systemd, и хук grub-btrfs-overlayfs с ним не работает: '
+            'снимок будет изменяемым. Из меню GRUB он загрузится, но изменения в нём сохранятся. Откат работает.'
+        ),
+        'snapshot.reason.hooksElsewhere': (
+            'HOOKS не найден в /etc/mkinitcpio.conf или переопределён в /etc/mkinitcpio.conf.d: '
+            'снимок будет изменяемым. Из меню GRUB он загрузится, но изменения в нём сохранятся. Откат работает.'
+        ),
+        'snapshot.reason.notBtrfs': 'Корень не на Btrfs: снимка не будет, откат пойдёт по журналу установщика.',
+        'snapshot.reason.subvol': (
+            'Корень на Btrfs, но не в подтоме @: снимок не удастся вернуть на место. '
+            'Снимка не будет, откат пойдёт по журналу установщика.'
+        ),
+        'snapshot.reason.bootSeparate': (
+            '/boot на отдельном разделе: ядро не попадёт в снимок, и откат оставит новое ядро со старыми '
+            'модулями. Снимка не будет, откат пойдёт по журналу установщика.'
+        ),
+        'snapshot.reason.overlay': (
+            'Система загружена из снимка. Установку здесь не начинать: откатите систему или загрузитесь '
+            'обычным пунктом меню GRUB.'
+        ),
+        'snapshot.reason.swapfile': (
+            'В подтоме @ включён файл подкачки, и снимок @ невозможен. Перенесите его в отдельный подтом '
+            'или выключите (swapoff) — иначе снимка не будет, откат пойдёт по журналу установщика.'
+        ),
     },
     'en': {
         'language.ru': 'Русский',
@@ -209,6 +240,39 @@ TEXTS = {
         'step.amneziavpn': 'AmneziaVPN (manual)',
         'step.snapshot-prepare': 'Snapshot preparation',
         'step.snapshot': 'System snapshot',
+
+        'snapshot.reason.ready': (
+            'Root is on Btrfs in the @ subvolume, with /boot inside it: a read-only snapshot is taken before '
+            'the installation, and you can pick it in the GRUB menu.'
+        ),
+        'snapshot.reason.systemdHook': (
+            'HOOKS in /etc/mkinitcpio.conf has systemd, and the grub-btrfs-overlayfs hook does not work with it: '
+            'the snapshot will be writable. It boots from the GRUB menu, but changes made in it are kept. '
+            'Rollback works.'
+        ),
+        'snapshot.reason.hooksElsewhere': (
+            'HOOKS is missing from /etc/mkinitcpio.conf or is overridden in /etc/mkinitcpio.conf.d: '
+            'the snapshot will be writable. It boots from the GRUB menu, but changes made in it are kept. '
+            'Rollback works.'
+        ),
+        'snapshot.reason.notBtrfs': 'Root is not on Btrfs: no snapshot, rollback follows the installer journal.',
+        'snapshot.reason.subvol': (
+            'Root is on Btrfs, but not in the @ subvolume: a snapshot could not be put back. '
+            'No snapshot, rollback follows the installer journal.'
+        ),
+        'snapshot.reason.bootSeparate': (
+            '/boot is a separate partition: the kernel is not in the snapshot, and a rollback would leave a new '
+            'kernel with old modules. No snapshot, rollback follows the installer journal.'
+        ),
+        'snapshot.reason.overlay': (
+            'The system was booted from a snapshot. Do not install here: roll the system back, or boot the '
+            'normal GRUB entry.'
+        ),
+        'snapshot.reason.swapfile': (
+            'A swap file is active inside the @ subvolume, so @ cannot be snapshotted. Move it to its own '
+            'subvolume or turn it off (swapoff); otherwise there is no snapshot and rollback follows the '
+            'installer journal.'
+        ),
     },
 }
 
