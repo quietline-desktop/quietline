@@ -163,6 +163,11 @@ archinstall
 ```sh
 pacman -S --needed grub efibootmgr os-prober btrfs-progs
 
+# initramfs на udev вместо systemd: только с ним снимок из меню GRUB грузится через overlay
+grep '^HOOKS' /etc/mkinitcpio.conf      # если в строке есть systemd — две команды ниже, иначе пропусти
+sed -i 's/^HOOKS=.*/HOOKS=(base udev autodetect microcode modconf kms keyboard keymap consolefont block filesystems fsck)/' /etc/mkinitcpio.conf
+mkinitcpio -P                           # без ошибок, в конце «Image generation successful»
+
 # GRUB в /efi, без --removable: запасной загрузчик EFI/BOOT не трогаем
 grub-install --target=x86_64-efi --efi-directory=/efi --bootloader-id=Arch
 
@@ -188,7 +193,11 @@ UUID=…  /efi                   vfat   rw,relatime,…                         
 UUID=…  none                   swap   defaults                                                 0 0
 ```
 
-Строки `/boot` и `@snapshots` быть не должно. Вторую локаль (`en_US.UTF-8`) и снимки настроит установщик Quietline.
+Строки `/boot` и `@snapshots` быть не должно.
+
+Зачем менять `HOOKS`: archinstall записывает их с хуком `systemd`, а хук `grub-btrfs-overlayfs`, который добавляет установщик Quietline, работает только с `udev`. С `systemd` снимок `quietline-pre-<время>`, загруженный из меню GRUB, становится изменяемым — всё сделанное в нём остаётся в снимке. Корень не шифруется, так что замена ничего не теряет: `sd-vconsole` заменяют `keymap` и `consolefont`.
+
+Вторую локаль (`en_US.UTF-8`) и снимки настроит установщик Quietline.
 
 Затем `umount -R /mnt/archinstall`, `swapoff -a`, `reboot`, вынуть флешку.
 
