@@ -268,6 +268,8 @@ var STRINGS = {
         quickOpenNetwork: "Открыть сетевую панель",
         quickAllSettings: "Все настройки",
         quickOpenSettings: "Открыть окно «Настройки» · Super+I",
+        quickKeepAwake: "Не засыпать",
+        barKeepAwakeOn: "Не засыпать включено: экран не гаснет и не блокируется",
 
         // Сеть
         networkNone: "Нет подключения",
@@ -587,6 +589,8 @@ var STRINGS = {
         quickOpenNetwork: "Open the network panel",
         quickAllSettings: "All settings",
         quickOpenSettings: "Open the Settings window · Super+I",
+        quickKeepAwake: "Keep awake",
+        barKeepAwakeOn: "Keep awake is on: the screen stays on and unlocked",
 
         // Сеть
         networkNone: "Not connected",

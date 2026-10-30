@@ -25,6 +25,7 @@ ShellRoot {
     BrightnessService { id: brightnessService }
     BluetoothService { id: bluetoothService }
     PowerService { id: powerService }
+    KeepAwake { id: keepAwakeService }
     SessionService { id: sessionService }
     ClipboardService { id: clipboardService }
     SearchService { id: searchService }
@@ -32,7 +33,7 @@ ShellRoot {
     NotificationPopups { service: notificationService }
     // Системные сервисы, общие для всех панелей, всплывающих окон и окна «Настройки».
     readonly property var services: ({network: networkService, audio: audioService, brightness: brightnessService,
-                                      bluetooth: bluetoothService, power: powerService, session: sessionService, clipboard: clipboardService, search: searchService, settings: settingsWindow})
+                                      bluetooth: bluetoothService, power: powerService, keepAwake: keepAwakeService, session: sessionService, clipboard: clipboardService, search: searchService, settings: settingsWindow})
     SettingsWindow { id: settingsWindow; services: root.services; desktop: desktopService }
     Variants {
         model: Quickshell.screens
@@ -49,7 +50,7 @@ ShellRoot {
         target: "quietline"
         function status(): string {
             return JSON.stringify({ready: windowEngine.ready, revision: windowEngine.revision, busy: windowEngine.busy,
-                error: windowEngine.message || desktopService.errorMessage, reducedMotion: systemIndicators.reducedMotion,
+                error: windowEngine.message || desktopService.errorMessage, reducedMotion: systemIndicators.reducedMotion, keepAwake: keepAwakeService.active,
                 pinned: desktopService.pinned, windows: desktopService.windows,
                 screens: root.surfaces.map(item => ({name: item.bar.monitorName,
                     mode: item.dock.workspace ? item.dock.workspace.mode : null,

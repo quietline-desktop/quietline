@@ -220,6 +220,15 @@ PanelWindow {
                 hint: Lang.s.quickSettingsTitle
                 onClicked: popout.toggle("quick")
             }
+            // «Не засыпать» включено: нажатие выключает режим.
+            ShellButton {
+                visible: root.services.keepAwake.active
+                font.family: Theme.icons
+                text: "\uf0f4"
+                foreground: Theme.muted
+                hint: Lang.s.barKeepAwakeOn
+                onClicked: root.services.keepAwake.active = false
+            }
             Text {
                 text: Lang.time(clock.date)
                 color: Theme.text; font.family: Theme.mono; font.pixelSize: Theme.fontSize

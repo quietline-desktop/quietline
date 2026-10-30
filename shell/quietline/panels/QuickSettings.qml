@@ -4,7 +4,7 @@ import ".."
 import "../controls"
 import "../inputs"
 
-// Быстрые настройки: звук, яркость, Wi-Fi, Bluetooth и переход в окно «Настройки».
+// Быстрые настройки: звук, яркость, Wi-Fi, Bluetooth, «Не засыпать» и переход в окно «Настройки».
 ColumnLayout {
     id: root
     required property var services
@@ -39,6 +39,12 @@ ColumnLayout {
         visible: active
         Layout.fillWidth: true
         sourceComponent: Component { BluetoothControls { bluetooth: root.services.bluetooth; compact: true } }
+    }
+    ShellSwitch {
+        Layout.fillWidth: true
+        text: Lang.s.quickKeepAwake
+        checked: root.services.keepAwake.active
+        onToggled: root.services.keepAwake.active = checked
     }
     ShellButton {
         visible: !!root.services.settings
