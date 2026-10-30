@@ -6,7 +6,8 @@
 | --- | --- |
 | Пакеты Arch, включая Hyprland и Quickshell | `sudo pacman -Syu` |
 | Quietline | `git pull` в клоне, затем `./install.sh`: шаг «Пакет Quietline» пересобирает пакет при каждом новом коммите (версия — `<версия>.r<число коммитов>.g<хеш>`) |
-| Программы из AUR (Chrome, VS Code, 1Password, Slack) | `./install.sh update` — показывает обновлённые инструкции сборки и собирает только после подтверждения |
+| Пакеты Arch и все программы из AUR, в том числе поставленные вами | `yay` — обновляет всё сразу, перед сборкой пакета AUR показывает изменения его инструкций |
+| Программы из AUR каталога (Chrome, VS Code, 1Password, Slack, yay) | `./install.sh update` — показывает обновлённые инструкции сборки и собирает только после подтверждения |
 | Программы из Flathub (Brave, ONLYOFFICE) | `flatpak update --user` |
 | Версии Node.js | `fnm install <версия>`, `fnm default <версия>` |
 | Версии Python | `uv python install <версия>` |
@@ -17,4 +18,4 @@
 
 ## Перед обновлением Hyprland
 
-Quietline управляет окнами через Lua-команды Hyprland и встроенную раскладку `scrolling`; нативного модуля с привязкой к ABI нет. Перед `pacman -Syu`, который обновляет Hyprland, прочитай заметки к выпуску. После обновления пройди [smoke-window-engine.md](../../scripts/smoke-window-engine.md): локальные пространства, «Окна ↔ Тайлы», ширина и порядок колонок, диалоги, отключение монитора. Если что-то сломалось, верни прошлую версию из кэша: `sudo pacman -U /var/cache/pacman/pkg/hyprland-<версия>-x86_64.pkg.tar.zst`.
+Quietline управляет окнами через Lua-команды Hyprland и встроенную раскладку `scrolling`; нативного модуля с привязкой к ABI нет. Перед `pacman -Syu` или `yay`, которые обновляют Hyprland, прочитай заметки к выпуску. После обновления пройди [smoke-window-engine.md](../../scripts/smoke-window-engine.md): локальные пространства, «Окна ↔ Тайлы», ширина и порядок колонок, диалоги, отключение монитора. Если что-то сломалось, верни прошлую версию из кэша: `sudo pacman -U /var/cache/pacman/pkg/hyprland-<версия>-x86_64.pkg.tar.zst`.

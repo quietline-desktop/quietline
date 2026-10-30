@@ -5,6 +5,7 @@
     [core]                    # основа, ставится всегда
     packages = [...]          # пакеты репозитория Arch
     services = [...]          # службы systemd, которые включаются
+    aur = [...]               # необязательно: пакеты AUR основы, собираются раньше пакетов AUR вариантов
     desktop = "..."           # необязательно: desktop ID программы основы для закрепления
     pin = "terminal"          # вид закрепления программы основы
 
@@ -96,6 +97,7 @@ class Catalog:
     core_services: list[str]
     core_item: Item
     sections: list[Section]
+    core_aur: list[str] = field(default_factory=list)
 
     def items(self) -> list[Item]:
         return [item for section in self.sections for item in section.items]
@@ -138,7 +140,7 @@ class Catalog:
             if item_id not in known:
                 raise ValueError(f'unknown item: {item_id}')
         chosen = [item for item in self.items() if item.id in selection]
-        plan = Plan(repo=list(self.core_packages), services=list(self.core_services))
+        plan = Plan(repo=list(self.core_packages), aur=list(self.core_aur), services=list(self.core_services))
         for item in chosen:
             plan.repo.extend(item.repo_packages)
             if item.source == 'repo':
@@ -191,6 +193,6 @@ def load_catalog(path: Path) -> Catalog:
         for section in raw.get('section', [])
     ]
     catalog = Catalog(core_packages=list(core['packages']), core_services=list(core.get('services', [])),
-                      core_item=core_item, sections=sections)
+                      core_item=core_item, sections=sections, core_aur=list(core.get('aur', [])))
     catalog.validate()
     return catalog

@@ -142,6 +142,7 @@
 - **Неподтверждённые desktop ID** — `code` (VS Code из AUR), `docker-desktop`, `AmneziaVPN` (из `.run`); у 1Password из AUR, вероятно, `1password.desktop`, а не `com.onepassword.OnePassword` (I13).
 - **Brave из Flathub и 1Password** — расширение 1Password в Brave в песочнице Flatpak связывается с приложением 1Password; если нет — вариант `brave-bin` из AUR.
 - **Hyprland и `dofile`** — `dofile("/usr/share/quietline/hyprland/quietline.lua")` в `~/.config/hypr/hyprland.lua` работает в Hyprland 0.55 (в старой ветке проверялось на 0.56) (I10).
+- **yay из AUR** — `yay-bin` собирается `makepkg -si` первым из пакетов AUR, `yay` видит пакеты, собранные установщиком, и обновляет их вместе с пакетами Arch (I14).
 - **Пакет `quietline`** — `makepkg` собирает wheel через hatchling из `git archive HEAD` и ставит оболочку, `quietline.lua`, fish-файл и правило polkit (I11).
 - **Docker Engine и Docker Desktop рядом** — пакет Docker Desktop ставится поверх Arch `docker` без конфликта; контексты `default` и `desktop-linux` (I15).
 - **Снимок для записи при `systemd` в `HOOKS`** — archinstall, вероятно, пишет `HOOKS` с `systemd`; тогда хук overlayfs недоступен и снимок делается для записи. `grub-btrfs` ставится и в этом случае, пункт в меню GRUB есть, но загрузка снимка меняет его содержимое; откат всё равно копирует снимок заново (I4, I9).

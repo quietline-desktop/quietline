@@ -53,13 +53,14 @@ def test_plan_always_contains_core(catalog):
 def test_empty_selection_installs_only_core(catalog):
     plan = catalog.plan(set())
     assert plan.repo == catalog.core_packages
-    assert plan.flatpak == plan.aur == plan.manual == plan.fnm == plan.uv == []
+    assert plan.aur == catalog.core_aur == ['yay-bin']
+    assert plan.flatpak == plan.manual == plan.fnm == plan.uv == []
 
 
 def test_plan_splits_sources(catalog):
     plan = catalog.plan({'brave', 'slack', 'docker-desktop'})
     assert plan.flatpak == ['com.brave.Browser']
-    assert plan.aur == ['slack-desktop']
+    assert plan.aur == ['yay-bin', 'slack-desktop']
     assert plan.manual == ['docker-desktop']
     assert 'slack-desktop' not in plan.repo and 'com.brave.Browser' not in plan.repo
 
@@ -138,6 +139,27 @@ def test_pins_skip_unselected(catalog):
 def test_unknown_selection_is_rejected(catalog):
     with pytest.raises(ValueError, match='nonesuch'):
         catalog.plan({'nonesuch'})
+
+
+def test_core_aur_is_optional_and_comes_first(tmp_path):
+    assert load_catalog(write_catalog(tmp_path, '')).plan(set()).aur == []
+    path = tmp_path / 'with-aur.toml'
+    path.write_text('''[core]
+packages = ["git"]
+aur = ["yay-bin"]
+
+[[section]]
+id = "s"
+title_key = "sectionMessengers"
+multiple = true
+
+[[section.item]]
+id = "slack"
+name = "Slack"
+source = "aur"
+packages = ["slack-desktop", "yay-bin"]
+''')
+    assert load_catalog(path).plan({'slack'}).aur == ['yay-bin', 'slack-desktop']
 
 
 def test_unknown_source_is_rejected(tmp_path):
@@ -252,6 +274,7 @@ def test_aur_only_for_the_documented_apps(catalog):
         'vscode': ['visual-studio-code-bin'],
         '1password': ['1password'],
     }
+    assert catalog.core_aur == ['yay-bin']
 
 
 def test_items_have_proper_shape(catalog):

@@ -102,7 +102,7 @@ TEXTS = {
         'summary.snapshotNone': 'Снимка не будет: откат по журналу установщика.',
         'ask.yes': 'д',
         'ask.suffix': '[д/Н]',
-        'update.hint': 'Пакеты Arch: sudo pacman -Syu. Flatpak: flatpak update --user. Docker Desktop и AmneziaVPN — по выпускам производителей.',
+        'update.hint': 'Пакеты Arch и AUR, в том числе поставленные вами: yay. Flatpak: flatpak update --user. Docker Desktop и AmneziaVPN — по выпускам производителей.',
         'update.none': 'Пакеты AUR обновлять не нужно.',
 
         # Ошибки
@@ -275,7 +275,7 @@ TEXTS = {
         'summary.snapshotNone': 'No snapshot: rollback follows the installer journal.',
         'ask.yes': 'y',
         'ask.suffix': '[y/N]',
-        'update.hint': 'Arch packages: sudo pacman -Syu. Flatpak: flatpak update --user. Docker Desktop and AmneziaVPN: vendor releases.',
+        'update.hint': 'Arch and AUR packages, including ones you installed yourself: yay. Flatpak: flatpak update --user. Docker Desktop and AmneziaVPN: vendor releases.',
         'update.none': 'No AUR packages need updating.',
 
         'error.stepFailed': 'Step "{step}" failed: {reason}',

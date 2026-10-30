@@ -111,7 +111,7 @@ CPU показывается как сглаженный процент обще
 
 | Группа | Приложения | Источник |
 | --- | --- | --- |
-| Основа (ставится всегда) | Hyprland, Quickshell, Quietline, greetd + tuigreet, PipeWire, NetworkManager, Bluetooth, порталы, polkit, шрифты, Ghostty, fish, Starship, micro, Git, OpenSSH | Репозитории Arch; Quietline — локальный пакет из клона |
+| Основа (ставится всегда) | Hyprland, Quickshell, Quietline, greetd + tuigreet, PipeWire, NetworkManager, Bluetooth, порталы, polkit, шрифты, Ghostty, fish, Starship, micro, Git, OpenSSH, помощник AUR yay | Репозитории Arch; Quietline — локальный пакет из клона; yay — AUR (`yay-bin`, выпуск разработчика yay) |
 | Действия оболочки | grim, slurp, Satty, wl-clipboard, cliphist, plocate | Репозитории Arch; собственный интерфейс Quietline поверх инструментов |
 | Браузеры (по выбору, можно несколько) | Google Chrome, Firefox, Brave, Chromium | Chrome — AUR (`google-chrome`, выпуск Google); Firefox и Chromium — Arch; Brave — Flathub (verified) |
 | Общение (по выбору) | Telegram Desktop, Slack | Telegram — Arch; Slack — AUR (`slack-desktop`, выпуск Slack) |
@@ -130,7 +130,7 @@ CPU показывается как сглаженный процент обще
 
 Remmina открывается как «Удалённый рабочий стол» из поиска и хранит отдельно именованные подключения RDP и VNC: адрес, протокол, разрешение и нужные параметры сеанса. RDP рассчитан на Windows с включённым удалённым рабочим столом и доступом по локальной сети или VPN; редакция Windows Home не может быть принимающей стороной встроенного RDP. VNC подключается напрямую по IP к совместимому серверу и не требует аккаунта у поставщика клиента. Профили соединений хранятся локально; пароль по умолчанию вводится при соединении и не записывается в профиль или репозиторий. Перед использованием на объекте проверяется совместимость с его конкретным VNC-сервером.
 
-Обновление документируется по источникам: `pacman` для Arch, проверяемые пакеты AUR для трёх коммерческих приложений, Flatpak для ONLYOFFICE и выпуски производителей для Docker Desktop и AmneziaVPN. Обновление Hyprland проходит проверку используемых Lua-команд, встроенного `scrolling` и переключения режимов; нативного модуля с привязкой к ABI в Quietline нет.
+Обновление документируется по источникам: `pacman` для Arch, `yay` для Arch и AUR вместе, в том числе для программ AUR, которые пользователь ставит сам, проверяемые пакеты AUR каталога через `./install.sh update`, Flatpak для ONLYOFFICE и выпуски производителей для Docker Desktop и AmneziaVPN. Обновление Hyprland проходит проверку используемых Lua-команд, встроенного `scrolling` и переключения режимов; нативного модуля с привязкой к ABI в Quietline нет.
 
 ## Ошибки, проверка и готовность
 

@@ -112,7 +112,8 @@
 - PipeWire, NetworkManager, Bluetooth, порталы выбора файлов и демонстрации экрана, агент polkit, power-profiles-daemon;
 - шрифты IBM Plex Sans/Mono, JetBrainsMono Nerd Font, шрифты с кириллицей;
 - grim, slurp, Satty, wl-clipboard, cliphist, plocate;
-- Ghostty, fish, Starship, micro, git, OpenSSH, curl, unzip.
+- Ghostty, fish, Starship, micro, git, OpenSSH, curl, unzip;
+- помощник AUR yay (`yay-bin`): им пользователь ставит программы AUR вне каталога и обновляет все пакеты одной командой; собирается первым из пакетов AUR, с тем же показом инструкций.
 
 По выбору:
 
