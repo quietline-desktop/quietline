@@ -146,3 +146,16 @@
 - **Docker Engine и Docker Desktop рядом** — пакет Docker Desktop ставится поверх Arch `docker` без конфликта; контексты `default` и `desktop-linux` (I15).
 - **Снимок для записи при `systemd` в `HOOKS`** — archinstall, вероятно, пишет `HOOKS` с `systemd`; тогда хук overlayfs недоступен и снимок делается для записи. `grub-btrfs` ставится и в этом случае, пункт в меню GRUB есть, но загрузка снимка меняет его содержимое; откат всё равно копирует снимок заново (I4, I9).
 - **Ctrl+C во время pacman** — установщик игнорирует SIGINT, пока работает интерактивная команда, и останавливается после неё; pacman сам решает, можно ли прерваться (I6).
+
+## Простой, индикатор, заряд и уведомления: живые проверки
+
+Ни один пункт `scripts/smoke-idle-notifications.md` ещё не выполнен: hypridle, клавиши и QML этапа 6 не запускались; `quietline-shell idle suspend` проверен на поддельном `/sys/class/power_supply`, правила карточек и порогов — тестами моделей.
+
+- **hypridle из `extra`** — версия пакета Arch принимает `-c`, `inhibit_sleep = 3` ждёт подтверждения блокировки экраном Quickshell (`WlSessionLock`), `before_sleep_cmd = loginctl lock-session` вызывает `lock_cmd` (N1, N5).
+- **DPMS из hypridle** — `hyprctl dispatch 'hl.dsp.dpms({ action = "disable" })'` и `"enable"` работают в Lua-конфигурации 0.55; `misc.key_press_enables_dpms` и `mouse_move_enables_dpms` включают экран (N1, N5).
+- **Запреты простоя** — видео Chrome (D-Bus `org.freedesktop.ScreenSaver`) и mpv (Wayland) откладывают блокировку; `IdleInhibitor` на окне-слое 1×1 с пустой маской принимается Hyprland (N2, N3).
+- **Зарядка USB-C** — на этом ноутбуке зарядка видна в `/sys/class/power_supply` как `USB` или `Mains` с `online = 1` (N7).
+- **Флаги клавиш** — `{ locked = true, repeating = true }` у `hl.bind` повторяют громкость и яркость при удержании и действуют на экране блокировки; `brightnessctl --min-value=1` не гасит подсветку (N8–N10).
+- **Индикатор** — сигналы `volumeChanged`/`mutedChanged` `PwNodeAudio` приходят на изменения от `wpctl`; пустая маска `Region {}` пропускает щелчки; окно над доком на 100 px не перекрывает док (N8, N11, N13).
+- **Уведомления** — `trackedNotifications` и сигнал закрытия от приложения убирают уведомление из истории; действие не-`resident` уведомления закрывает его; подсказка `transient` видна как `Notification.transient` (N15–N20).
+
