@@ -396,3 +396,65 @@ def test_copy_failure_reports_wl_copy_errors(tmp_path, monkeypatch):
     monkeypatch.setenv("PATH", f"{tmp_path}:{session.os.environ['PATH']}")
     with pytest.raises(RuntimeError, match="Failed to connect to a Wayland server"):
         session.copy_to_clipboard(b"x")
+
+
+def power_supplies(root, **supplies):
+    """Поддельный `/sys/class/power_supply`: имя → поля (`type`, `online`, `scope`)."""
+    for name, fields in supplies.items():
+        (root / name).mkdir(parents=True)
+        for key, value in fields.items():
+            (root / name / key).write_text(f"{value}\n")
+    return root
+
+
+class FakeSystemctl:
+    def __init__(self, code=0):
+        self.code = code
+        self.commands = []
+
+    def __call__(self, args, **kwargs):
+        self.commands.append(list(args))
+        return subprocess.CompletedProcess(args, self.code, "", "Failed to suspend system")
+
+
+def test_idle_suspend_on_battery_suspends(tmp_path, monkeypatch):
+    systemctl = FakeSystemctl()
+    monkeypatch.setattr(subprocess, "run", systemctl)
+    root = power_supplies(tmp_path, BAT0={"type": "Battery"}, AC={"type": "Mains", "online": 0})
+    assert session.idle_suspend(root) == {"suspended": True}
+    assert systemctl.commands == [["systemctl", "suspend"]]
+
+
+def test_idle_suspend_on_mains_stays_awake(tmp_path, monkeypatch):
+    systemctl = FakeSystemctl()
+    monkeypatch.setattr(subprocess, "run", systemctl)
+    root = power_supplies(tmp_path, BAT0={"type": "Battery"}, AC={"type": "Mains", "online": 1})
+    assert session.idle_suspend(root) == {"suspended": False, "reason": "ac"}
+    assert systemctl.commands == []
+
+
+def test_idle_suspend_on_usb_charger_stays_awake(tmp_path, monkeypatch):
+    systemctl = FakeSystemctl()
+    monkeypatch.setattr(subprocess, "run", systemctl)
+    root = power_supplies(tmp_path, **{"BAT0": {"type": "Battery"},
+                                       "ucsi-source-psy-USBC000:001": {"type": "USB", "online": 1}})
+    assert session.idle_suspend(root) == {"suspended": False, "reason": "ac"}
+    assert systemctl.commands == []
+
+
+def test_idle_suspend_ignores_peripheral_batteries(tmp_path, monkeypatch):
+    systemctl = FakeSystemctl()
+    monkeypatch.setattr(subprocess, "run", systemctl)
+    root = power_supplies(tmp_path, hidpp_battery_0={"type": "Battery", "scope": "Device"})
+    assert session.idle_suspend(root) == {"suspended": False, "reason": "no-battery"}
+    assert systemctl.commands == []
+
+
+def test_cli_idle_suspend_reports_systemctl_failure(tmp_path, monkeypatch, capsys):
+    monkeypatch.setattr(subprocess, "run", FakeSystemctl(code=1))
+    root = power_supplies(tmp_path, BAT0={"type": "Battery"})
+    monkeypatch.setattr(session, "POWER_SUPPLIES", root)
+    assert main(["idle", "suspend"]) == 1
+    output = capsys.readouterr().out
+    assert output.count("\n") == 1
+    assert "systemctl suspend failed" in json.loads(output)["error"]

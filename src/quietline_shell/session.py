@@ -37,6 +37,8 @@ LOCK_WAIT = 5.0
 SHELL_PROGRAMS = {"qs", "quickshell"}
 # Команды выхода приложений по классу окна: используются вместо закрытия окон.
 KNOWN_QUIT: dict[str, list[str]] = {}
+# Источники питания ядра: зарядка (`Mains`, `USB`) и батареи.
+POWER_SUPPLIES = Path("/sys/class/power_supply")
 _ADDRESS = re.compile(r"0x[0-9a-fA-F]+")
 _QUIETLINE_SCOPE = re.compile(r"/(app-quietline-[A-Za-z0-9_.:-]+\.scope)(?:/|$)")
 
@@ -138,6 +140,32 @@ def copy_to_clipboard(data: bytes, mime: str | None = None) -> None:
 
 def _remaining(found: list[dict[str, Any]]) -> list[dict[str, str]]:
     return [{"app": window["app"], "title": window["title"]} for window in found]
+
+
+def _supply_field(supply: Path, name: str) -> str:
+    """Поле источника питания без перевода строки; нет поля — пустая строка."""
+    try:
+        return (supply / name).read_text(encoding="utf-8").strip()
+    except OSError:
+        return ""
+
+
+def idle_suspend(supplies: Path | None = None) -> dict[str, Any]:
+    """Усыпляет компьютер после долгого простоя, только если он работает от своей батареи.
+
+    Зарядка подключена, если у источника `Mains` или `USB` (зарядка USB-C) `online = 1`.
+    Своя батарея — `Battery` без `scope = Device`: батареи мыши и наушников не в счёт.
+    """
+    root = supplies or POWER_SUPPLIES
+    entries = sorted(root.iterdir()) if root.is_dir() else []
+    if any(_supply_field(item, "type") in ("Mains", "USB") and _supply_field(item, "online") == "1" for item in entries):
+        return {"suspended": False, "reason": "ac"}
+    if not any(_supply_field(item, "type") == "Battery" and _supply_field(item, "scope") != "Device" for item in entries):
+        return {"suspended": False, "reason": "no-battery"}
+    result = subprocess.run(["systemctl", "suspend"], capture_output=True, text=True, timeout=30, check=False)
+    if result.returncode != 0:
+        raise RuntimeError(f"systemctl suspend failed: {result.stderr.strip() or result.returncode}")
+    return {"suspended": True}
 
 
 def _lock_running(pidfile: Path) -> int | None:

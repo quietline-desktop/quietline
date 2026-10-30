@@ -10,11 +10,12 @@
 -- Все пространства в раскладке scrolling: режим «Окна» держит обычные окна плавающими,
 -- режим «Тайлы» возвращает их в колонки. Новая колонка занимает половину рабочей области;
 -- единственная колонка не растягивается на весь экран. Упавший экран блокировки можно
--- запустить заново: сеанс при этом остаётся заблокированным.
+-- запустить заново: сеанс при этом остаётся заблокированным. Погашенные по простою
+-- экраны включаются любым нажатием клавиши или движением мыши.
 hl.config({
     general = { layout = "scrolling" },
     scrolling = { column_width = 0.5, fullscreen_on_one_column = false },
-    misc = { allow_session_lock_restore = true },
+    misc = { allow_session_lock_restore = true, key_press_enables_dpms = true, mouse_move_enables_dpms = true },
 })
 
 -- Раскладки us и ru и сочетание их переключения. Оболочка пишет выбор в файл
@@ -55,10 +56,12 @@ end)
 -- Сервис движка и оболочка стартуют вместе с Hyprland отдельными процессами: сбой
 -- оболочки не останавливает движок и клавиши, оболочка сама переподключается к движку.
 -- История буфера пишут наблюдатели wl-paste за текстом и картинками; индекс файлов
--- домашнего каталога для поиска строится при входе.
+-- домашнего каталога для поиска строится при входе. Простоем и блокировкой перед сном
+-- управляет hypridle: он работает и без оболочки.
 hl.on("hyprland.start", function ()
     hl.exec_cmd("quietline-engine serve")
     hl.exec_cmd("qs -c quietline")
+    hl.exec_cmd("hypridle -c /usr/share/quietline/hypridle/hypridle.conf")
     hl.exec_cmd("wl-paste --type text --watch quietline-shell clipboard store")
     hl.exec_cmd("wl-paste --type image --watch quietline-shell clipboard store")
     hl.exec_cmd("quietline-shell files --update")

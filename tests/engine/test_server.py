@@ -686,7 +686,10 @@ def test_shortcuts_target_expected_cli_calls():
     assert re.search(
         r"scrolling\s*=\s*\{\s*column_width\s*=\s*0\.5,\s*fullscreen_on_one_column\s*=\s*false\s*\}", config.group(1)
     )
-    assert re.search(r"misc\s*=\s*\{\s*allow_session_lock_restore\s*=\s*true\s*\}", config.group(1))
+    assert re.search(
+        r"misc\s*=\s*\{\s*allow_session_lock_restore\s*=\s*true,\s*key_press_enables_dpms\s*=\s*true,"
+        r"\s*mouse_move_enables_dpms\s*=\s*true\s*\}", config.group(1)
+    )
 
     # Движок стартует первым, оболочка — отдельной командой после него.
     start = re.search(r'hl\.on\("hyprland\.start",\s*function\s*\(\)(.*?)\nend\)', text, re.S)
@@ -694,6 +697,7 @@ def test_shortcuts_target_expected_cli_calls():
     assert re.findall(r'hl\.exec_cmd\("([^"]+)"\)', start.group(1)) == [
         "quietline-engine serve",
         "qs -c quietline",
+        "hypridle -c /usr/share/quietline/hypridle/hypridle.conf",
         "wl-paste --type text --watch quietline-shell clipboard store",
         "wl-paste --type image --watch quietline-shell clipboard store",
         "quietline-shell files --update",

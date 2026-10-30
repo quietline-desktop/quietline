@@ -21,6 +21,8 @@
 - `clipboard store|list|restore|delete|image|wipe|pause` — история буфера сеанса:
   `store` читает запись из stdin, `list` — `{"entries": [{"id", "kind", "preview"}], "paused"}`,
   `image --id ID` — `{"path"}`, остальные — `{"ok": true}`;
+- `idle suspend` — сон после долгого простоя (зовёт hypridle): `{"suspended": true}` или
+  `{"suspended": false, "reason": "ac" | "no-battery"}` — от зарядки и без своей батареи сна нет;
 - `files QUERY [--limit N]` — файлы домашнего каталога `{"files": [path…], "indexedAt"}`;
   `files --update` — перестроить базу, `{"indexedAt"}`;
 - `network ACTION …` — NetworkManager: состояние, профили объекта, Wi-Fi, контрольные
@@ -82,6 +84,9 @@ def _parser() -> argparse.ArgumentParser:
     pause_switch = pause.add_mutually_exclusive_group(required=True)
     pause_switch.add_argument("--on", dest="paused", action="store_true")
     pause_switch.add_argument("--off", dest="paused", action="store_false")
+    idle = commands.add_parser("idle", help="actions for long idle periods (called by hypridle)")
+    idle.add_subparsers(dest="action", required=True).add_parser(
+        "suspend", help="suspend the computer if it runs on its own battery")
     files = commands.add_parser("files", help="find files in the home directory by name")
     files.add_argument("query", nargs="?", help="part of the file name")
     files.add_argument("--limit", type=int, default=20)
@@ -122,6 +127,8 @@ def _run(args: argparse.Namespace) -> dict[str, Any]:
                     return clipboard.wipe()
                 case _:
                     return clipboard.set_paused(args.paused)
+        case "idle":
+            return session.idle_suspend()
         case "files":
             if args.update:
                 return search.update_index()

@@ -8,7 +8,7 @@ arch=('any')
 license=('GPL-3.0-only')
 depends=('python' 'hyprland' 'quickshell' 'networkmanager' 'brightnessctl' 'power-profiles-daemon'
          'bluez' 'pipewire' 'wireplumber' 'glib2' 'libnotify' 'wl-clipboard' 'cliphist' 'grim'
-         'slurp' 'satty' 'plocate' 'polkit')
+         'slurp' 'satty' 'plocate' 'polkit' 'hypridle')
 makedepends=('git' 'python-build' 'python-installer' 'python-hatchling')
 
 _repo="${QUIETLINE_REPO:-$(realpath "$startdir/../..")}"
@@ -36,6 +36,7 @@ package() {
     install -dm755 "$pkgdir/usr/share/quietline/shell"
     cp -r --no-preserve=ownership shell/quietline/. "$pkgdir/usr/share/quietline/shell/"
     install -Dm644 config/hyprland/quietline.lua "$pkgdir/usr/share/quietline/hyprland/quietline.lua"
+    install -Dm644 config/hypridle/hypridle.conf "$pkgdir/usr/share/quietline/hypridle/hypridle.conf"
     install -Dm644 config/fish/quietline-locale.fish "$pkgdir/usr/share/quietline/fish/quietline-locale.fish"
     install -Dm644 config/polkit/50-quietline-network.rules "$pkgdir/usr/share/polkit-1/rules.d/50-quietline-network.rules"
     install -Dm644 LICENSE "$pkgdir/usr/share/licenses/$pkgname/LICENSE"
