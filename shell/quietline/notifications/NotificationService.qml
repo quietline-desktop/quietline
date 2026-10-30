@@ -33,29 +33,30 @@ Scope {
 
     function isPopup(notification) { revision; return !!meta[notification.id] && meta[notification.id].popup; }
     function changed() { revision += 1; }
-    // Срок карточки вышел: `transient` закрывается, остальные остаются в истории.
-    function popupTimedOut(notification) {
-        if (notification.transient) { notification.expire(); return; }
-        hidePopup(notification);
-    }
-    // Карточка скрыта по сроку или пользователем (`seen` — он её видел: уведомление прочитано);
-    // уведомление остаётся в истории.
+    // Срок карточки вышел: карточка скрывается, уведомление остаётся в истории (`transient` закрывается).
+    function popupTimedOut(notification) { hidePopup(notification, false); }
+    // Карточка скрыта по сроку или пользователем (`seen` — он её видел: уведомление прочитано).
     function hidePopup(notification, seen) {
+        endCard(notification, seen);
+        changed();
+    }
+    // Убрать карточку без пересчёта; `transient` без карточки закрывается.
+    function endCard(notification, seen) {
         var info = meta[notification.id];
         if (!info) return;
         info.popup = false;
         if (seen) info.read = true;
-        changed();
+        if (Models.transientExpires(notification.transient, false)) notification.expire();
     }
     function setDnd(on) {
         dnd = on;
-        if (on) notifications.forEach(item => { if (meta[item.id] && item.urgency !== NotificationUrgency.Critical) meta[item.id].popup = false; });
+        if (on) notifications.slice().forEach(item => { if (item.urgency !== NotificationUrgency.Critical) endCard(item, false); });
         changed();
     }
-    // Открытый центр показывает всё сам: уведомления прочитаны, карточки не нужны.
-    function setCenterOpen(open) {
-        centerOpen = open;
-        if (open) notifications.forEach(item => { if (meta[item.id]) { meta[item.id].read = true; meta[item.id].popup = false; } });
+    // `centerOpen` задаёт shell.qml: открыт ли центр на какой-либо панели. Открытый центр
+    // показывает всё сам: уведомления прочитаны, карточки не нужны.
+    onCenterOpenChanged: {
+        if (centerOpen) notifications.slice().forEach(item => endCard(item, true));
         changed();
     }
     function clearAll() { notifications.slice().forEach(item => item.dismiss()); }
@@ -74,8 +75,9 @@ Scope {
         actionsSupported: true
         onNotification: notification => {
             notification.tracked = true;
-            root.meta[notification.id] = {received: Date.now(), read: root.centerOpen,
-                                          popup: Models.popupAllowed(notification.urgency, root.dnd, root.centerOpen)};
+            var popup = Models.popupAllowed(notification.urgency, root.dnd, root.centerOpen);
+            root.meta[notification.id] = {received: Date.now(), read: root.centerOpen, popup: popup};
+            if (Models.transientExpires(notification.transient, popup)) { notification.expire(); return; }
             var kept = server.trackedNotifications.values.filter(item => !item.transient);
             kept.slice(0, Models.notificationsToDrop(kept.length)).forEach(item => item.dismiss());
             root.changed();

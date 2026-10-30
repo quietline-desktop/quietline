@@ -26,7 +26,7 @@ Scope {
         warned = level;
         var critical = level === Models.BATTERY_CRITICAL;
         Quickshell.execDetached(["notify-send", "--app-name=Quietline", "--urgency=" + (critical ? "critical" : "normal"),
-                                 Lang.f(Lang.s.batteryLowTitle, level), critical ? Lang.s.batteryCriticalBody : Lang.s.batteryLowBody]);
+                                 Lang.f(Lang.s.batteryLowTitle, percent), critical ? Lang.s.batteryCriticalBody : Lang.s.batteryLowBody]);
     }
     onPercentChanged: checkBattery()
     onChargingChanged: checkBattery()

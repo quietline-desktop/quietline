@@ -48,9 +48,8 @@ PanelWindow {
     function openSummary() { popout.open("quick"); }
     function openClipboard() { popout.open("clipboard"); }
     function toggleNotifications() { popout.toggle("notifications"); }
-    // Открытый центр уведомлений: карточки не всплывают, уведомления прочитаны.
+    // Открыт ли здесь центр уведомлений (shell.qml собирает это со всех панелей).
     readonly property bool notificationsOpen: popout.opened && popout.showingNotifications
-    onNotificationsOpenChanged: services.notifications.setCenterOpen(notificationsOpen)
     // Меню питания с ожидающим подтверждения действием сеанса.
     function openSession(action) { popout.open("power"); Qt.callLater(function() { powerMenu.confirming = action; }); }
     // Подтверждение принудительного завершения процесса окна `window`.

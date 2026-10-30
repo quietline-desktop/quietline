@@ -30,7 +30,8 @@ ShellRoot {
     SessionService { id: sessionService }
     ClipboardService { id: clipboardService }
     SearchService { id: searchService }
-    NotificationService { id: notificationService }
+    // Центр уведомлений открыт хотя бы на одной панели; отключённый монитор уносит своё состояние.
+    NotificationService { id: notificationService; centerOpen: root.surfaces.some(item => item.bar.notificationsOpen) }
     NotificationPopups { service: notificationService }
     // Системные сервисы, общие для всех панелей, всплывающих окон и окна «Настройки».
     readonly property var services: ({network: networkService, audio: audioService, brightness: brightnessService,

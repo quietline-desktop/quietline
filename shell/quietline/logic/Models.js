@@ -520,6 +520,9 @@ function popupAllowed(urgency, dnd, centerOpen) {
     if (centerOpen) return false;
     return urgency === 2 || !dnd;
 }
+// `transient` живёт только карточкой: без видимой карточки (скрыта, не всплыла при
+// «Не беспокоить» или открытом центре) он сразу закрывается по сроку.
+function transientExpires(transient, popupShown) { return !!transient && !popupShown; }
 // Давность уведомления для истории: меньше минуты, меньше часа (минуты), сегодня, раньше.
 function notificationAge(received, now) {
     var seconds = Math.max(0, (now - received) / 1000);

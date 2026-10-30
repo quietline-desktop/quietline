@@ -501,3 +501,8 @@ test('history keeps at most a hundred notifications',()=>{
  assert.equal(M.notificationsToDrop(0),0);
  assert.equal(M.bindAction('qs -c quietline ipc call quietline notifications',ru),'Уведомления');
 });
+test('a transient notification without a visible card is expired at once',()=>{
+ assert.equal(M.transientExpires(true,false),true);
+ assert.equal(M.transientExpires(true,true),false);
+ assert.equal(M.transientExpires(false,false),false);
+});
