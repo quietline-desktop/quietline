@@ -5,7 +5,7 @@ import Quickshell.Services.UPower
 import ".."
 import "../logic/Models.js" as Models
 
-// Батарея UPower и профили питания power-profiles-daemon.
+// Батарея UPower, предупреждения о низком заряде и профили питания power-profiles-daemon.
 Scope {
     id: root
     readonly property var battery: UPower.displayDevice
@@ -15,6 +15,22 @@ Scope {
     readonly property string timeText: !hasBattery ? "" : charging
         ? (battery.timeToFull > 0 ? Lang.f(Lang.s.powerUntilFull, Models.formatDuration(battery.timeToFull, Lang.s)) : Lang.s.powerCharging)
         : (battery.timeToEmpty > 0 ? Lang.f(Lang.s.powerRemaining, Models.formatDuration(battery.timeToEmpty, Lang.s)) : "")
+    // Предупреждение о низком заряде — уведомлением, как от любой программы: всплывает,
+    // попадает в историю; на критическом пороге — критическое. После зарядки счёт заново.
+    property var warned: null
+    function checkBattery() {
+        if (!hasBattery) return;
+        if (charging) { warned = null; return; }
+        var level = Models.batteryWarning(warned, percent, charging);
+        if (level === null) return;
+        warned = level;
+        var critical = level === Models.BATTERY_CRITICAL;
+        Quickshell.execDetached(["notify-send", "--app-name=Quietline", "--urgency=" + (critical ? "critical" : "normal"),
+                                 Lang.f(Lang.s.batteryLowTitle, level), critical ? Lang.s.batteryCriticalBody : Lang.s.batteryLowBody]);
+    }
+    onPercentChanged: checkBattery()
+    onChargingChanged: checkBattery()
+    onHasBatteryChanged: checkBattery()
     // PowerProfiles отдаёт значение и без службы, поэтому её наличие проверяет powerprofilesctl.
     property bool profilesAvailable: false
     readonly property int profile: PowerProfiles.profile
