@@ -14,6 +14,16 @@ Scope {
     property int target: -1
     // Значение записи в процессе или последней записанной.
     property int sent: -1
+    // Яркость перечитана после `refresh()` (клавиши яркости меняют её в обход оболочки).
+    signal refreshed()
+    property bool refreshing: false
+    // Чтение уже идёт и могло начаться до изменения: перечитать после него.
+    property bool refreshQueued: false
+    function refresh() {
+        refreshing = true;
+        if (reader.running) refreshQueued = true;
+        else reader.running = true;
+    }
     function set(value) {
         if (!supported) return;
         target = Math.max(1, Math.min(100, Math.round(value)));
@@ -34,6 +44,7 @@ Scope {
         id: reader
         command: ["brightnessctl", "-m", "-c", "backlight"]
         running: true
+        onRunningChanged: { if (!running && root.refreshQueued) { root.refreshQueued = false; running = true; } }
         stdout: StdioCollector {
             onStreamFinished: {
                 var value = Models.parseBrightness(text);
@@ -41,6 +52,7 @@ Scope {
                 if (!value) return;
                 root.device = value.device;
                 if (root.target < 0) root.percent = value.percent;
+                if (root.refreshing && !root.refreshQueued) { root.refreshing = false; root.refreshed(); }
             }
         }
     }

@@ -83,6 +83,17 @@ hl.bind("SUPER + SHIFT + Q", hl.dsp.exec_cmd("qs -c quietline ipc call quietline
 -- История буфера: поиск по записям, выбранная возвращается в буфер.
 hl.bind("SUPER + V", hl.dsp.exec_cmd("qs -c quietline ipc call quietline clipboard"))
 
+-- Громкость (до 150 %), звук и микрофон, яркость встроенного экрана шагом 5 %: меняют сами
+-- утилиты, поэтому клавиши работают и без оболочки и на заблокированном экране; громкость и
+-- яркость повторяются при удержании. Индикатор громкости оболочка показывает сама по
+-- изменению PipeWire, яркости — по вызову `osd brightness`.
+hl.bind("XF86AudioRaiseVolume", hl.dsp.exec_cmd("wpctl set-volume -l 1.5 @DEFAULT_AUDIO_SINK@ 5%+"), { locked = true, repeating = true })
+hl.bind("XF86AudioLowerVolume", hl.dsp.exec_cmd("wpctl set-volume @DEFAULT_AUDIO_SINK@ 5%-"), { locked = true, repeating = true })
+hl.bind("XF86AudioMute", hl.dsp.exec_cmd("wpctl set-mute @DEFAULT_AUDIO_SINK@ toggle"), { locked = true })
+hl.bind("XF86AudioMicMute", hl.dsp.exec_cmd("wpctl set-mute @DEFAULT_AUDIO_SOURCE@ toggle"), { locked = true })
+hl.bind("XF86MonBrightnessUp", hl.dsp.exec_cmd("brightnessctl -c backlight --min-value=1 set 5%+ && qs -c quietline ipc call quietline osd brightness"), { locked = true, repeating = true })
+hl.bind("XF86MonBrightnessDown", hl.dsp.exec_cmd("brightnessctl -c backlight --min-value=1 set 5%- && qs -c quietline ipc call quietline osd brightness"), { locked = true, repeating = true })
+
 -- Снимок монитора с фокусом в файл и буфер; область экрана с разметкой в Satty.
 hl.bind("Print", hl.dsp.exec_cmd("quietline-shell screenshot output"))
 hl.bind("SUPER + SHIFT + S", hl.dsp.exec_cmd("quietline-shell screenshot region"))

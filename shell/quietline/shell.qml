@@ -7,6 +7,7 @@ import "system"
 import "settings"
 import "session"
 import "notifications"
+import "osd"
 import "clipboard"
 import "search"
 import "bar"
@@ -35,6 +36,7 @@ ShellRoot {
     readonly property var services: ({network: networkService, audio: audioService, brightness: brightnessService,
                                       bluetooth: bluetoothService, power: powerService, keepAwake: keepAwakeService, session: sessionService, clipboard: clipboardService, search: searchService, settings: settingsWindow})
     SettingsWindow { id: settingsWindow; services: root.services; desktop: desktopService }
+    Osd { id: osdWindow; services: root.services; desktop: desktopService; indicators: systemIndicators }
     Variants {
         model: Quickshell.screens
         Scope {
@@ -96,5 +98,7 @@ ShellRoot {
         // Окно «Настройки» на разделе `section` (`network`, `audio`, `display`, `bluetooth`,
         // `power`, `region`, `shortcuts`, `about`; `keyboard` открывает `region`); пусто — последний открытый раздел.
         function settings(section: string): void { settingsWindow.open(section); }
+        // Клавиши яркости после `brightnessctl`: перечитать яркость и показать индикатор (`brightness`).
+        function osd(kind: string): void { if (kind === "brightness") brightnessService.refresh(); }
     }
 }

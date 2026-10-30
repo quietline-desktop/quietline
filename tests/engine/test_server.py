@@ -634,8 +634,15 @@ def test_shortcuts_target_expected_cli_calls():
     keys = re.findall(r'^hl\.bind\("([^"]+)"', text, re.M)
     assert len(keys) == len(set(keys)) == text.count("hl.bind(")
     binds = re.findall(r'^hl\.bind\("([^"]+)",\s*hl\.dsp\.exec_cmd\("([^"]+)"\)(?:,\s*\{[^}]*\})?\)$', text, re.M)
-    locked = re.findall(r'^hl\.bind\("([^"]+)",.*\{\s*locked\s*=\s*true\s*\}\)$', text, re.M)
-    assert locked == ["SUPER + L"]
+    flags = dict(re.findall(r'^hl\.bind\("([^"]+)",.*\{([^}]*)\}\)$', text, re.M))
+    locked = [key for key, value in flags.items() if re.search(r"\blocked\s*=\s*true\b", value)]
+    repeating = [key for key, value in flags.items() if re.search(r"\brepeating\s*=\s*true\b", value)]
+    media = ["XF86AudioRaiseVolume", "XF86AudioLowerVolume", "XF86AudioMute", "XF86AudioMicMute",
+             "XF86MonBrightnessUp", "XF86MonBrightnessDown"]
+    # Блокировка и клавиши звука и яркости действуют и на заблокированном экране.
+    assert sorted(locked) == sorted(["SUPER + L", *media])
+    assert sorted(repeating) == sorted(["XF86AudioRaiseVolume", "XF86AudioLowerVolume",
+                                        "XF86MonBrightnessUp", "XF86MonBrightnessDown"])
     # Действие без закрывающей скобки самого hl.bind.
     others = {
         key: action[:-1] if action.count(")") > action.count("(") else action
@@ -678,6 +685,13 @@ def test_shortcuts_target_expected_cli_calls():
     expected["SUPER + SHIFT + S"] = "quietline-shell screenshot region"
     expected["SUPER + Space"] = "qs -c quietline ipc call quietline launcher"
     expected["SUPER + I"] = "qs -c quietline ipc call quietline settings ''"
+    osd = " && qs -c quietline ipc call quietline osd brightness"
+    expected["XF86AudioRaiseVolume"] = "wpctl set-volume -l 1.5 @DEFAULT_AUDIO_SINK@ 5%+"
+    expected["XF86AudioLowerVolume"] = "wpctl set-volume @DEFAULT_AUDIO_SINK@ 5%-"
+    expected["XF86AudioMute"] = "wpctl set-mute @DEFAULT_AUDIO_SINK@ toggle"
+    expected["XF86AudioMicMute"] = "wpctl set-mute @DEFAULT_AUDIO_SOURCE@ toggle"
+    expected["XF86MonBrightnessUp"] = "brightnessctl -c backlight --min-value=1 set 5%+" + osd
+    expected["XF86MonBrightnessDown"] = "brightnessctl -c backlight --min-value=1 set 5%-" + osd
     assert dict(binds) == expected
 
     config = re.search(r"hl\.config\(\{(.*?)\n\}\)", text, re.S)

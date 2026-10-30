@@ -426,3 +426,34 @@ test('toggle labels follow the chosen shortcut',()=>{
  assert.equal(en.barLayoutHint.replace('{0}','Caps Lock'),'Switch layout · Caps Lock');
  assert.match(ru.keyboardToggleNote,/\{0\}/);
 });
+test('indicator shows volume, brightness and layout values',()=>{
+ assert.deepEqual(plain(M.osdView('volume',1.2,false)).fill,1);
+ assert.equal(M.osdView('volume',1.2,false).text,'120%');
+ const muted=M.osdView('volume',0.35,true), loud=M.osdView('volume',0.35,false);
+ assert.equal(muted.fill,0.35);
+ assert.notEqual(muted.icon,loud.icon);
+ assert.notEqual(M.osdView('mic',0.5,true).icon,M.osdView('mic',0.5,false).icon);
+ assert.equal(M.osdView('brightness',0.05,false).text,'5%');
+ assert.deepEqual(plain(M.osdView('layout','RU',false)),{icon:M.osdView('layout','EN',false).icon,fill:-1,text:'RU'});
+ assert.equal(M.osdView('volume',-0.2,false).fill,0);
+});
+test('indicator skips changes made by the shell itself',()=>{
+ assert.equal(M.OSD_HIDE_MS,1500);
+ assert.equal(M.OSD_LOCAL_MS,600);
+ assert.equal(M.osdSuppressed(1600,1000),true);
+ assert.equal(M.osdSuppressed(1600,1600),false);
+ assert.equal(M.osdSuppressed(0,1000),false);
+});
+test('volume and brightness keys are described in the shortcuts list',()=>{
+ const rows=plain(M.describeBinds([
+  {modmask:0,key:'XF86AudioRaiseVolume',dispatcher:'exec',arg:'wpctl set-volume -l 1.5 @DEFAULT_AUDIO_SINK@ 5%+'},
+  {modmask:0,key:'XF86AudioLowerVolume',dispatcher:'exec',arg:'wpctl set-volume @DEFAULT_AUDIO_SINK@ 5%-'},
+  {modmask:0,key:'XF86AudioMute',dispatcher:'exec',arg:'wpctl set-mute @DEFAULT_AUDIO_SINK@ toggle'},
+  {modmask:0,key:'XF86AudioMicMute',dispatcher:'exec',arg:'wpctl set-mute @DEFAULT_AUDIO_SOURCE@ toggle'},
+  {modmask:0,key:'XF86MonBrightnessUp',dispatcher:'exec',arg:'brightnessctl -c backlight --min-value=1 set 5%+ && qs -c quietline ipc call quietline osd brightness'},
+  {modmask:0,key:'XF86MonBrightnessDown',dispatcher:'exec',arg:'brightnessctl -c backlight --min-value=1 set 5%- && qs -c quietline ipc call quietline osd brightness'},
+ ],ru));
+ assert.deepEqual(rows.map(r=>r.action),['Громче','Тише','Выключить или включить звук','Выключить или включить микрофон','Ярче','Темнее']);
+ assert.deepEqual(rows.map(r=>r.keys),['Громкость +','Громкость −','Звук','Микрофон','Яркость +','Яркость −']);
+ assert.equal(plain(M.describeBinds([{modmask:0,key:'XF86AudioMute',arg:'wpctl set-mute @DEFAULT_AUDIO_SINK@ toggle'}],en))[0].keys,'Mute');
+});

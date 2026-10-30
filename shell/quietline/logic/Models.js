@@ -379,6 +379,20 @@ function isBuiltinOutput(name) { return /^(eDP|LVDS|DSI)-/.test(name || ""); }
 // Громкость PipeWire в пределах 0…150 %.
 function clampVolume(value) { return Math.max(0, Math.min(1.5, value)); }
 
+// Индикатор громкости, микрофона, яркости и раскладки: глиф Nerd Font, заполнение полосы
+// 0…1 (громкость выше 100 % заполняет её целиком; у раскладки полосы нет — `-1`) и подпись.
+var OSD_HIDE_MS = 1500;
+// Сколько после изменения ползунком оболочки индикатор не показывает изменения звука.
+var OSD_LOCAL_MS = 600;
+var OSD_ICONS = {volume: ["\uf028", "\uf026"], mic: ["\uf130", "\uf131"], brightness: ["\uf185", "\uf185"], layout: ["\uf11c", "\uf11c"]};
+function osdView(kind, value, muted) {
+    var icons = OSD_ICONS[kind] || OSD_ICONS.volume;
+    if (kind === "layout") return {icon: icons[0], fill: -1, text: String(value)};
+    var number = Math.max(0, Number(value) || 0);
+    return {icon: icons[muted ? 1 : 0], fill: Math.min(1, number), text: Math.round(number * 100) + "%"};
+}
+function osdSuppressed(localUntil, now) { return now < localUntil; }
+
 // Время батареи: «1 ч 20 мин» или «10 мин», не меньше минуты.
 function formatDuration(seconds, s) {
     var minutes = Math.max(1, Math.round(seconds / 60)), hours = Math.floor(minutes / 60);
@@ -405,8 +419,20 @@ function bindAction(command, s) {
     if (/ipc call quietline settings shortcuts$/.test(command)) return s.bindShortcuts;
     if (/ipc call quietline settings/.test(command)) return s.bindSettings;
     if (command === "dolphin") return s.bindDolphin;
+    if (/^wpctl set-volume .*@DEFAULT_AUDIO_SINK@ \d+%\+$/.test(command)) return s.bindVolumeUp;
+    if (/^wpctl set-volume .*@DEFAULT_AUDIO_SINK@ \d+%-$/.test(command)) return s.bindVolumeDown;
+    if (command === "wpctl set-mute @DEFAULT_AUDIO_SINK@ toggle") return s.bindMute;
+    if (command === "wpctl set-mute @DEFAULT_AUDIO_SOURCE@ toggle") return s.bindMicMute;
+    if (/^brightnessctl .* set \d+%\+/.test(command)) return s.bindBrightnessUp;
+    if (/^brightnessctl .* set \d+%-/.test(command)) return s.bindBrightnessDown;
     return command;
 }
+
+// Подписи мультимедийных клавиш в памятке вместо имён XKB.
+var KEY_LABEL_KEYS = {
+    XF86AudioRaiseVolume: "keyVolumeUp", XF86AudioLowerVolume: "keyVolumeDown", XF86AudioMute: "keyMute",
+    XF86AudioMicMute: "keyMicMute", XF86MonBrightnessUp: "keyBrightnessUp", XF86MonBrightnessDown: "keyBrightnessDown"
+};
 
 // Приложения, на которые ссылаются привязки Hyprland: команда -> ID desktop entry.
 var BIND_APPS = {dolphin: "org.kde.dolphin", ghostty: "com.mitchellh.ghostty"};
@@ -421,7 +447,8 @@ function describeBinds(binds, s, entries) {
     }).map(function(bind) {
         var keys = MODIFIERS.filter(function(item) { return (bind.modmask & item[0]) !== 0; })
             .map(function(item) { return item[1]; });
-        keys.push(bind.key);
+        var label = textKey(KEY_LABEL_KEYS, bind.key, "");
+        keys.push(label ? s[label] : bind.key);
         return {keys: keys.join("+"), action: bindAction(bind.arg || bind.dispatcher || "", s)};
     });
 }
