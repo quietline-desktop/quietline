@@ -114,7 +114,7 @@ CPU показывается как сглаженный процент обще
 | Основа (ставится всегда) | Hyprland, Quickshell, Quietline, greetd + tuigreet, PipeWire, NetworkManager, Bluetooth, порталы, polkit, шрифты, Ghostty, fish, Starship, micro, Git, OpenSSH | Репозитории Arch; Quietline — локальный пакет из клона |
 | Действия оболочки | grim, slurp, Satty, wl-clipboard, cliphist, plocate | Репозитории Arch; собственный интерфейс Quietline поверх инструментов |
 | Браузеры (по выбору, можно несколько) | Google Chrome, Firefox, Brave, Chromium | Chrome — AUR (`google-chrome`, выпуск Google); Firefox и Chromium — Arch; Brave — Flathub (verified) |
-| Общение (по выбору) | Telegram Desktop, Slack, WeChat | Telegram — Arch; Slack — AUR (`slack-desktop`, выпуск Slack); WeChat — AUR (`wechat-bin`, выпуск Tencent) |
+| Общение (по выбору) | Telegram Desktop, Slack | Telegram — Arch; Slack — AUR (`slack-desktop`, выпуск Slack) |
 | Файлы и редактор | Dolphin, официальная сборка VS Code | Dolphin — Arch; VS Code — AUR (`visual-studio-code-bin`, выпуск Microsoft) |
 | Пароли и VPN | 1Password, AmneziaVPN | 1Password — AUR (`1password`, пакет 1Password с проверкой подписи); AmneziaVPN — вручную, стабильный `.run` со страницы выпусков |
 | Удалённый доступ | Remmina, FreeRDP, GTK-VNC: сохранённые профили RDP и прямого VNC по IP без аккаунта | Репозитории Arch |

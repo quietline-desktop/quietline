@@ -1,6 +1,6 @@
 # Каталог программ установщика Quietline: что ставится, откуда и что закрепляется в доке.
 # Схема и правила — в docstring src/quietline_install/catalog.py.
-# desktop: wechat и code не подтверждены на живой системе (docs/backlog.md).
+# desktop: code не подтверждён на живой системе (docs/backlog.md).
 
 [core]
 packages = [
@@ -76,15 +76,6 @@ name = "Slack"
 source = "aur"
 packages = ["slack-desktop"]
 desktop = "slack"
-pin = "messenger"
-
-[[section.item]]
-id = "wechat"
-name = "WeChat"
-source = "aur"
-packages = ["wechat-bin"]
-repo_packages = ["noto-fonts-cjk"]
-desktop = "wechat"
 pin = "messenger"
 
 [[section]]

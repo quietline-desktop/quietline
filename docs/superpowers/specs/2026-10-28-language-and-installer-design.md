@@ -119,7 +119,7 @@
 | Раздел | Варианты | Отмечено в «Рекомендуемом наборе» |
 |---|---|---|
 | Браузеры (можно несколько) | Google Chrome, Firefox, Brave, Chromium | Chrome |
-| Общение | Telegram, Slack, WeChat | Telegram |
+| Общение | Telegram, Slack | Telegram |
 | Файлы | Dolphin | да |
 | Редактор кода | VS Code (официальная сборка) | да |
 | Пароли | 1Password | да |

@@ -139,7 +139,7 @@
 - **Консольный шрифт** — `setfont cyr-sun16` из `kbd` в TTY показывает кириллицу, тире и кавычки «»; экраны помещаются в 80×24 и не ломаются при изменении размера (I1).
 - **Язык для программ** — greetd с `source_profile` читает `/etc/profile.d/locale.sh`, тот подхватывает `~/.config/locale.conf` (если `LANG` уже не задан systemd) (I12).
 - **fnm** — `fnm install --lts` создаёт алиас `lts-latest`, `fnm default lts-latest` работает, `fnm list` показывает алиас; хук `fnm env --use-on-cd --shell fish | source` в `conf.d/quietline.fish` (I5).
-- **Неподтверждённые desktop ID** — `code` (VS Code из AUR), `wechat` (`wechat-bin`), `docker-desktop`, `AmneziaVPN` (из `.run`); у 1Password из AUR, вероятно, `1password.desktop`, а не `com.onepassword.OnePassword` (I13).
+- **Неподтверждённые desktop ID** — `code` (VS Code из AUR), `docker-desktop`, `AmneziaVPN` (из `.run`); у 1Password из AUR, вероятно, `1password.desktop`, а не `com.onepassword.OnePassword` (I13).
 - **Brave из Flathub и 1Password** — расширение 1Password в Brave в песочнице Flatpak связывается с приложением 1Password; если нет — вариант `brave-bin` из AUR.
 - **Hyprland и `dofile`** — `dofile("/usr/share/quietline/hyprland/quietline.lua")` в `~/.config/hypr/hyprland.lua` работает в Hyprland 0.55 (в старой ветке проверялось на 0.56) (I10).
 - **Пакет `quietline`** — `makepkg` собирает wheel через hatchling из `git archive HEAD` и ставит оболочку, `quietline.lua`, fish-файл и правило polkit (I11).

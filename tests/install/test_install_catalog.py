@@ -65,10 +65,9 @@ def test_plan_splits_sources(catalog):
 
 
 def test_mixed_sources_in_one_item(catalog):
-    plan = catalog.plan({'wechat', 'onlyoffice'})
-    assert plan.aur == ['wechat-bin']
+    plan = catalog.plan({'onlyoffice'})
     assert plan.flatpak == ['org.onlyoffice.desktopeditors']
-    for package in ('noto-fonts-cjk', 'ttf-carlito', 'ttf-caladea', 'ttf-liberation'):
+    for package in ('ttf-carlito', 'ttf-caladea', 'ttf-liberation'):
         assert package in plan.repo
 
 
@@ -250,7 +249,6 @@ def test_aur_only_for_the_documented_apps(catalog):
     assert aur == {
         'chrome': ['google-chrome'],
         'slack': ['slack-desktop'],
-        'wechat': ['wechat-bin'],
         'vscode': ['visual-studio-code-bin'],
         '1password': ['1password'],
     }
@@ -290,5 +288,5 @@ def test_check_script_passes_when_all_found(tmp_path):
 
 
 def test_check_script_skips_non_repo_sources(tmp_path):
-    result = run_check_script(tmp_path, ['google-chrome', 'com.brave.Browser', 'wechat-bin', 'lts-latest'])
+    result = run_check_script(tmp_path, ['google-chrome', 'com.brave.Browser', 'slack-desktop', 'lts-latest'])
     assert result.returncode == 0
