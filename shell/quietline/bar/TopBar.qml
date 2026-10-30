@@ -9,6 +9,7 @@ import "../panels"
 import "../session"
 import "../clipboard"
 import "../search"
+import "../notifications"
 import "../logic/Models.js" as Models
 
 // Верхняя панель экрана: поиск, пространства, заголовок окна, режим, показатели, трей, часы и кнопка питания.
@@ -46,6 +47,10 @@ PanelWindow {
     function openApplications() { popout.open("applications"); }
     function openSummary() { popout.open("quick"); }
     function openClipboard() { popout.open("clipboard"); }
+    function toggleNotifications() { popout.toggle("notifications"); }
+    // Открытый центр уведомлений: карточки не всплывают, уведомления прочитаны.
+    readonly property bool notificationsOpen: popout.opened && popout.showingNotifications
+    onNotificationsOpenChanged: services.notifications.setCenterOpen(notificationsOpen)
     // Меню питания с ожидающим подтверждения действием сеанса.
     function openSession(action) { popout.open("power"); Qt.callLater(function() { powerMenu.confirming = action; }); }
     // Подтверждение принудительного завершения процесса окна `window`.
@@ -229,10 +234,30 @@ PanelWindow {
                 hint: Lang.s.barKeepAwakeOn
                 onClicked: root.services.keepAwake.active = false
             }
-            Text {
+            // «Не беспокоить» включено: нажатие выключает режим.
+            ShellButton {
+                visible: root.services.notifications.dnd
+                font.family: Theme.icons
+                text: "\uf186"
+                foreground: Theme.muted
+                hint: Lang.s.barDndOn
+                onClicked: root.services.notifications.setDnd(false)
+            }
+            // Часы открывают центр уведомлений; точка — есть непрочитанные.
+            ShellButton {
+                id: clockButton
                 text: Lang.time(clock.date)
-                color: Theme.text; font.family: Theme.mono; font.pixelSize: Theme.fontSize
+                font.family: Theme.mono
+                hint: Lang.longDate(clock.date) + (root.services.notifications.unread > 0
+                      ? " · " + Lang.f(Lang.s.barNotificationsUnread, root.services.notifications.unread) : "")
                 Accessible.name: Lang.longDate(clock.date) + ", " + Lang.time(clock.date)
+                onClicked: popout.toggle("notifications")
+                Rectangle {
+                    visible: root.services.notifications.unread > 0
+                    width: 6; height: 6; radius: 3
+                    color: Theme.accent
+                    anchors { top: parent.top; right: parent.right; topMargin: 4; rightMargin: 3 }
+                }
             }
             // Кнопка питания — последний элемент панели, видна и на узком экране.
             ShellButton {
@@ -256,13 +281,14 @@ PanelWindow {
         readonly property bool showingPower: currentName === "power"
         readonly property bool showingKill: currentName === "kill"
         readonly property bool showingClipboard: currentName === "clipboard"
+        readonly property bool showingNotifications: currentName === "notifications"
         parentPanel: root
         // Сетевая панель держит формы, меню питания — ход и итог закрытия приложений: щелчок
         // в другом окне (например, в диалоге сохранения) их не закрывает.
         persistent: showingNetwork || (showingPower && (root.services.session.busy || root.services.session.remaining.length > 0))
         popupX: showingApplications ? Theme.outerMargin : Math.max(12, root.width - width - 12)
         popupY: Theme.outerMargin + Theme.barHeight + 8
-        implicitWidth: showingApplications ? Math.min(360, root.width - Theme.outerMargin * 2) : Math.min(showingNetwork || showingClipboard ? 400 : 330, root.width - 24)
+        implicitWidth: showingApplications ? Math.min(360, root.width - Theme.outerMargin * 2) : Math.min(showingNetwork || showingClipboard || showingNotifications ? 400 : 330, root.width - 24)
         implicitHeight: showingApplications ? Math.min(430, root.screen ? root.screen.height - 100 : 430)
                                             : Math.min(content.implicitHeight + 24, root.screen ? root.screen.height - 100 : 500)
         onPresented: { if (showingApplications) searchPanel.reset(); else if (showingPower) powerMenu.reset(); else if (showingKill) killConfirm.focusCancel(); else if (showingClipboard) clipboardPanel.reset(); }
@@ -293,6 +319,11 @@ PanelWindow {
                     Layout.fillWidth: true
                     clipboard: root.services.clipboard
                     onDone: popout.close()
+                }
+                NotificationCenter {
+                    visible: popout.showingNotifications
+                    Layout.fillWidth: true
+                    service: root.services.notifications
                 }
                 KillConfirm {
                     id: killConfirm

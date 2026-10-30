@@ -435,6 +435,7 @@ function bindAction(command, s) {
     if (/ipc call quietline settings shortcuts$/.test(command)) return s.bindShortcuts;
     if (/ipc call quietline settings/.test(command)) return s.bindSettings;
     if (command === "dolphin") return s.bindDolphin;
+    if (/ipc call quietline notifications$/.test(command)) return s.bindNotifications;
     if (/^wpctl set-volume .*@DEFAULT_AUDIO_SINK@ \d+%\+$/.test(command)) return s.bindVolumeUp;
     if (/^wpctl set-volume .*@DEFAULT_AUDIO_SINK@ \d+%-$/.test(command)) return s.bindVolumeDown;
     if (command === "wpctl set-mute @DEFAULT_AUDIO_SINK@ toggle") return s.bindMute;
@@ -510,6 +511,24 @@ function launchCommand(command, unit) {
 // `NOTIFICATION_MS`, короче — если приложение просит меньше (`expireTimeout` в секундах).
 var NOTIFICATION_MS = 6000;
 var NOTIFICATION_LIMIT = 3;
+// История уведомлений: при переполнении закрываются самые старые.
+var NOTIFICATION_HISTORY_LIMIT = 100;
+function notificationsToDrop(count) { return Math.max(0, count - NOTIFICATION_HISTORY_LIMIT); }
+// Всплывёт ли карточка: при открытом центре уведомлений — нет (уведомление сразу в списке),
+// критическая — всегда, остальные — вне режима «Не беспокоить».
+function popupAllowed(urgency, dnd, centerOpen) {
+    if (centerOpen) return false;
+    return urgency === 2 || !dnd;
+}
+// Давность уведомления для истории: меньше минуты, меньше часа (минуты), сегодня, раньше.
+function notificationAge(received, now) {
+    var seconds = Math.max(0, (now - received) / 1000);
+    if (seconds < 60) return {kind: "now", minutes: 0};
+    if (seconds < 3600) return {kind: "minutes", minutes: Math.floor(seconds / 60)};
+    var then = new Date(received), today = new Date(now);
+    var sameDay = then.getFullYear() === today.getFullYear() && then.getMonth() === today.getMonth() && then.getDate() === today.getDate();
+    return {kind: sameDay ? "today" : "earlier", minutes: Math.floor(seconds / 60)};
+}
 function notificationTimeout(expireTimeout, urgency) {
     if (urgency === 2) return 0;
     var requested = Number(expireTimeout) * 1000;

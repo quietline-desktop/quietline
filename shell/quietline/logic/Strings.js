@@ -91,6 +91,7 @@ var STRINGS = {
         bindShortcuts: "Памятка сочетаний клавиш",
         bindSettings: "Открыть окно «Настройки»",
         bindDolphin: "Открыть Dolphin",
+        bindNotifications: "Уведомления",
         bindVolumeUp: "Громче",
         bindVolumeDown: "Тише",
         bindMute: "Выключить или включить звук",
@@ -206,6 +207,15 @@ var STRINGS = {
         // Уведомления
         notificationDefaultApp: "Уведомление",
         notificationDismiss: "Закрыть уведомление",
+        notificationHide: "Скрыть, уведомление останется в истории",
+        notificationsTitle: "Уведомления",
+        notificationsDnd: "Не беспокоить",
+        notificationsEmpty: "Нет уведомлений",
+        notificationsClearAll: "Очистить всё",
+        notificationsNow: "сейчас",
+        notificationsMinutes: "{0} мин",
+        barNotificationsUnread: "Непрочитанных уведомлений: {0}",
+        barDndOn: "Не беспокоить включено: всплывают только критические уведомления",
 
         // Поиск
         searchTitle: "Поиск",
@@ -427,6 +437,7 @@ var STRINGS = {
         bindShortcuts: "Keyboard shortcuts",
         bindSettings: "Open Settings",
         bindDolphin: "Open Dolphin",
+        bindNotifications: "Notifications",
         bindVolumeUp: "Volume up",
         bindVolumeDown: "Volume down",
         bindMute: "Mute or unmute sound",
@@ -542,6 +553,15 @@ var STRINGS = {
         // Уведомления
         notificationDefaultApp: "Notification",
         notificationDismiss: "Dismiss notification",
+        notificationHide: "Hide; the notification stays in the history",
+        notificationsTitle: "Notifications",
+        notificationsDnd: "Do not disturb",
+        notificationsEmpty: "No notifications",
+        notificationsClearAll: "Clear all",
+        notificationsNow: "now",
+        notificationsMinutes: "{0} min",
+        barNotificationsUnread: "Unread notifications: {0}",
+        barDndOn: "Do not disturb is on: only critical notifications pop up",
 
         // Поиск
         searchTitle: "Search",

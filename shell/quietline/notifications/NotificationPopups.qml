@@ -7,13 +7,14 @@ import ".."
 import "../controls"
 import "../logic/Models.js" as Models
 
-// Всплывающие уведомления справа под панелью на мониторе с фокусом. Обычные исчезают по
-// `Models.notificationTimeout`, критические — только по кнопке. Текст показывается без разметки.
+// Всплывающие карточки уведомлений справа под панелью на мониторе с фокусом. Обычные
+// скрываются по `Models.notificationTimeout`, критические — только по кнопке; скрытая карточка
+// оставляет уведомление в истории. Текст показывается без разметки.
 PanelWindow {
     id: root
     required property var service
     screen: Quickshell.screens.find(screen => Hyprland.focusedMonitor && screen.name === Hyprland.focusedMonitor.name) || Quickshell.screens[0] || null
-    visible: service.visibleNotifications.length > 0
+    visible: service.popups.length > 0
     anchors { top: true; right: true }
     margins.top: Theme.outerMargin + Theme.barHeight + 8
     margins.right: 12
@@ -25,7 +26,7 @@ PanelWindow {
     implicitHeight: Math.max(1, column.implicitHeight)
     color: "transparent"
 
-    // Сроки идут у всех отслеживаемых уведомлений, в том числе не поместившихся на экран.
+    // Сроки идут у всех видимых карточек, в том числе не поместившихся на экран.
     Repeater {
         model: root.service.model
         delegate: Item {
@@ -33,8 +34,8 @@ PanelWindow {
             required property var modelData
             Timer {
                 interval: Models.notificationTimeout(holder.modelData.expireTimeout, holder.modelData.urgency)
-                running: interval > 0
-                onTriggered: holder.modelData.expire()
+                running: interval > 0 && root.service.isPopup(holder.modelData)
+                onTriggered: root.service.popupTimedOut(holder.modelData)
             }
         }
     }
@@ -44,7 +45,7 @@ PanelWindow {
         width: parent.width
         spacing: 8
         Repeater {
-            model: root.service.visibleNotifications
+            model: root.service.popups
             delegate: Rectangle {
                 id: card
                 required property var modelData
@@ -56,7 +57,7 @@ PanelWindow {
                 border.width: 1
                 border.color: modelData.urgency === 2 ? Theme.danger : Theme.border
                 TapHandler {
-                    onTapped: { if (card.defaultAction) card.defaultAction.invoke(); else card.modelData.dismiss(); }
+                    onTapped: { if (card.defaultAction) card.defaultAction.invoke(); else root.service.hidePopup(card.modelData, true); }
                 }
                 ColumnLayout {
                     id: body
@@ -70,7 +71,7 @@ PanelWindow {
                             color: Theme.muted; font.family: Theme.sans; font.pixelSize: Theme.smallFontSize
                             elide: Text.ElideRight; textFormat: Text.PlainText
                         }
-                        ShellButton { text: "×"; hint: Lang.s.notificationDismiss; implicitHeight: 22; onClicked: card.modelData.dismiss() }
+                        ShellButton { text: "×"; hint: Lang.s.notificationHide; implicitHeight: 22; onClicked: root.service.hidePopup(card.modelData, true) }
                     }
                     Text {
                         Layout.fillWidth: true

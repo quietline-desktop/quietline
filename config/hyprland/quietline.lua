@@ -176,5 +176,8 @@ hl.bind("SUPER + M", hl.dsp.exec_cmd("quietline-engine toggle"))
 -- Поиск оболочки на мониторе с фокусом: приложения, файлы, действия, вычисления.
 hl.bind("SUPER + Space", hl.dsp.exec_cmd("qs -c quietline ipc call quietline launcher"))
 
+-- Центр уведомлений оболочки на мониторе с фокусом.
+hl.bind("SUPER + N", hl.dsp.exec_cmd("qs -c quietline ipc call quietline notifications"))
+
 -- Окно «Настройки» оболочки на последнем открытом разделе.
 hl.bind("SUPER + I", hl.dsp.exec_cmd("qs -c quietline ipc call quietline settings ''"))

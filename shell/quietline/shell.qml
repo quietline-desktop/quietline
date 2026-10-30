@@ -34,7 +34,7 @@ ShellRoot {
     NotificationPopups { service: notificationService }
     // Системные сервисы, общие для всех панелей, всплывающих окон и окна «Настройки».
     readonly property var services: ({network: networkService, audio: audioService, brightness: brightnessService,
-                                      bluetooth: bluetoothService, power: powerService, keepAwake: keepAwakeService, session: sessionService, clipboard: clipboardService, search: searchService, settings: settingsWindow})
+                                      bluetooth: bluetoothService, power: powerService, keepAwake: keepAwakeService, notifications: notificationService, session: sessionService, clipboard: clipboardService, search: searchService, settings: settingsWindow})
     SettingsWindow { id: settingsWindow; services: root.services; desktop: desktopService }
     Osd { id: osdWindow; services: root.services; desktop: desktopService; indicators: systemIndicators }
     Variants {
@@ -53,6 +53,7 @@ ShellRoot {
         function status(): string {
             return JSON.stringify({ready: windowEngine.ready, revision: windowEngine.revision, busy: windowEngine.busy,
                 error: windowEngine.message || desktopService.errorMessage, reducedMotion: systemIndicators.reducedMotion, keepAwake: keepAwakeService.active,
+                notifications: {count: notificationService.history.length, unread: notificationService.unread, dnd: notificationService.dnd},
                 pinned: desktopService.pinned, windows: desktopService.windows,
                 screens: root.surfaces.map(item => ({name: item.bar.monitorName,
                     mode: item.dock.workspace ? item.dock.workspace.mode : null,
@@ -98,6 +99,16 @@ ShellRoot {
         // Окно «Настройки» на разделе `section` (`network`, `audio`, `display`, `bluetooth`,
         // `power`, `region`, `shortcuts`, `about`; `keyboard` открывает `region`); пусто — последний открытый раздел.
         function settings(section: string): void { settingsWindow.open(section); }
+        // `Super+N`: центр уведомлений на мониторе с фокусом.
+        function notifications(): void {
+            var name = Hyprland.focusedMonitor ? Hyprland.focusedMonitor.name : "";
+            var item = root.surfaces.find(item => item.bar.monitorName === name) || root.surfaces[0];
+            if (item) item.bar.toggleNotifications();
+        }
+        // «Не беспокоить»: `on`, `off` или `toggle`.
+        function dnd(action: string): void {
+            notificationService.setDnd(action === "toggle" ? !notificationService.dnd : action === "on");
+        }
         // Клавиши яркости после `brightnessctl`: перечитать яркость и показать индикатор (`brightness`).
         function osd(kind: string): void { if (kind === "brightness") brightnessService.refresh(); }
     }

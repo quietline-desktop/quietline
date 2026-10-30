@@ -685,6 +685,7 @@ def test_shortcuts_target_expected_cli_calls():
     expected["SUPER + SHIFT + S"] = "quietline-shell screenshot region"
     expected["SUPER + Space"] = "qs -c quietline ipc call quietline launcher"
     expected["SUPER + I"] = "qs -c quietline ipc call quietline settings ''"
+    expected["SUPER + N"] = "qs -c quietline ipc call quietline notifications"
     osd = " && qs -c quietline ipc call quietline osd brightness"
     expected["XF86AudioRaiseVolume"] = "wpctl set-volume -l 1.5 @DEFAULT_AUDIO_SINK@ 5%+"
     expected["XF86AudioLowerVolume"] = "wpctl set-volume @DEFAULT_AUDIO_SINK@ 5%-"

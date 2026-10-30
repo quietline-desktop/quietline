@@ -479,3 +479,25 @@ test('battery level bouncing around a threshold warns only once until charging',
  warned=null;
  assert.equal(M.batteryWarning(warned,20,false),20);
 });
+test('do not disturb lets only critical cards through, the open centre none',()=>{
+ assert.equal(M.popupAllowed(2,true,false),true);
+ assert.equal(M.popupAllowed(1,true,false),false);
+ assert.equal(M.popupAllowed(2,false,true),false);
+ assert.equal(M.popupAllowed(1,false,false),true);
+ assert.equal(M.popupAllowed(0,false,false),true);
+});
+test('notification age is now, minutes, today or earlier',()=>{
+ const at=(d,h,m,s=0)=>new Date(2026,9,d,h,m,s).getTime();
+ assert.deepEqual(plain(M.notificationAge(at(30,12,0,0),at(30,12,0,30))),{kind:'now',minutes:0});
+ assert.deepEqual(plain(M.notificationAge(at(30,12,0),at(30,12,5))),{kind:'minutes',minutes:5});
+ assert.deepEqual(plain(M.notificationAge(at(29,23,50),at(30,0,20))),{kind:'minutes',minutes:30});
+ assert.equal(M.notificationAge(at(30,9,0),at(30,12,0)).kind,'today');
+ assert.equal(M.notificationAge(at(29,22,0),at(30,1,0)).kind,'earlier');
+});
+test('history keeps at most a hundred notifications',()=>{
+ assert.equal(M.NOTIFICATION_HISTORY_LIMIT,100);
+ assert.equal(M.notificationsToDrop(100),0);
+ assert.equal(M.notificationsToDrop(101),1);
+ assert.equal(M.notificationsToDrop(0),0);
+ assert.equal(M.bindAction('qs -c quietline ipc call quietline notifications',ru),'Уведомления');
+});
