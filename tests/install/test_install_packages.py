@@ -58,8 +58,17 @@ def test_full_upgrade_runs_once(ctx, system):
     step.run(ctx)
     upgrade = system.calls[-1]
     assert upgrade['args'] == ['pacman', '-Syu'] and upgrade['sudo'] and upgrade['interactive']
-    ctx.state.done['system-upgrade'] = '2026-10-28T12:00:00'
     assert step.check(ctx) is True
+    ctx.state.done['system-upgrade'] = '2026-10-28T12:00:00'
+    assert packages.upgrade_step().check(ctx) is True
+
+
+def test_failed_upgrade_is_not_done(ctx, system):
+    system.answer(['pacman', '-Syu'], code=1)
+    step = packages.upgrade_step()
+    with pytest.raises(Exception):
+        step.run(ctx)
+    assert step.check(ctx) is False
 
 
 @pytest.mark.parametrize('vendors, expected', [

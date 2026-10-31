@@ -44,12 +44,19 @@ def _install(ctx: Ctx, names: list[str]) -> None:
 
 
 def upgrade_step() -> Step:
-    """Полное обновление системы; выполняется один раз — отметка `done` в состоянии установки."""
+    """Полное обновление системы; выполняется один раз — отметка `done` в состоянии установки.
+
+    Проверка сразу после успешного `pacman -Syu` проходит по флагу запуска: отметку `done` runner
+    ставит только после проверки.
+    """
+    upgraded = []
+
     def run(ctx: Ctx) -> None:
         ctx.system.run(['pacman', '-Syu'], sudo=True, interactive=True)
+        upgraded.append(True)
 
     return Step('system-upgrade', 'step.system-upgrade', ARCH,
-                lambda ctx: 'system-upgrade' in ctx.state.done, run)
+                lambda ctx: bool(upgraded) or 'system-upgrade' in ctx.state.done, run)
 
 
 def repo_step(packages: list[str]) -> Step:
