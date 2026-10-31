@@ -19,12 +19,12 @@ ColumnLayout {
 
     Text { text: Lang.s.sessionTitle; color: Theme.text; font.family: Theme.sans; font.pixelSize: Theme.titleFontSize; font.bold: true }
     component ActionButton: ShellButton {
-        required property string action
+        required property string sessionAction
         Layout.fillWidth: true
-        text: Models.sessionLabel(action, Lang.s)
-        emphasized: root.confirming === action
+        text: Models.sessionLabel(sessionAction, Lang.s)
+        emphasized: root.confirming === sessionAction
         enabled: !root.session.busy
-        onClicked: root.confirming = action
+        onClicked: root.confirming = sessionAction
     }
     ShellButton {
         id: first
@@ -35,9 +35,9 @@ ColumnLayout {
         KeyNavigation.down: logout
         onClicked: { root.done(); root.session.lock(); }
     }
-    ActionButton { id: logout; action: "logout"; KeyNavigation.up: first; KeyNavigation.down: reboot }
-    ActionButton { id: reboot; action: "reboot"; KeyNavigation.up: logout; KeyNavigation.down: poweroff }
-    ActionButton { id: poweroff; action: "poweroff"; KeyNavigation.up: reboot }
+    ActionButton { id: logout; sessionAction: "logout"; KeyNavigation.up: first; KeyNavigation.down: reboot }
+    ActionButton { id: reboot; sessionAction: "reboot"; KeyNavigation.up: logout; KeyNavigation.down: poweroff }
+    ActionButton { id: poweroff; sessionAction: "poweroff"; KeyNavigation.up: reboot }
 
     ColumnLayout {
         visible: root.confirming.length > 0 && !root.session.busy && root.session.remaining.length === 0

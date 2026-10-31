@@ -61,12 +61,12 @@ Scope {
     }
     function clearAll() { notifications.slice().forEach(item => item.dismiss()); }
 
-    // Закрытые уведомления уходят и из сведений.
+    // Закрытые уведомления уходят и из сведений. `revision` здесь не растёт: `history` и `popups`
+    // сами зависят от `notifications`, а сигнал приходит и во время их первого вычисления.
     onNotificationsChanged: {
         var alive = {};
         notifications.forEach(item => { alive[item.id] = true; });
         Object.keys(meta).forEach(id => { if (!alive[id]) delete meta[id]; });
-        changed();
     }
 
     NotificationServer {
