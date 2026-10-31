@@ -216,12 +216,26 @@ def test_state_roundtrip_uses_documented_keys(tmp_path):
     state.installer_language, state.system_language = 'ru', 'en'
     state.selection = {'apps': ['firefox']}
     state.snapshot = {'kind': 'btrfs-ro', 'name': 'quietline-1'}
+    state.skipped = ['amneziavpn']
     state.save()
     raw = json.loads(path.read_text())
     assert raw['installerLanguage'] == 'ru' and raw['systemLanguage'] == 'en'
     assert raw['snapshot'] == {'kind': 'btrfs-ro', 'name': 'quietline-1'}
+    assert raw['skipped'] == ['amneziavpn']
     again = State.load(path)
     assert again.installer_language == 'ru' and again.selection == {'apps': ['firefox']}
+    assert again.skipped == ['amneziavpn']
+
+
+def test_skipped_step_is_reported_and_from_brings_it_back(ctx, tmp_path):
+    calls = []
+    skip = Step('M', 'title.M', 'manual', lambda ctx: 'M' in ctx.state.skipped, lambda ctx: calls.append('M'))
+    ctx.state.skipped = ['M']
+    run = runner(ctx, [make_step('A', True, calls), skip], tmp_path)
+    assert run.status() == [('A', 'done'), ('M', 'skipped')]
+    assert run.run() is True and calls == []
+    run.run('M')
+    assert calls == ['M'] and ctx.state.skipped == []
 
 
 def test_changes_journal_survives_reload(ctx):

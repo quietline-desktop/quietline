@@ -49,10 +49,17 @@ def system():
 def ctx(tmp_path, system):
     answers = []
     lines = []
+    questions = []
+
+    def ask(question):
+        questions.append(question)
+        return answers.pop(0) if answers else False
+
     context = Ctx(system=system, home=tmp_path / 'home', repo=Path(__file__).resolve().parents[2],
-                  ask=lambda question: answers.pop(0) if answers else False, out=lines.append,
+                  ask=ask, out=lines.append,
                   state=State.load(tmp_path / 'state' / 'install.json'))
     context.home.mkdir()
     context.answers = answers
     context.lines = lines
+    context.questions = questions
     return context

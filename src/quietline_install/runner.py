@@ -164,13 +164,14 @@ class State:
     selection: dict = field(default_factory=dict)
     snapshot: dict | None = None
     done: dict = field(default_factory=dict)
+    skipped: list = field(default_factory=list)
     failed: str | None = None
     error: str | None = None
     changes: list = field(default_factory=list)
     finished: bool = False
     rolled_back: bool = False
 
-    _TYPES = {'selection': dict, 'done': dict, 'changes': list}
+    _TYPES = {'selection': dict, 'done': dict, 'skipped': list, 'changes': list}
 
     @classmethod
     def load(cls, path: Path) -> 'State':
@@ -197,7 +198,7 @@ class State:
         if snapshot is not None and not isinstance(snapshot, dict):
             return None
         values = {'selection': raw.get('selection', {}), 'done': raw.get('done', {}),
-                  'changes': raw.get('changes', [])}
+                  'skipped': raw.get('skipped', []), 'changes': raw.get('changes', [])}
         if any(not isinstance(values[name], kind) for name, kind in cls._TYPES.items()):
             return None
         return cls(path=path, version=raw.get('version', 1),
@@ -209,7 +210,8 @@ class State:
     def to_json(self) -> dict:
         return {'version': self.version, 'installerLanguage': self.installer_language,
                 'systemLanguage': self.system_language, 'selection': self.selection, 'snapshot': self.snapshot,
-                'done': self.done, 'failed': self.failed, 'error': self.error, 'changes': self.changes,
+                'done': self.done, 'skipped': self.skipped, 'failed': self.failed, 'error': self.error,
+                'changes': self.changes,
                 'finished': self.finished, 'rolledBack': self.rolled_back}
 
     def save(self) -> None:
@@ -310,6 +312,10 @@ class Runner:
         ids = [step.id for step in self.steps]
         if start is not None and start not in ids:
             raise StepFailed(f'unknown step: {start}', f'Known steps: {", ".join(ids)}.')
+        if start in self.ctx.state.skipped and not self.ctx.dry_run:
+            # `--from` пропущенного шага возвращает его к выполнению.
+            self.ctx.state.skipped.remove(start)
+            self.ctx.state.save()
         if self.ctx.dry_run:
             return self._run(ids.index(start) if start else 0)
         with self.locked():
@@ -351,5 +357,7 @@ class Runner:
 
     def status(self) -> list[tuple[str, str]]:
         failed = self.ctx.state.failed
-        return [(step.id, 'done' if self._done(step) else 'failed' if step.id == failed else 'pending')
+        skipped = self.ctx.state.skipped
+        return [(step.id, 'skipped' if step.id in skipped else 'done' if self._done(step)
+                 else 'failed' if step.id == failed else 'pending')
                 for step in self.steps]

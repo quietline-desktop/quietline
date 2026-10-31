@@ -63,6 +63,17 @@ def test_manual_steps_wait_for_confirmation_and_verify(ctx, system):
     assert step.check(ctx) is True
 
 
+@pytest.mark.parametrize('installed_answer', [False, True])
+def test_manual_step_can_be_skipped(ctx, system, installed_answer):
+    system.answer(['pacman', '-Q', 'docker-desktop'], code=1)
+    step = session.docker_desktop_step()
+    ctx.answers.extend([installed_answer, True])
+    step.run(ctx)
+    assert ctx.state.skipped == ['docker-desktop']
+    assert step.check(ctx) is True
+    assert any('./install.sh --from docker-desktop' in line for line in ctx.questions)
+
+
 def test_amneziavpn_is_a_guided_manual_step(ctx, root, monkeypatch):
     monkeypatch.setattr(session.shutil, 'which', lambda name: None)
     step = session.amneziavpn_step()

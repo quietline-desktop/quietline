@@ -99,13 +99,24 @@ def docker_group_step() -> Step:
                 lambda ctx: member(ctx) or declined(ctx, 'docker-group'), run)
 
 
-def _manual(ctx: Ctx, instructions: str, question: str, present, missing: str) -> None:
+def _manual(ctx: Ctx, step_id: str, instructions: str, question: str, present, missing: str) -> None:
+    """Инструкции ручного шага; без установленной программы шаг можно пропустить — id попадает в `state.skipped`."""
     for line in instructions.splitlines():
         ctx.out(line)
     if not ctx.ask(question):
-        raise StepFailed(f'{missing} is not installed yet', 'Follow the steps above, then run ./install.sh again.')
-    if not present(ctx):
-        raise StepFailed(f'{missing} was not found', 'Check that its installer finished, then run ./install.sh again.')
+        failure = StepFailed(f'{missing} is not installed yet', 'Follow the steps above, then run ./install.sh again.')
+    elif not present(ctx):
+        failure = StepFailed(f'{missing} was not found', 'Check that its installer finished, then run ./install.sh again.')
+    else:
+        return
+    if not ctx.ask(ctx.t('manual.skip', step=step_id)):
+        raise failure
+    ctx.state.skipped.append(step_id)
+    ctx.state.save()
+
+
+def _manual_check(step_id: str, present):
+    return lambda ctx: step_id in ctx.state.skipped or present(ctx)
 
 
 def docker_desktop_step() -> Step:
@@ -113,10 +124,11 @@ def docker_desktop_step() -> Step:
         return ctx.system.ok(['pacman', '-Q', 'docker-desktop'])
 
     def run(ctx: Ctx) -> None:
-        _manual(ctx, ctx.t('manual.dockerDesktop', docs=DOCKER_DESKTOP_DOCS),
+        _manual(ctx, 'docker-desktop', ctx.t('manual.dockerDesktop', docs=DOCKER_DESKTOP_DOCS),
                 ctx.t('manual.dockerDesktopQuestion'), present, 'Docker Desktop')
 
-    return Step('docker-desktop', 'step.docker-desktop', 'docker.com', present, run, manual=True)
+    return Step('docker-desktop', 'step.docker-desktop', 'docker.com', _manual_check('docker-desktop', present), run,
+                manual=True)
 
 
 def amneziavpn_step() -> Step:
@@ -124,7 +136,8 @@ def amneziavpn_step() -> Step:
         return system_path(ctx, '/opt/AmneziaVPN').exists() or shutil.which('AmneziaVPN') is not None
 
     def run(ctx: Ctx) -> None:
-        _manual(ctx, ctx.t('manual.amnezia', releases=AMNEZIA_RELEASES, site=AMNEZIA_SITE),
+        _manual(ctx, 'amneziavpn', ctx.t('manual.amnezia', releases=AMNEZIA_RELEASES, site=AMNEZIA_SITE),
                 ctx.t('manual.amneziaQuestion'), present, 'AmneziaVPN')
 
-    return Step('amneziavpn', 'step.amneziavpn', 'amnezia.org', present, run, manual=True)
+    return Step('amneziavpn', 'step.amneziavpn', 'amnezia.org', _manual_check('amneziavpn', present), run,
+                manual=True)
