@@ -196,8 +196,9 @@ function groupApps(windows, monitor, pinned, entries, s) {
     }
     for (var window of windows) {
         if (window.monitor !== monitor || !window.address || window.hidden || window.mapped === false) continue;
-        // Специальные пространства (scratchpad) имеют отрицательный ID и в док монитора не входят.
-        if (window.workspace_id < 0) continue;
+        // Специальные пространства (scratchpad) в док монитора не входят; свёрнутые окна —
+        // входят: их возвращают из дока.
+        if (window.workspace_id < 0 && !window.minimized) continue;
         var entry = desktopFor(window.appId || window.className, entries);
         var id = entry ? entry.id : normalizedId(window.appId || window.className || window.address);
         if (!groups[id]) groups[id] = {id: id, name: entry ? entry.name : (window.appId || window.title || s.appUnnamed),
@@ -214,6 +215,7 @@ function groupApps(windows, monitor, pinned, entries, s) {
                  - (b.focusHistoryID === undefined || b.focusHistoryID < 0 ? 99999 : b.focusHistoryID);
         });
         group.running = group.windows.length > 0;
+        group.minimized = group.running && group.windows.every(function(window) { return !!window.minimized; });
         group.active = group.windows.some(function(window) { return window.activated; });
         group.lastWindow = group.windows[0] || null;
         return group;
@@ -276,6 +278,24 @@ function keyed(items, key) {
 
 // Клик по приложению с фокусом переходит к его следующему недавнему окну,
 // иначе — к самому недавнему.
+// Пространство свёрнутых окон: окно уходит туда кнопкой заголовка и возвращается из дока.
+var MINIMIZED_WORKSPACE = "special:quietline-minimized";
+
+// Нет ли на пространстве `workspace` монитора `monitor` ни одного показанного окна.
+function workspaceEmpty(windows, monitor, workspace) {
+    return !(windows || []).some(function(window) {
+        return window.monitor === monitor && window.workspace_id === workspace && !window.hidden && window.mapped !== false;
+    });
+}
+
+// Виден ли док: только в режиме «Окна» без полноэкранного окна (`available`), и тогда —
+// пока указатель у нижнего края или на доке, открыто меню, идёт перетаскивание,
+// навигация с клавиатуры или пространство пусто.
+function dockRevealed(state) {
+    if (!state.available) return false;
+    return !!(state.hovered || state.menuOpen || state.dragging || state.keyboard || state.empty);
+}
+
 function clickTarget(group) {
     var windows = group.windows || [];
     if (!windows.length) return null;

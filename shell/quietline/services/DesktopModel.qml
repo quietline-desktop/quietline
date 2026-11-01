@@ -34,7 +34,8 @@ Scope {
                 monitor: window.monitor ? window.monitor.name : "", workspace_id: window.workspace ? window.workspace.id : -1,
                 activated: (window.activated || (!!window.wayland && window.wayland.activated)) && visible, fullscreen: data.fullscreen || 0,
                 focusHistoryID: data.focusHistoryID, mapped: data.mapped !== false, hidden: data.hidden || false,
-                pid: data.pid || -1};
+                pid: data.pid || -1,
+                minimized: !!window.workspace && window.workspace.name === Models.MINIMIZED_WORKSPACE};
     })
     function groups(name) { return Models.groupApps(windows, name, pinned, entries, Lang.s); }
     function entryFor(id) { return DesktopEntries.byId(id); }
@@ -59,9 +60,24 @@ Scope {
         var selector = window ? Models.windowSelector(window.address) : null;
         if (selector) Hyprland.dispatch('hl.dsp.focus({window="' + selector + '"})');
     }
+    // Свёрнутое окно возвращается на активное пространство монитора `monitor` и получает фокус.
     function activate(group, monitor) {
-        if (group.windows.length) focusWindow(Models.clickTarget(group));
-        else launch(group.id, monitor);
+        if (!group.windows.length) { launch(group.id, monitor); return; }
+        var target = Models.clickTarget(group);
+        if (target && target.minimized) restore(target, monitor);
+        else focusWindow(target);
+    }
+    function minimize(window) {
+        var selector = window ? Models.windowSelector(window.address) : null;
+        if (selector) Hyprland.dispatch('hl.dsp.window.move({window="' + selector + '", workspace="' + Models.MINIMIZED_WORKSPACE + '", follow=false})');
+    }
+    function restore(window, monitor) {
+        var selector = window ? Models.windowSelector(window.address) : null;
+        var output = Hyprland.monitors.values.find(item => item.name === monitor) || Hyprland.focusedMonitor;
+        var workspace = output && output.activeWorkspace ? output.activeWorkspace.id : null;
+        if (!selector || !Number.isInteger(workspace) || workspace <= 0) return;
+        Hyprland.dispatch('hl.dsp.window.move({window="' + selector + '", workspace=' + workspace + ', follow=false})');
+        focusWindow(window);
     }
     function cycle(group, direction) { focusWindow(Models.cycleTarget(group, direction)); }
     function closeWindow(window) {

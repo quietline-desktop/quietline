@@ -59,7 +59,7 @@ ShellRoot {
                 pinned: desktopService.pinned, windows: desktopService.windows,
                 screens: root.surfaces.map(item => ({name: item.bar.monitorName,
                     mode: item.dock.workspace ? item.dock.workspace.mode : null,
-                    dockVisible: item.dock.visible, dockReserved: item.dock.exclusiveZone,
+                    dockVisible: item.dock.visible, dockRevealed: item.dock.revealed,
                     barHeight: item.bar.implicitHeight, applicationsOpen: item.bar.applicationsOpen, summaryOpen: item.bar.summaryOpen, apps: item.dock.apps.map(app => ({id:app.id, count:app.windows.length, last:app.lastWindow ? app.lastWindow.address : null}))}))});
         }
         // `Super+Space`: поиск на мониторе с фокусом; повторный вызов закрывает его.

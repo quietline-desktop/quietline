@@ -525,3 +525,29 @@ test('bar names the active application of its monitor by desktop entry',()=>{
  assert.equal(M.activeAppName(windows,'HDMI-A-1',entries),'');
  assert.equal(M.activeAppName([{monitor:'eDP-1',activated:true,appId:'',className:'',title:'Untitled'}],'eDP-1',entries),'Untitled');
 });
+test('minimized windows stay in the dock with a hollow mark',()=>{
+ const entries=[{id:'com.mitchellh.ghostty',name:'Ghostty',startupClass:''}];
+ const windows=[{address:'0x1',appId:'com.mitchellh.ghostty',monitor:'eDP-1',workspace_id:-1,minimized:true,focusHistoryID:2},
+  {address:'0x2',appId:'scratch',monitor:'eDP-1',workspace_id:-1,minimized:false}];
+ const groups=plain(M.groupApps(windows,'eDP-1',[],entries,ru));
+ assert.deepEqual(groups.map(group=>group.id),['com.mitchellh.ghostty']);
+ assert.equal(groups[0].running,true);
+ assert.equal(groups[0].minimized,true);
+ const mixed=plain(M.groupApps([...windows,{address:'0x3',appId:'com.mitchellh.ghostty',monitor:'eDP-1',workspace_id:1,focusHistoryID:0}],'eDP-1',[],entries,ru));
+ assert.equal(mixed[0].minimized,false);
+ assert.equal(M.MINIMIZED_WORKSPACE,'special:quietline-minimized');
+});
+test('dock shows itself only in windows mode and when wanted',()=>{
+ assert.equal(M.dockRevealed({available:false,hovered:true,empty:true}),false);
+ assert.equal(M.dockRevealed({available:true}),false);
+ for(const key of ['hovered','menuOpen','dragging','keyboard','empty'])
+  assert.equal(M.dockRevealed({available:true,[key]:true}),true,key);
+});
+test('a workspace without shown windows counts as empty',()=>{
+ const windows=[{monitor:'eDP-1',workspace_id:1,hidden:false,mapped:true},{monitor:'eDP-1',workspace_id:2,hidden:true,mapped:true},
+  {monitor:'DP-1',workspace_id:3,hidden:false,mapped:true}];
+ assert.equal(M.workspaceEmpty(windows,'eDP-1',1),false);
+ assert.equal(M.workspaceEmpty(windows,'eDP-1',2),true);
+ assert.equal(M.workspaceEmpty(windows,'eDP-1',3),true);
+ assert.equal(M.workspaceEmpty([],'eDP-1',1),true);
+});
