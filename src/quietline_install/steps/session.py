@@ -6,6 +6,7 @@
 """
 
 import getpass
+import re
 import shutil
 import time
 from pathlib import Path
@@ -146,8 +147,12 @@ HYPRLAND_PLUGINS = 'https://github.com/hyprwm/hyprland-plugins'
 
 
 def hyprbars_enabled(listing: str) -> bool:
-    """Включён ли hyprbars по выводу `hyprpm list`: строка плагина и следующая за ней `enabled`."""
-    lines = [line.strip(' │└─├→\t') for line in listing.splitlines()]
+    """Включён ли hyprbars по выводу `hyprpm list`: строка плагина и следующая за ней `enabled`.
+
+    hyprpm раскрашивает вывод escape-последовательностями ANSI; они отбрасываются.
+    """
+    plain = re.sub(r'\x1b\[[0-9;]*m', '', listing)
+    lines = [line.strip(' │└─├→\t') for line in plain.splitlines()]
     for index, line in enumerate(lines):
         if line.lower().endswith('hyprbars'):
             following = ' '.join(lines[index + 1:index + 3]).lower()

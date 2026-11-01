@@ -691,3 +691,60 @@ def test_refused_workspace_return_does_not_stop_window_reconciliation(registry):
         [SetFloating("0xn", True), MoveWindow("0xn", 512, 288), ResizeWindow("0xn", 1536, 864)],
     ]
     assert registry.get(KEY, 1).extra["managed"] == ["0xn"]
+
+
+def test_minimized_window_keeps_its_role_and_obeys_mode_on_return(registry):
+    """Окно на специальном пространстве (свёрнутое) помнится пространством и возвращается управляемым."""
+    mon = monitor(reserved=(0, 40, 0, 0))
+    base = snapshot([mon], [workspace(1, mon)], [])
+    one = registry.resolve(1, KEY, base)
+    registry.update(one, extra={"managed": ["0xa", "0xb"], "dialogs": ["0xd"]})
+    special = workspace(-1, mon)
+    minimized = snapshot(
+        [mon],
+        [workspace(1, mon), special],
+        [
+            window("0xa", -1, at=(300, 200), size=(800, 600), floating=True),
+            window("0xb", 1, at=(100, 140), floating=True),
+            window("0xd", -1, at=(900, 500), size=(400, 300), floating=True),
+        ],
+    )
+    adapter = FakeAdapter([minimized])
+    controller = WindowController(adapter, registry)
+    assert run(controller.reconcile(EVENT)) is None
+    extra = registry.get(KEY, 1).extra
+    assert extra["managed"] == ["0xb"] and extra["dialogs"] == []
+    assert extra["hidden"] == {"0xa": "managed", "0xd": "dialogs"}
+
+    # Пространство тем временем переходит в «Тайлы»; возвращённое окно встаёт в колонку,
+    # а возвращённый диалог остаётся плавающим.
+    registry.update(registry.get(KEY, 1), mode="tiles")
+    restored = snapshot(
+        [mon],
+        [workspace(1, mon)],
+        [
+            window("0xa", 1, at=(300, 200), size=(800, 600), floating=True),
+            window("0xb", 1, at=(0, 40), size=(1280, 1400)),
+            window("0xd", 1, at=(900, 500), size=(400, 300), floating=True),
+        ],
+    )
+    adapter.snapshots = [restored]
+    run(controller.reconcile(EVENT))
+    assert adapter.applied[-1] == [SetFloating("0xa", False)]
+    extra = registry.get(KEY, 1).extra
+    assert extra["managed"] == ["0xb", "0xa"] and extra["dialogs"] == ["0xd"]
+    assert "hidden" not in extra
+
+
+def test_minimized_window_returns_floating_in_windows_mode(registry):
+    mon = monitor(reserved=(0, 40, 0, 0))
+    base = snapshot([mon], [workspace(1, mon)], [])
+    one = registry.resolve(1, KEY, base)
+    registry.update(one, extra={"managed": [], "dialogs": [], "hidden": {"0xa": "managed"}})
+    restored = snapshot([mon], [workspace(1, mon)], [window("0xa", 1, at=(300, 200), size=(800, 600), floating=True)])
+    adapter = FakeAdapter([restored])
+    controller = WindowController(adapter, registry)
+    assert run(controller.reconcile(EVENT)) is None
+    # Плавающее окно остаётся на своём месте: действий нет.
+    assert adapter.applied == []
+    assert registry.get(KEY, 1).extra["managed"] == ["0xa"]

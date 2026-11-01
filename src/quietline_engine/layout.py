@@ -17,6 +17,9 @@
   перехода в «Окна»;
 - `work_area` — `[x, y, ширина, высота]`, рабочая область монитора показа на момент
   последней сверки окон;
+- `hidden` — `{адрес: "managed" | "dialogs"}`, окна пространства, которые сейчас лежат на
+  специальном пространстве (свёрнуты или в scratchpad), и их роль; вернувшись на любое
+  пространство, окно сохраняет роль и подчиняется его режиму, как перенесённое;
 - `pending` — `{адрес: {"floating": bool | None, "at": [x, y] | None, "size": [w, h] | None}}`,
   целевое состояние окон, действия сверки для которых Hyprland отклонил; каждая сверка
   повторяет их, пока окно не придёт в это состояние или не исчезнет с пространства.
@@ -45,6 +48,7 @@ from quietline_engine.workspaces import Mode, WorkspaceRef
 
 MANAGED = "managed"
 DIALOGS = "dialogs"
+HIDDEN = "hidden"
 GEOMETRY = "geometry"
 COLUMNS = "columns"
 WORK_AREA = "work_area"
@@ -153,6 +157,8 @@ class LayoutPlanner:
             for role in (MANAGED, DIALOGS):
                 for address in _addresses(ref.extra.get(role)):
                     owners.setdefault(address, (ref, role))
+            for address, role in _hidden(ref.extra).items():
+                owners.setdefault(address, (ref, role))
         present = {w.id for w in snapshot.workspaces}
         updates = []
         for ref in workspaces:
@@ -288,6 +294,14 @@ def _roles(workspace: WorkspaceRef, windows: Mapping[str, Window]) -> tuple[list
     return managed, dialogs
 
 
+def _hidden(extra: Mapping[str, Any]) -> dict[str, str]:
+    """Окна пространства на специальном пространстве и их роль; повреждённые записи пропускаются."""
+    value = extra.get(HIDDEN)
+    if not isinstance(value, dict):
+        return {}
+    return {a: r for a, r in value.items() if isinstance(a, str) and r in (MANAGED, DIALOGS)}
+
+
 def _movable(windows: Mapping[str, Window], managed: Iterable[str]) -> list[Window]:
     """Управляемые окна, которые переход может менять: видимые, не закреплённые, не полноэкранные."""
     result = []
@@ -389,7 +403,9 @@ def _reconcile_workspace(
     плавающее возвращается в раскладку, а его геометрия сохраняется. Диалог другого
     пространства остаётся диалогом. Новое плавающее окно — диалог; новое тайловое —
     управляемое и подчиняется режиму так же. Новое окно с тегом диалога — диалог; тег
-    не меняет роль окна, записанного управляемым на этом или другом пространстве.
+    не меняет роль окна, записанного управляемым на этом или другом пространстве. Окно,
+    вернувшееся со специального пространства (`hidden` этого или другого пространства),
+    получает свою прежнюю роль, как перенесённое.
 
     Если рабочая область монитора показа отличается от `work_area`, сохранённая геометрия
     и цели `pending` сдвигаются на разницу начал областей и ограничиваются новой
@@ -459,6 +475,13 @@ def _reconcile_workspace(
         if actions:
             changes.append(WindowChange(address, actions, target))
 
+    # Окна этого пространства, ушедшие на специальное пространство, помнятся вместе с ролью.
+    special = {w.address for w in snapshot.windows if w.workspace_id < 0}
+    known = {a: MANAGED for a in _addresses(ref.extra.get(MANAGED))}
+    known.update({a: DIALOGS for a in _addresses(ref.extra.get(DIALOGS)) if a not in known})
+    known.update({a: r for a, r in _hidden(ref.extra).items() if a not in known})
+    hidden = {a: r for a, r in known.items() if a in special and a not in windows}
+
     extra = {
         **ref.extra,
         MANAGED: managed,
@@ -467,6 +490,9 @@ def _reconcile_workspace(
         WORK_AREA: list(area),
     }
     extra.pop(PENDING, None)
+    extra.pop(HIDDEN, None)
+    if hidden:
+        extra[HIDDEN] = hidden
     if pending:
         extra[PENDING] = {a: t.to_json() for a, t in pending.items()}
     if COLUMNS in ref.extra:

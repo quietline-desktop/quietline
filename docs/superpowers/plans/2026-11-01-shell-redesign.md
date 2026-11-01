@@ -1,6 +1,6 @@
 # Новый вид оболочки и окон: вариант B
 
-**Статус:** выполняется (ветка `feature/shell-redesign`): задачи 0 и 2–11 написаны, вид проверен снимками в живом сеансе; задача 1 (hyprbars вживую) ждёт `hyprpm` — `docs/backlog.md`, `scripts/smoke-shell-redesign.md`.
+**Статус:** выполняется (ветка `feature/shell-redesign`): задачи 0–11 написаны; hyprbars, сворачивание с возвратом в «Тайлы» и «развернуть» проверены вживую 2026-11-02; остальное непроверенное — `docs/backlog.md`, `scripts/smoke-shell-redesign.md`.
 **Цель:** оболочка и окна выглядят и ведут себя как утверждённый макет `docs/design/quiet-line-b.html`: тонкая панель, меню Quietline, пункт управления, прячущийся док, поиск по центру, новые уведомления и «Настройки», заголовки окон hyprbars в режиме «Окна».
 **Архитектура:** внешний вид — токены `Theme.qml` и общие элементы `controls/`, `inputs/`; поверхности переписываются по одной, каждая задача оставляет оболочку рабочей. Окна и размытие — конфигурация Hyprland; заголовки — плагин hyprbars через `hyprpm`; сворачивание — специальное пространство Hyprland.
 **Стек:** Hyprland 0.55+ (Lua; живая машина — 0.57), hyprland-plugins/hyprbars через `hyprpm`, Quickshell 0.3.2 (QML), Python ≥ 3.14, Node ≥ 22.
@@ -50,12 +50,12 @@
 
 Нужен пользователь: `sudo pacman -S hyprpm`, затем в терминале `hyprpm update && hyprpm add https://github.com/hyprwm/hyprland-plugins && hyprpm enable hyprbars` (hyprpm спрашивает пароль sudo).
 
-- [ ] `hyprpm reload -n` загружает hyprbars на 0.57; `hl.plugin.hyprbars.add_button` и `hl.config({ plugin = { hyprbars = … } })` работают из `hyprctl eval`.
-- [ ] Значки кнопок: кодовые точки Material Symbols (`U+E5CD`, `U+E3C6`, `U+E15B`) отрисовываются через подстановку шрифта; иначе — `✕ ▢ —`.
+- [x] `hyprpm reload -n` загружает hyprbars на 0.57; `hl.plugin.hyprbars.add_button` и `hl.config({ plugin = { hyprbars = … } })` работают из `hyprctl eval`.
+- [x] Значки кнопок: кодовые точки Material Symbols (`U+E5CD`, `U+E3C6`, `U+E15B`) отрисовываются через подстановку шрифта; иначе — `✕ ▢ —`.
 - [x] Диспетчеры Lua (проверено `hyprctl eval` на 0.57): свернуть — `hl.dsp.window.move({ window = …, workspace = "special:quietline-minimized", follow = false })`; вернуть — тот же `move` с `workspace = <id>`; в `hyprctl -j clients/workspaces` у специального пространства нет `id` (движок исправлен).
 - [x] Рамка акцента — `hl.window_rule({ match = { float = false }, border_size = 2, border_color = "<активная> <неактивная>" })`, правило динамическое (проверено). `["hyprbars:no_bar"] = true` — тем же сопоставлением, проверить с плагином.
 - [x] Правило слоя: `hl.layer_rule({ match = { namespace = "quietline-.*" }, blur = true, ignore_alpha = 0.4, no_anim = true })` — шаблон сравнивается со всей строкой, `^quietline-` не совпадает (проверено).
-- [ ] Если что-то из этого недоступно — остановиться, поправить спеку и план вместе с пользователем.
+- [x] Значки Material Symbols в hyprbars недоступны (личная область Unicode занята Nerd Font) — спека поправлена: «×», «□», «−» из Inter.
 
 ## Task 2. Шрифты, токены, общие элементы
 
@@ -72,7 +72,7 @@
 - [x] Шаг установщика `hyprbars`: `hyprpm update`, `add` (если нет в `hyprpm list`), `enable hyprbars`; повторный запуск ничего не ломает; `update` выполняет `hyprpm update`. Тесты установщика на поддельной системе.
 - [x] Тест движка: окно на специальном пространстве (отрицательный id) не попадает в план переходов и не возвращается движком на обычное пространство.
 - [x] `DesktopModel`: окна на `special:quietline-minimized` помечены `minimized`; `activate` приложения со свёрнутыми окнами возвращает последнее на активное пространство монитора и даёт фокус; `minimize(window)`.
-- [ ] Живая проверка: заголовки в «Окнах», нет в «Тайлах»; кнопки; двойной щелчок; `hyprpm disable hyprbars` → конфигурация без ошибок.
+- [x] Живая проверка: заголовки в «Окнах», нет в «Тайлах»; кнопки; двойной щелчок; `hyprpm disable hyprbars` → конфигурация без ошибок.
 
 ## Task 4. Верхняя панель, меню Quietline, диалоги
 

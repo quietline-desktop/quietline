@@ -200,6 +200,11 @@ LISTING_DISABLED = """→ Repository hyprland-plugins (by Vaxry):
 
 
 def test_hyprbars_enabled_reads_hyprpm_list():
+    # Вывод hyprpm 0.57 с цветами: hyprbars выключен, соседний плагин включён.
+    colored = ("\x1b[0m→\x1b[0m Repository hyprland-plugins (by hyprwm):\n  │ Plugin hyprbars\n"
+               "  └─ enabled: \x1b[31mfalse\n\x1b[0m\n  │ Plugin hyprfocus\n  └─ enabled: \x1b[32mtrue\n\x1b[0m\n")
+    assert not session.hyprbars_enabled(colored)
+    assert session.hyprbars_enabled(colored.replace("\x1b[31mfalse", "\x1b[32mtrue", 1))
     assert session.hyprbars_enabled(LISTING_ENABLED)
     assert not session.hyprbars_enabled(LISTING_DISABLED)
     assert not session.hyprbars_enabled('')
