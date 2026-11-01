@@ -456,9 +456,23 @@ function formatDuration(seconds, s) {
 // Биты `modmask` Hyprland в том порядке, в каком модификаторы называют.
 var MODIFIERS = [[64, "Super"], [4, "Ctrl"], [8, "Alt"], [1, "Shift"]];
 
+// Действия привязок Quietline без команды: описание `quietline:<действие>` в Lua-конфигурации.
+var QUIETLINE_BIND_KEYS = {
+    "close": "bindClose", "focus-left": "bindFocusLeft", "focus-right": "bindFocusRight",
+    "focus-up": "bindFocusUp", "focus-down": "bindFocusDown", "move-left": "bindMoveLeft",
+    "move-right": "bindMoveRight", "move-up": "bindMoveUp", "move-down": "bindMoveDown",
+    "monitor-left": "bindMonitorLeft", "monitor-right": "bindMonitorRight", "float": "bindFloat",
+    "maximize": "bindMaximize", "fullscreen": "bindFullscreen", "cycle": "bindCycle",
+    "drag": "bindDrag", "resize": "bindResize"
+};
+
 // Описание известной команды привязки; неизвестная остаётся как есть.
 function bindAction(command, s) {
     var match;
+    if ((match = /^quietline:(.+)$/.exec(command))) {
+        var key = textKey(QUIETLINE_BIND_KEYS, match[1], "");
+        return key ? s[key] : command;
+    }
     if ((match = /^quietline-engine switch (\d+)$/.exec(command))) return format(s.bindSwitch, [match[1]]);
     if ((match = /^quietline-engine move (\d+)$/.exec(command))) return format(s.bindMove, [match[1]]);
     if (command === "quietline-engine toggle") return s.bindToggle;
@@ -486,26 +500,69 @@ function bindAction(command, s) {
 // Подписи мультимедийных клавиш в памятке вместо имён XKB.
 var KEY_LABEL_KEYS = {
     XF86AudioRaiseVolume: "keyVolumeUp", XF86AudioLowerVolume: "keyVolumeDown", XF86AudioMute: "keyMute",
-    XF86AudioMicMute: "keyMicMute", XF86MonBrightnessUp: "keyBrightnessUp", XF86MonBrightnessDown: "keyBrightnessDown"
+    XF86AudioMicMute: "keyMicMute", XF86MonBrightnessUp: "keyBrightnessUp", XF86MonBrightnessDown: "keyBrightnessDown",
+    "mouse:272": "keyMouseLeft", "mouse:273": "keyMouseRight"
 };
+// Клавиши, которые одинаково подписываются на любом языке.
+var KEY_SYMBOLS = {Left: "←", Right: "→", Up: "↑", Down: "↓", Return: "Enter"};
 
 // Приложения, на которые ссылаются привязки Hyprland: команда -> ID desktop entry.
 var BIND_APPS = {dolphin: "org.kde.dolphin", ghostty: "com.mitchellh.ghostty"};
 
+// Команда привязки: описание (Lua-конфигурация Quietline пишет туда команду или
+// `quietline:<действие>`), иначе аргумент. У Lua-привязки без описания аргумент — номер
+// ссылки Lua, тогда берётся имя диспетчера из `HL.Dispatcher(<имя>)`.
+function bindCommand(bind) {
+    if (bind.description) return String(bind.description);
+    var arg = String(bind.arg || ""), dispatcher = String(bind.dispatcher || "");
+    var lua = /^HL\.Dispatcher\((.+)\)$/.exec(dispatcher);
+    if (lua && (!arg || /^\d+$/.test(arg))) return lua[1];
+    return arg || dispatcher;
+}
+
+// Подпись клавиш привязки: модификаторы и клавиша.
+function bindKeys(bind, s) {
+    var keys = MODIFIERS.filter(function(item) { return (bind.modmask & item[0]) !== 0; })
+        .map(function(item) { return item[1]; });
+    var label = textKey(KEY_LABEL_KEYS, bind.key, "");
+    keys.push(label ? s[label] : textKey(KEY_SYMBOLS, bind.key, bind.key));
+    return keys.join("+");
+}
+
 // Памятка сочетаний из `hyprctl binds -j`: `[{keys: "Super+Shift+1", action}]`.
-// Привязки к приложениям, которых нет среди `entries`, в памятку не входят.
+// Привязки к приложениям, которых нет среди `entries`, в памятку не входят. Несколько
+// привязок `switch N` (или `move N`) с одними модификаторами — одна строка
+// `Super+1…0` с диапазоном пространств на месте первой из них.
 function describeBinds(binds, s, entries) {
-    return (binds || []).filter(function(bind) {
-        var command = bind.arg || bind.dispatcher || "";
+    var rows = [], ranges = {};
+    (binds || []).forEach(function(bind) {
+        if (!bind || typeof bind !== "object") return;
+        var command = bindCommand(bind);
         var appId = Object.prototype.hasOwnProperty.call(BIND_APPS, command) ? BIND_APPS[command] : null;
-        return !appId || !!desktopFor(appId, entries || []);
-    }).map(function(bind) {
-        var keys = MODIFIERS.filter(function(item) { return (bind.modmask & item[0]) !== 0; })
-            .map(function(item) { return item[1]; });
-        var label = textKey(KEY_LABEL_KEYS, bind.key, "");
-        keys.push(label ? s[label] : bind.key);
-        return {keys: keys.join("+"), action: bindAction(bind.arg || bind.dispatcher || "", s)};
+        if (appId && !desktopFor(appId, entries || [])) return;
+        var workspace = /^quietline-engine (switch|move) (\d+)$/.exec(command);
+        if (workspace) {
+            var id = workspace[1] + ":" + bind.modmask;
+            if (ranges[id]) {
+                ranges[id].lastKey = bind.key;
+                ranges[id].lastNumber = workspace[2];
+                ranges[id].count += 1;
+                return;
+            }
+            ranges[id] = {row: rows.length, bind: bind, kind: workspace[1], firstNumber: workspace[2],
+                          lastKey: bind.key, lastNumber: workspace[2], count: 1};
+        }
+        rows.push({keys: bindKeys(bind, s), action: bindAction(command, s)});
     });
+    Object.keys(ranges).forEach(function(id) {
+        var range = ranges[id];
+        if (range.count < 2) return;
+        rows[range.row] = {
+            keys: bindKeys(range.bind, s) + "…" + range.lastKey,
+            action: format(range.kind === "switch" ? s.bindSwitch : s.bindMove, [range.firstNumber + "–" + range.lastNumber])
+        };
+    });
+    return rows;
 }
 
 // Действия сеанса после корректного закрытия окон (`quietline-shell session`).

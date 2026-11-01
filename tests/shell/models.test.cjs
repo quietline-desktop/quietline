@@ -312,6 +312,32 @@ test('binds to missing applications are not listed',()=>{
  const both=plain(M.describeBinds(binds,en,[{id:'com.mitchellh.ghostty',name:'Ghostty',icon:'x'},{id:'org.kde.dolphin',name:'Dolphin',icon:'x'}]));
  assert.equal(both.length,3);
 });
+test('lua binds are described by their description',()=>{
+ const lua=(modmask,key,dispatcher,description)=>({modmask,key,dispatcher:`HL.Dispatcher(${dispatcher})`,arg:'17',description,has_description:!!description});
+ const rows=plain(M.describeBinds([
+  lua(64,'Return','exec_cmd','ghostty'),
+  lua(64,'W','close','quietline:close'),
+  lua(65,'Left','function','quietline:move-left'),
+  lua(64,'mouse:272','drag','quietline:drag'),
+  ...['1','2','3','0'].map((key,i)=>lua(64,key,'exec_cmd',`quietline-engine switch ${key==='0'?10:i+1}`)),
+  ...['1','0'].map(key=>lua(65,key,'exec_cmd',`quietline-engine move ${key==='0'?10:1}`)),
+  lua(64,'M','exec_cmd','quietline-engine toggle'),
+  lua(64,'K','exec_cmd',''),
+  lua(64,'J','exec_cmd','quietline:unknown'),
+ ],ru,[{id:'com.mitchellh.ghostty',name:'Ghostty',icon:'x'}]));
+ assert.deepEqual(rows,[
+  {keys:'Super+Enter',action:'Открыть терминал'},
+  {keys:'Super+W',action:'Закрыть окно'},
+  {keys:'Super+Shift+←',action:'Сдвинуть окно влево'},
+  {keys:'Super+Левая кнопка мыши',action:'Перетащить окно'},
+  {keys:'Super+1…0',action:'Открыть пространство 1–10'},
+  {keys:'Super+Shift+1…0',action:'Перенести окно на пространство 1–10'},
+  {keys:'Super+M',action:'Сменить режим «Окна / Тайлы»'},
+  {keys:'Super+K',action:'exec_cmd'},
+  {keys:'Super+J',action:'quietline:unknown'},
+ ]);
+ assert.equal(M.bindAction('quietline:float',en),'Take window out of its column or put it back');
+});
 test('session menu names the applications that did not quit',()=>{
  assert.equal(M.remainingText([{app:'code',title:'notes.md'},{app:'code',title:'todo.md'},{app:'Telegram',title:'Telegram'}],ru),
   'Не завершились: code (2), Telegram. Сохраните документы и повторите.');

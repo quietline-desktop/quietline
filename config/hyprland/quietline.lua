@@ -33,7 +33,8 @@ if loaded and type(chosen) == "table"
 end
 hl.config({ input = { kb_layout = keyboard.kb_layout, kb_options = keyboard.kb_options } })
 
--- Оформление окон варианта B: скругление 10, тонкая светлая рамка, мягкая тень, отступы 4/8.
+-- Оформление окон варианта B: скругление 10, тонкая светлая рамка, отступы 4/8. Тень мягкая
+-- и почти равномерная со всех сторон (сдвиг вниз 3 px), у неактивного окна — вдвое слабее.
 -- Размытие включено для полупрозрачных поверхностей оболочки (правило слоёв ниже); у окон
 -- приложений фон непрозрачный, им размытие не мешает.
 hl.config({
@@ -48,11 +49,11 @@ hl.config({
         rounding_power = 2,
         shadow = {
             enabled = true,
-            range = 24,
+            range = 18,
             render_power = 3,
-            offset = "0 8",
-            color = "rgba(00000073)",
-            color_inactive = "rgba(00000059)",
+            offset = "0 3",
+            color = "rgba(0000004d)",
+            color_inactive = "rgba(00000026)",
         },
         blur = { enabled = true, size = 8, passes = 3, noise = 0.02, vibrancy = 0.17 },
     },
@@ -77,23 +78,24 @@ hl.layer_rule({
 })
 
 -- В «Тайлах» у окон нет заголовков и теней в колонках: активное окно выделено рамкой
--- акцента 2 px. Правило динамическое: плавающее окно возвращает обычную рамку.
+-- акцента 2 px. Правило динамическое: плавающее окно возвращает обычную рамку и тень.
 hl.window_rule({
     name = "quietline-tiled-border",
     match = { float = false },
     border_size = 2,
     border_color = "rgba(0a84ffd9) rgba(ffffff14)",
+    no_shadow = true,
 })
 
 -- Заголовки плавающих окон — плагин hyprbars (hyprland-plugins, ставится и собирается через
 -- hyprpm). Плагин грузится при старте (`hyprpm reload`) и после загрузки сам перечитывает
 -- конфигурацию; без него, например после обновления Hyprland до `hyprpm update`, этот блок
--- пропускается и окна остаются без заголовков. Кнопки справа налево: «закрыть» на красном
--- кружке, «развернуть», «свернуть» на прозрачной подложке; значки — кодовые точки Material
+-- пропускается и окна остаются без заголовков. Кнопки справа налево: «закрыть», «развернуть»,
+-- «свернуть» — одинаковые серые значки на прозрачной подложке; значки — кодовые точки Material
 -- Symbols (close, crop_square, horizontal_rule; в Inter точки нет). Шрифт «Quietline Titlebar» — правило fontconfig
 -- пакета (50-quietline-titlebar.conf): название окна — Inter, значки — Material Symbols
 -- Rounded раньше запасных шрифтов, где те же точки заняты другими глифами.
--- У неактивного окна подложка всех кнопок почти прозрачна, красный кружок пропадает.
+-- Цвет кнопки под указателем и подсказки hyprbars не поддерживает.
 -- «Свернуть» уносит окно на скрытое пространство special:quietline-minimized, вернуть его
 -- можно из дока. В колонках «Тайлов» заголовков нет.
 if hl.plugin and hl.plugin.hyprbars then
@@ -112,15 +114,14 @@ if hl.plugin and hl.plugin.hyprbars then
                 bar_button_padding = 6,
                 bar_part_of_window = true,
                 bar_precedence_over_border = true,
-                inactive_button_color = "rgba(ffffff01)",
                 on_double_click = [[hyprctl dispatch 'hl.dsp.window.fullscreen({ mode = "maximized", action = "toggle" })']],
             },
         },
     })
     hl.plugin.hyprbars.add_button({
-        bg_color = "rgb(e5484d)",
-        fg_color = "rgb(ffffff)",
-        size = 22,
+        bg_color = "rgba(00000000)",
+        fg_color = "rgba(ffffffcc)",
+        size = 26,
         icon = "\u{E5CD}",
         action = [[hyprctl dispatch 'hl.dsp.window.close()']],
     })
@@ -180,46 +181,60 @@ hl.on("hyprland.start", function ()
     hl.exec_cmd("quietline-shell files --update")
 end)
 
+-- Привязки с описанием: `hyprctl binds -j` не показывает команду Lua-привязки, поэтому
+-- памятка оболочки берёт действие из описания. `run` — команда, она же описание;
+-- `act` — диспетчер или функция с описанием `quietline:<действие>`.
+local function run(keys, command, opts)
+    opts = opts or {}
+    opts.description = command
+    return hl.bind(keys, hl.dsp.exec_cmd(command), opts)
+end
+local function act(keys, action, name, opts)
+    opts = opts or {}
+    opts.description = "quietline:" .. name
+    return hl.bind(keys, action, opts)
+end
+
 -- Терминал запускает сам Hyprland: работает без сервиса движка и без панели.
-hl.bind("SUPER + Return", hl.dsp.exec_cmd("ghostty"))
+run("SUPER + Return", "ghostty")
 
 -- Блокировка — отдельный процесс экрана блокировки, работает без панели; привязка
 -- действует и на заблокированном экране, чтобы поднять упавший экран блокировки.
-hl.bind("SUPER + L", hl.dsp.exec_cmd("quietline-shell lock"), { locked = true })
+run("SUPER + L", "quietline-shell lock", { locked = true })
 
 -- Закрыть активное окно; корректно выйти из приложения со всеми окнами; принудительно
 -- завершить его процесс — только после подтверждения на панели.
-hl.bind("SUPER + W", hl.dsp.window.close())
-hl.bind("SUPER + Q", hl.dsp.exec_cmd("quietline-shell app quit --notify"))
-hl.bind("SUPER + SHIFT + Q", hl.dsp.exec_cmd("qs -c quietline ipc call quietline confirmKill"))
+act("SUPER + W", hl.dsp.window.close(), "close")
+run("SUPER + Q", "quietline-shell app quit --notify")
+run("SUPER + SHIFT + Q", "qs -c quietline ipc call quietline confirmKill")
 
 -- История буфера: поиск по записям, выбранная возвращается в буфер.
-hl.bind("SUPER + V", hl.dsp.exec_cmd("qs -c quietline ipc call quietline clipboard"))
+run("SUPER + V", "qs -c quietline ipc call quietline clipboard")
 
 -- Громкость (до 150 %), звук и микрофон, яркость встроенного экрана шагом 5 %: меняют сами
 -- утилиты, поэтому клавиши работают и без оболочки и на заблокированном экране; громкость и
 -- яркость повторяются при удержании. Индикатор громкости оболочка показывает сама по
 -- изменению PipeWire, яркости — по вызову `osd brightness`.
-hl.bind("XF86AudioRaiseVolume", hl.dsp.exec_cmd("wpctl set-volume -l 1.5 @DEFAULT_AUDIO_SINK@ 5%+"), { locked = true, repeating = true })
-hl.bind("XF86AudioLowerVolume", hl.dsp.exec_cmd("wpctl set-volume @DEFAULT_AUDIO_SINK@ 5%-"), { locked = true, repeating = true })
-hl.bind("XF86AudioMute", hl.dsp.exec_cmd("wpctl set-mute @DEFAULT_AUDIO_SINK@ toggle"), { locked = true })
-hl.bind("XF86AudioMicMute", hl.dsp.exec_cmd("wpctl set-mute @DEFAULT_AUDIO_SOURCE@ toggle"), { locked = true })
-hl.bind("XF86MonBrightnessUp", hl.dsp.exec_cmd("brightnessctl -c backlight --min-value=1 set 5%+ && qs -c quietline ipc call quietline osd brightness"), { locked = true, repeating = true })
-hl.bind("XF86MonBrightnessDown", hl.dsp.exec_cmd("brightnessctl -c backlight --min-value=1 set 5%- && qs -c quietline ipc call quietline osd brightness"), { locked = true, repeating = true })
+run("XF86AudioRaiseVolume", "wpctl set-volume -l 1.5 @DEFAULT_AUDIO_SINK@ 5%+", { locked = true, repeating = true })
+run("XF86AudioLowerVolume", "wpctl set-volume @DEFAULT_AUDIO_SINK@ 5%-", { locked = true, repeating = true })
+run("XF86AudioMute", "wpctl set-mute @DEFAULT_AUDIO_SINK@ toggle", { locked = true })
+run("XF86AudioMicMute", "wpctl set-mute @DEFAULT_AUDIO_SOURCE@ toggle", { locked = true })
+run("XF86MonBrightnessUp", "brightnessctl -c backlight --min-value=1 set 5%+ && qs -c quietline ipc call quietline osd brightness", { locked = true, repeating = true })
+run("XF86MonBrightnessDown", "brightnessctl -c backlight --min-value=1 set 5%- && qs -c quietline ipc call quietline osd brightness", { locked = true, repeating = true })
 
 -- Снимок монитора с фокусом в файл и буфер; область экрана с разметкой в Satty.
-hl.bind("Print", hl.dsp.exec_cmd("quietline-shell screenshot output"))
-hl.bind("SUPER + SHIFT + S", hl.dsp.exec_cmd("quietline-shell screenshot region"))
+run("Print", "quietline-shell screenshot output")
+run("SUPER + SHIFT + S", "quietline-shell screenshot region")
 
 -- Dolphin; памятка сочетаний — раздел окна «Настройки».
-hl.bind("SUPER + E", hl.dsp.exec_cmd("dolphin"))
-hl.bind("SUPER + F1", hl.dsp.exec_cmd("qs -c quietline ipc call quietline settings shortcuts"))
+run("SUPER + E", "dolphin")
+run("SUPER + F1", "qs -c quietline ipc call quietline settings shortcuts")
 
 -- Фокус соседнего окна: в «Тайлах» влево/вправо — соседняя колонка, вверх/вниз — окно в колонке.
-hl.bind("SUPER + Left", hl.dsp.focus({ direction = "l" }))
-hl.bind("SUPER + Right", hl.dsp.focus({ direction = "r" }))
-hl.bind("SUPER + Up", hl.dsp.focus({ direction = "u" }))
-hl.bind("SUPER + Down", hl.dsp.focus({ direction = "d" }))
+act("SUPER + Left", hl.dsp.focus({ direction = "l" }), "focus-left")
+act("SUPER + Right", hl.dsp.focus({ direction = "r" }), "focus-right")
+act("SUPER + Up", hl.dsp.focus({ direction = "u" }), "focus-up")
+act("SUPER + Down", hl.dsp.focus({ direction = "d" }), "focus-down")
 
 -- Плавающее окно сдвигается на NUDGE пикселей, окно в колонках переставляется в сторону.
 local NUDGE = 40
@@ -233,64 +248,64 @@ local function move_or_nudge(direction, dx, dy)
         end
     end
 end
-hl.bind("SUPER + SHIFT + Left", move_or_nudge("l", -NUDGE, 0))
-hl.bind("SUPER + SHIFT + Right", move_or_nudge("r", NUDGE, 0))
-hl.bind("SUPER + SHIFT + Up", move_or_nudge("u", 0, -NUDGE))
-hl.bind("SUPER + SHIFT + Down", move_or_nudge("d", 0, NUDGE))
+act("SUPER + SHIFT + Left", move_or_nudge("l", -NUDGE, 0), "move-left")
+act("SUPER + SHIFT + Right", move_or_nudge("r", NUDGE, 0), "move-right")
+act("SUPER + SHIFT + Up", move_or_nudge("u", 0, -NUDGE), "move-up")
+act("SUPER + SHIFT + Down", move_or_nudge("d", 0, NUDGE), "move-down")
 
 -- Фокус соседнего монитора.
-hl.bind("SUPER + ALT + Left", hl.dsp.focus({ monitor = "l" }))
-hl.bind("SUPER + ALT + Right", hl.dsp.focus({ monitor = "r" }))
+act("SUPER + ALT + Left", hl.dsp.focus({ monitor = "l" }), "monitor-left")
+act("SUPER + ALT + Right", hl.dsp.focus({ monitor = "r" }), "monitor-right")
 
 -- Временно вынуть окно из колонки и вернуть обратно; движок не трогает такое окно до смены режима.
-hl.bind("SUPER + ALT + Space", hl.dsp.window.float({ action = "toggle" }))
+act("SUPER + ALT + Space", hl.dsp.window.float({ action = "toggle" }), "float")
 
 -- Развернуть в рабочей области / настоящий полноэкранный режим.
-hl.bind("SUPER + F", hl.dsp.window.fullscreen({ mode = "maximized" }))
-hl.bind("SUPER + SHIFT + F", hl.dsp.window.fullscreen({ mode = "fullscreen" }))
+act("SUPER + F", hl.dsp.window.fullscreen({ mode = "maximized" }), "maximize")
+act("SUPER + SHIFT + F", hl.dsp.window.fullscreen({ mode = "fullscreen" }), "fullscreen")
 
 -- Следующее окно текущего пространства, поверх остальных.
-hl.bind("ALT + Tab", function ()
+act("ALT + Tab", function ()
     hl.dispatch(hl.dsp.window.cycle_next())
     hl.dispatch(hl.dsp.window.bring_to_top())
-end)
+end, "cycle")
 
 -- Super + левая кнопка мыши двигает окно, правая — меняет размер.
-hl.bind("SUPER + mouse:272", hl.dsp.window.drag(), { mouse = true })
-hl.bind("SUPER + mouse:273", hl.dsp.window.resize(), { mouse = true })
+act("SUPER + mouse:272", hl.dsp.window.drag(), "drag", { mouse = true })
+act("SUPER + mouse:273", hl.dsp.window.resize(), "resize", { mouse = true })
 
 -- Локальные пространства 1–10 монитора с фокусом; клавиша 0 — пространство 10.
-hl.bind("SUPER + 1", hl.dsp.exec_cmd("quietline-engine switch 1"))
-hl.bind("SUPER + 2", hl.dsp.exec_cmd("quietline-engine switch 2"))
-hl.bind("SUPER + 3", hl.dsp.exec_cmd("quietline-engine switch 3"))
-hl.bind("SUPER + 4", hl.dsp.exec_cmd("quietline-engine switch 4"))
-hl.bind("SUPER + 5", hl.dsp.exec_cmd("quietline-engine switch 5"))
-hl.bind("SUPER + 6", hl.dsp.exec_cmd("quietline-engine switch 6"))
-hl.bind("SUPER + 7", hl.dsp.exec_cmd("quietline-engine switch 7"))
-hl.bind("SUPER + 8", hl.dsp.exec_cmd("quietline-engine switch 8"))
-hl.bind("SUPER + 9", hl.dsp.exec_cmd("quietline-engine switch 9"))
-hl.bind("SUPER + 0", hl.dsp.exec_cmd("quietline-engine switch 10"))
+run("SUPER + 1", "quietline-engine switch 1")
+run("SUPER + 2", "quietline-engine switch 2")
+run("SUPER + 3", "quietline-engine switch 3")
+run("SUPER + 4", "quietline-engine switch 4")
+run("SUPER + 5", "quietline-engine switch 5")
+run("SUPER + 6", "quietline-engine switch 6")
+run("SUPER + 7", "quietline-engine switch 7")
+run("SUPER + 8", "quietline-engine switch 8")
+run("SUPER + 9", "quietline-engine switch 9")
+run("SUPER + 0", "quietline-engine switch 10")
 
 -- Активное окно переезжает на локальное пространство того же монитора, фокус — за ним.
-hl.bind("SUPER + SHIFT + 1", hl.dsp.exec_cmd("quietline-engine move 1"))
-hl.bind("SUPER + SHIFT + 2", hl.dsp.exec_cmd("quietline-engine move 2"))
-hl.bind("SUPER + SHIFT + 3", hl.dsp.exec_cmd("quietline-engine move 3"))
-hl.bind("SUPER + SHIFT + 4", hl.dsp.exec_cmd("quietline-engine move 4"))
-hl.bind("SUPER + SHIFT + 5", hl.dsp.exec_cmd("quietline-engine move 5"))
-hl.bind("SUPER + SHIFT + 6", hl.dsp.exec_cmd("quietline-engine move 6"))
-hl.bind("SUPER + SHIFT + 7", hl.dsp.exec_cmd("quietline-engine move 7"))
-hl.bind("SUPER + SHIFT + 8", hl.dsp.exec_cmd("quietline-engine move 8"))
-hl.bind("SUPER + SHIFT + 9", hl.dsp.exec_cmd("quietline-engine move 9"))
-hl.bind("SUPER + SHIFT + 0", hl.dsp.exec_cmd("quietline-engine move 10"))
+run("SUPER + SHIFT + 1", "quietline-engine move 1")
+run("SUPER + SHIFT + 2", "quietline-engine move 2")
+run("SUPER + SHIFT + 3", "quietline-engine move 3")
+run("SUPER + SHIFT + 4", "quietline-engine move 4")
+run("SUPER + SHIFT + 5", "quietline-engine move 5")
+run("SUPER + SHIFT + 6", "quietline-engine move 6")
+run("SUPER + SHIFT + 7", "quietline-engine move 7")
+run("SUPER + SHIFT + 8", "quietline-engine move 8")
+run("SUPER + SHIFT + 9", "quietline-engine move 9")
+run("SUPER + SHIFT + 0", "quietline-engine move 10")
 
 -- Режим текущего пространства: «Окна» ↔ «Тайлы».
-hl.bind("SUPER + M", hl.dsp.exec_cmd("quietline-engine toggle"))
+run("SUPER + M", "quietline-engine toggle")
 
 -- Поиск оболочки на мониторе с фокусом: приложения, файлы, действия, вычисления.
-hl.bind("SUPER + Space", hl.dsp.exec_cmd("qs -c quietline ipc call quietline launcher"))
+run("SUPER + Space", "qs -c quietline ipc call quietline launcher")
 
 -- Центр уведомлений оболочки на мониторе с фокусом.
-hl.bind("SUPER + N", hl.dsp.exec_cmd("qs -c quietline ipc call quietline notifications"))
+run("SUPER + N", "qs -c quietline ipc call quietline notifications")
 
 -- Окно «Настройки» оболочки на последнем открытом разделе.
-hl.bind("SUPER + I", hl.dsp.exec_cmd("qs -c quietline ipc call quietline settings ''"))
+run("SUPER + I", "qs -c quietline ipc call quietline settings ''")
