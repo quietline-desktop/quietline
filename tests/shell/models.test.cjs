@@ -507,3 +507,21 @@ test('a transient notification without a visible card is expired at once',()=>{
  assert.equal(M.transientExpires(true,true),false);
  assert.equal(M.transientExpires(false,false),false);
 });
+test('bar shows only existing workspaces: busy, current and migrated',()=>{
+ const items=[{number:1,workspace_id:1,active:false,migrated:false},{number:2,workspace_id:null,active:false,migrated:false},
+  {number:3,workspace_id:7,active:true,migrated:false},{number:4,workspace_id:null,active:false,migrated:false},
+  {number:2,workspace_id:9,active:false,migrated:true}];
+ assert.deepEqual(plain(M.barWorkspaces(items)).map(item=>item.number),[1,3,2]);
+ assert.deepEqual(plain(M.barWorkspaces([])),[]);
+ assert.deepEqual(plain(M.barWorkspaces([{number:1,workspace_id:null,active:true,migrated:false}])).length,1);
+});
+test('bar names the active application of its monitor by desktop entry',()=>{
+ const entries=[{id:'com.mitchellh.ghostty',name:'Ghostty',startupClass:''},{id:'org.telegram.desktop',name:'Telegram',startupClass:'TelegramDesktop'}];
+ const windows=[{monitor:'eDP-1',activated:false,appId:'org.telegram.desktop',className:'org.telegram.desktop',title:'Telegram'},
+  {monitor:'eDP-1',activated:true,appId:'com.mitchellh.ghostty',className:'com.mitchellh.ghostty',title:'~'},
+  {monitor:'DP-1',activated:true,appId:'TelegramDesktop',className:'TelegramDesktop',title:'Chat'}];
+ assert.equal(M.activeAppName(windows,'eDP-1',entries),'Ghostty');
+ assert.equal(M.activeAppName(windows,'DP-1',entries),'Telegram');
+ assert.equal(M.activeAppName(windows,'HDMI-A-1',entries),'');
+ assert.equal(M.activeAppName([{monitor:'eDP-1',activated:true,appId:'',className:'',title:'Untitled'}],'eDP-1',entries),'Untitled');
+});

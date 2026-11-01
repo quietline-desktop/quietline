@@ -26,7 +26,7 @@ Button {
     hoverEnabled: true
     focusPolicy: Qt.StrongFocus
     implicitHeight: 28
-    implicitWidth: Math.max(implicitHeight, content.implicitWidth + (text.length > 0 ? 16 : 8))
+    implicitWidth: Math.max(implicitHeight, implicitContentWidth + (text.length > 0 ? 16 : 8))
     padding: 0
     Accessible.name: hint || text
     Accessible.description: busy ? Lang.s.buttonBusy : ""
@@ -49,11 +49,14 @@ Button {
         opacity: root.enabled ? 1 : 0.6
         Behavior on color { ColorAnimation { duration: Theme.fastDuration } }
     }
+    // Ширина содержимого не зависит от ширины кнопки: подпись сокращается многоточием,
+    // только если владелец задал кнопке ширину меньше содержимого.
+    readonly property real symbolPart: symbol.length > 0 && !busy ? symbolSize + (label.text.length > 0 ? 6 : 0) : 0
     contentItem: Item {
-        implicitWidth: content.implicitWidth
-        implicitHeight: content.implicitHeight
+        id: content
+        implicitWidth: root.symbolPart + (label.text.length > 0 ? label.implicitWidth : 0)
+        implicitHeight: Math.max(root.symbolSize, label.implicitHeight)
         Row {
-            id: content
             anchors.centerIn: parent
             spacing: 6
             Icon {
@@ -68,7 +71,7 @@ Button {
                 id: label
                 visible: text.length > 0
                 anchors.verticalCenter: parent.verticalCenter
-                width: Math.min(implicitWidth, Math.max(0, root.width - (root.symbol.length > 0 ? root.symbolSize + 22 : 16)))
+                width: Math.min(implicitWidth, Math.max(0, content.width - root.symbolPart))
                 text: root.busy ? "…" : root.text
                 font: root.font
                 color: root.contentColor

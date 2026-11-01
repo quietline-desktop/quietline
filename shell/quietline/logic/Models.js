@@ -161,6 +161,21 @@ function workspaceItems(state, name, s) {
     return result;
 }
 
+// Номера на панели: только существующие пространства — занятые, текущее и перенесённые
+// с отключённого монитора; пустые номера открываются клавишами.
+function barWorkspaces(items) {
+    return (items || []).filter(function(item) { return item.active || item.migrated || item.workspace_id !== null; });
+}
+
+// Название активного приложения монитора `monitor` для панели: имя desktop-записи,
+// иначе appId или класс окна; без активного окна — пусто.
+function activeAppName(windows, monitor, entries) {
+    var window = (windows || []).find(function(candidate) { return candidate.monitor === monitor && candidate.activated; });
+    if (!window) return "";
+    var entry = desktopFor(window.appId || window.className, entries || []);
+    return entry ? entry.name : (window.appId || window.className || window.title || "");
+}
+
 function normalizedId(id) { return String(id || "").toLowerCase().replace(/\.desktop$/, ""); }
 
 function desktopFor(appId, entries) {

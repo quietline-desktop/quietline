@@ -24,13 +24,15 @@ Scope {
     })).sort((a, b) => a.name.localeCompare(b.name))
     // `activated` — окно с фокусом на видимом пространстве своего монитора: на пустом
     // пространстве ни одно окно не активно, хотя у прежнего окна флаг `activated` остаётся.
+    // Флаг IPC Hyprland появляется только с первым событием фокуса, поэтому учитывается и
+    // состояние Wayland-окна (foreign-toplevel), известное сразу после запуска оболочки.
     readonly property var windows: Hyprland.toplevels.values.map(window => {
         var data = window.lastIpcObject || {};
         var visible = !!window.monitor && !!window.workspace && window.monitor.activeWorkspace === window.workspace;
         return {address: window.address, appId: window.wayland ? window.wayland.appId : data.class,
                 className: data.class || "", title: window.title,
                 monitor: window.monitor ? window.monitor.name : "", workspace_id: window.workspace ? window.workspace.id : -1,
-                activated: window.activated && visible, fullscreen: data.fullscreen || 0,
+                activated: (window.activated || (!!window.wayland && window.wayland.activated)) && visible, fullscreen: data.fullscreen || 0,
                 focusHistoryID: data.focusHistoryID, mapped: data.mapped !== false, hidden: data.hidden || false,
                 pid: data.pid || -1};
     })

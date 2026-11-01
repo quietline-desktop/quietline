@@ -32,6 +32,11 @@ Singleton {
     // Дата в заданном формате (`dmy` | `ymd` | `mdy`), а не в выбранном.
     function dateIn(value, format) { return value.toLocaleDateString(locale, Strings.dateFormat(format)); }
     function longDate(value) { return value.toLocaleDateString(locale, "dddd, d MMMM"); }
+    // Дата и время на панели: «Вс 1 нояб. 22:48» / «Sun Nov 1 10:48 PM».
+    function barClock(value) {
+        var day = value.toLocaleDateString(locale, language === "ru" ? "ddd d MMM" : "ddd MMM d");
+        return day.charAt(0).toUpperCase() + day.slice(1) + "  " + time(value);
+    }
 
     // Сохраняет часть настроек (`{language, clock, date, layouts, toggle}`) и перечитывает их.
     function update(changes) {
