@@ -551,3 +551,29 @@ test('a workspace without shown windows counts as empty',()=>{
  assert.equal(M.workspaceEmpty(windows,'eDP-1',3),true);
  assert.equal(M.workspaceEmpty([],'eDP-1',1),true);
 });
+test('search results are grouped into sections with a top hit',()=>{
+ const results=[{kind:'app',id:'tg',title:'Telegram'},{kind:'file',id:'/h/t.txt',title:'t.txt'},{kind:'settings',id:'region',title:'Region'},
+  {kind:'app',id:'code',title:'Code'},{kind:'action',id:'lock',title:'Lock'}];
+ const rows=plain(M.searchSections(results,'te',ru));
+ assert.deepEqual(rows.map(r=>r.header?'#'+r.title:r.index),['#'+ru.searchBest,0,'#'+ru.searchApps,3,'#'+ru.searchActions,2,4,'#'+ru.searchFiles,1]);
+ const calc=plain(M.searchSections([{kind:'calc',id:'calc',title:'= 4'},{kind:'app',id:'a',title:'A'}],'2+2',en));
+ assert.deepEqual(calc.map(r=>r.header?'#'+r.title:r.index),['#'+en.searchBest,0,'#'+en.searchApps,1]);
+ const empty=plain(M.searchSections([{kind:'app',id:'a',title:'A'},{kind:'app',id:'b',title:'B'}],'',ru));
+ assert.deepEqual(empty.map(r=>r.header?'#'+r.title:r.index),['#'+ru.searchApps,0,1]);
+ assert.deepEqual(plain(M.searchSections([],'x',ru)),[]);
+});
+test('search rows get a symbol by kind',()=>{
+ assert.equal(M.searchSymbol({kind:'calc'}),'calculate');
+ assert.equal(M.searchSymbol({kind:'action',id:'lock'}),'lock');
+ assert.equal(M.searchSymbol({kind:'file',title:'photo.JPG'}),'image');
+ assert.equal(M.searchSymbol({kind:'file',title:'notes.md'}),'description');
+ assert.equal(M.searchSymbol({kind:'settings',id:'network'}),'settings');
+});
+test('clipboard entries are shown as text, link or image',()=>{
+ assert.equal(M.clipboardKind({kind:'image',preview:'x'}),'image');
+ assert.equal(M.clipboardKind({kind:'text',preview:' https://quickshell.org/docs '}),'link');
+ assert.equal(M.clipboardKind({kind:'text',preview:'see https://a.b and more'}),'text');
+ assert.equal(M.clipboardSymbol({kind:'text',preview:'file:///home/k/a.txt'}),'link');
+ assert.equal(M.clipboardKindLabel({kind:'text',preview:'hello'},ru),ru.clipboardText);
+ assert.equal(M.clipboardKindLabel(null,en),en.clipboardText);
+});

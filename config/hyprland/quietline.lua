@@ -64,10 +64,11 @@ hl.animation({ leaf = "windowsIn", enabled = true, speed = 2.5, bezier = "quietl
 hl.animation({ leaf = "workspaces", enabled = true, speed = 3, bezier = "quietline", style = "slide" })
 
 -- Поверхности оболочки (namespace quietline-*) размываются под собой; прозрачные края
--- (поле под тень) не размываются. Появление и скрытие анимирует сама оболочка.
+-- (поле под тень) не размываются. Появление и скрытие анимирует сама оболочка. Шаблон
+-- namespace сравнивается со всей строкой.
 hl.layer_rule({
     name = "quietline-surfaces",
-    match = { namespace = "^quietline-" },
+    match = { namespace = "quietline-.*" },
     blur = true,
     ignore_alpha = 0.05,
     no_anim = true,

@@ -585,6 +585,17 @@ function clipboardMatches(entries, query, s) {
 }
 
 // Подпись картинки из превью cliphist «[[ binary data 14 KiB png 120x80 ]]»: «Изображение PNG · 120×80».
+// Вид записи буфера для значка и подписи: картинка, ссылка (одна строка http/https/file) или текст.
+function clipboardKind(entry) {
+    if (!entry) return "text";
+    if (entry.kind === "image") return "image";
+    return /^(https?|file|ftp):\/\/\S+$/i.test(String(entry.preview || "").trim()) ? "link" : "text";
+}
+var CLIPBOARD_SYMBOLS = {image: "image", link: "link", text: "notes"};
+var CLIPBOARD_KIND_KEYS = {image: "clipboardImage", link: "clipboardLink", text: "clipboardText"};
+function clipboardSymbol(entry) { return CLIPBOARD_SYMBOLS[clipboardKind(entry)]; }
+function clipboardKindLabel(entry, s) { return s[CLIPBOARD_KIND_KEYS[clipboardKind(entry)]]; }
+
 function clipboardImageLabel(preview, s) {
     var match = /binary data .* (\w+) (\d+)x(\d+)/.exec(String(preview || ""));
     return match ? format(s.clipboardImageDetails, [match[1].toUpperCase(), match[2], match[3]]) : s.clipboardImage;
@@ -699,16 +710,52 @@ function matchScore(text, needle) {
     return (" " + value).indexOf(" " + needle) >= 0 ? 2 : 1;
 }
 
+// Разделы окна поиска: при запросе первый результат — «Лучшее совпадение», остальные
+// сгруппированы по виду (вычисление — к лучшему совпадению, разделы настроек — к действиям);
+// без запроса — только приложения. Порядок внутри раздела сохраняется, `index` — номер
+// результата в исходном списке (по нему идёт выбор стрелками).
+var SEARCH_SECTION_KEYS = {best: "searchBest", app: "searchApps", action: "searchActions", file: "searchFiles"};
+function searchSections(results, query, s) {
+    var order = ["best", "app", "action", "file"];
+    var groups = {best: [], app: [], action: [], file: []};
+    (results || []).forEach(function(item, index) {
+        var kind = item.kind === "settings" ? "action" : item.kind === "calc" ? "best" : item.kind;
+        if (String(query || "").trim() && index === 0) kind = "best";
+        if (!groups[kind]) kind = "action";
+        groups[kind].push({item: item, index: index});
+    });
+    var rows = [];
+    order.forEach(function(kind) {
+        if (!groups[kind].length) return;
+        rows.push({header: true, title: s[SEARCH_SECTION_KEYS[kind]]});
+        groups[kind].forEach(function(entry) { rows.push({header: false, item: entry.item, index: entry.index}); });
+    });
+    return rows;
+}
+
+// Значок результата поиска без собственной картинки (Material Symbols).
+var SEARCH_ACTION_SYMBOLS = {lock: "lock", screenshot: "screenshot_region", clipboard: "content_paste",
+    logout: "logout", reboot: "restart_alt", poweroff: "power_settings_new"};
+function searchSymbol(item) {
+    if (!item) return "search";
+    if (item.kind === "calc") return "calculate";
+    if (item.kind === "settings") return "settings";
+    if (item.kind === "action") return SEARCH_ACTION_SYMBOLS[item.id] || "bolt";
+    if (item.kind === "file") return /\.(png|jpe?g|gif|webp|svg|bmp|tiff?)$/i.test(item.title || "") ? "image"
+        : /\.pdf$/i.test(item.title || "") ? "picture_as_pdf" : "description";
+    return "apps";
+}
+
 // Результаты поиска: вычисление, затем приложения, действия и разделы настроек по совпадению,
 // затем файлы. Пустой запрос — все приложения. `home` сокращается до «~» в путях файлов.
 function searchResults(query, apps, files, home, limit, s) {
     var needle = String(query || "").trim().toLowerCase();
     var max = limit || 40;
-    if (!needle) return (apps || []).slice(0, max).map(function(app) { return {kind: "app", id: app.id, title: app.name, subtitle: s.searchApp}; });
+    if (!needle) return (apps || []).slice(0, max).map(function(app) { return {kind: "app", id: app.id, title: app.name, subtitle: s.searchApp, icon: app.icon || ""}; });
     var scored = [];
     (apps || []).forEach(function(app) {
         var score = Math.max(matchScore(app.name, needle), matchScore(app.id, needle) - 0.5);
-        if (score > 0) scored.push({kind: "app", id: app.id, title: app.name, subtitle: s.searchApp, score: score + 0.2});
+        if (score > 0) scored.push({kind: "app", id: app.id, title: app.name, subtitle: s.searchApp, icon: app.icon || "", score: score + 0.2});
     });
     SEARCH_ACTIONS.forEach(function(action) {
         var title = s[action.title];

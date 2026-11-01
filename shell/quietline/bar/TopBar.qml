@@ -341,12 +341,19 @@ PanelWindow {
         reducedMotion: root.reducedMotion
         // Сетевая панель держит формы: щелчок в другом окне её не закрывает.
         persistent: showingNetwork
-        padding: showingMenu ? 5 : 10
-        popupX: showingMenu || showingApplications ? Theme.screenMargin : Math.max(Theme.screenMargin, root.width - panelWidth - Theme.screenMargin)
-        popupY: Theme.barHeight + Theme.popupGap
-        panelWidth: showingMenu ? 248 : showingApplications ? Math.min(360, root.width - 12) : Math.min(showingNetwork || showingClipboard || showingNotifications ? 376 : 336, root.width - 12)
+        // Поиск и буфер — окна по центру экрана; остальное выпадает из панели.
+        readonly property bool centered: showingApplications || showingClipboard
+        padding: showingMenu ? 5 : centered ? 0 : 10
+        radius: centered ? Theme.radiusLarge : Theme.radiusPopup
+        surfaceColor: centered ? Theme.solidSurface : Theme.popupSurface
+        popupX: centered ? Math.round((root.width - panelWidth) / 2)
+              : showingMenu ? Theme.screenMargin : Math.max(Theme.screenMargin, root.width - panelWidth - Theme.screenMargin)
+        popupY: centered ? Math.round((root.screen ? root.screen.height : 800) * 0.19) : Theme.barHeight + Theme.popupGap
+        panelWidth: showingMenu ? 248 : showingApplications ? Math.min(640, root.width - 24) : showingClipboard ? Math.min(600, root.width - 24)
+                  : Math.min(showingNetwork || showingNotifications ? 376 : 336, root.width - 12)
         panelHeight: showingMenu ? quietlineMenu.implicitHeight + 10
-                   : showingApplications ? Math.min(430, root.screen ? root.screen.height - 100 : 430)
+                   : showingApplications ? searchPanel.contentHeight
+                   : showingClipboard ? clipboardPanel.contentHeight
                    : Math.min(content.implicitHeight + 20, root.screen ? root.screen.height - 80 : 500)
         onPresented: { if (showingApplications) searchPanel.reset(); else if (showingClipboard) clipboardPanel.reset(); else if (showingMenu) quietlineMenu.focusFirst(); }
         onDismissed: searchPanel.reset()
@@ -370,22 +377,22 @@ PanelWindow {
             onSessionRequested: action => root.openSession(action)
             onClipboardRequested: popout.open("clipboard")
         }
+        ClipboardPanel {
+            id: clipboardPanel
+            visible: popout.showingClipboard
+            anchors.fill: parent
+            clipboard: root.services.clipboard
+            onDone: popout.close()
+        }
         ScrollView {
             id: summaryScroll
-            visible: !popout.showingApplications && !popout.showingMenu
+            visible: !popout.showingApplications && !popout.showingMenu && !popout.showingClipboard
             anchors.fill: parent
             rightPadding: ScrollBar.vertical.visible ? ScrollBar.vertical.width + 4 : 0
             ScrollBar.vertical: ShellScrollBar {}
             ColumnLayout {
                 id: content
                 width: summaryScroll.availableWidth; spacing: 12
-                ClipboardPanel {
-                    id: clipboardPanel
-                    visible: popout.showingClipboard
-                    Layout.fillWidth: true
-                    clipboard: root.services.clipboard
-                    onDone: popout.close()
-                }
                 NotificationCenter {
                     visible: popout.showingNotifications
                     Layout.fillWidth: true
