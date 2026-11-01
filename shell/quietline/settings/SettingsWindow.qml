@@ -143,6 +143,7 @@ Scope {
                     id: pageScroll
                     Layout.fillWidth: true
                     Layout.fillHeight: true
+                    rightPadding: ScrollBar.vertical.visible ? ScrollBar.vertical.width + 4 : 0
                     ScrollBar.vertical: ShellScrollBar {}
                     StackLayout {
                         width: pageScroll.availableWidth

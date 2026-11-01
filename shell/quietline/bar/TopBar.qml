@@ -308,6 +308,7 @@ PanelWindow {
             id: summaryScroll
             visible: !popout.showingApplications
             anchors.fill: parent
+            rightPadding: ScrollBar.vertical.visible ? ScrollBar.vertical.width + 4 : 0
             ScrollBar.vertical: ShellScrollBar {}
             ColumnLayout {
                 id: content

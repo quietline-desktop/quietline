@@ -57,6 +57,7 @@ ColumnLayout {
     ScrollView {
         id: scroll
         Layout.fillWidth: true; Layout.fillHeight: true
+        rightPadding: ScrollBar.vertical.visible ? ScrollBar.vertical.width + 4 : 0
         ScrollBar.vertical: ShellScrollBar {}
         Column {
             width: scroll.availableWidth; spacing: 3

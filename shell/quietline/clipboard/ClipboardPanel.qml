@@ -38,6 +38,7 @@ ColumnLayout {
         id: scroll
         Layout.fillWidth: true
         Layout.preferredHeight: Math.min(320, list.implicitHeight)
+        rightPadding: ScrollBar.vertical.visible ? ScrollBar.vertical.width + 4 : 0
         ScrollBar.vertical: ShellScrollBar {}
         Column {
             id: list
