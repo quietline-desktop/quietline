@@ -156,14 +156,14 @@ def test_about_reads_os_release_and_versions(tmp_path, monkeypatch):
     def run(args, **kwargs):
         if args[0] == "hyprctl":
             return subprocess.CompletedProcess(args, 0, json.dumps({"tag": "v0.55.1"}), "")
-        return subprocess.CompletedProcess(args, 0, "quickshell 0.3.2\n", "")
+        return subprocess.CompletedProcess(args, 0, "Quickshell 0.3.2 (revision , distributed by Arch Linux)\n", "")
 
     monkeypatch.setattr(subprocess, "run", run)
     info = config.about(tmp_path / "os-release", tmp_path / "cpuinfo", tmp_path / "meminfo")
     assert info == {
         "os": "Arch Linux", "kernel": "7.2.7-arch1-1", "hostname": "quietline",
         "cpu": "12th Gen Intel(R) Core(TM) i5-12450H", "memoryGb": 15.4,
-        "hyprland": "v0.55.1", "quickshell": "quickshell 0.3.2",
+        "hyprland": "0.55.1", "quickshell": "0.3.2",
     }
 
 

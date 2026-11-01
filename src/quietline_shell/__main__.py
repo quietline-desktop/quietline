@@ -9,7 +9,7 @@
   в ответ добавляется `"applied": true | false`;
 - `motion` — `{"reducedMotion": true | false}`;
 - `about` — `{os, kernel, hostname, cpu, memoryGb, hyprland, quickshell}` для страницы
-  «О системе», недоступное значение — `null`;
+  «О системе» (`hyprland` и `quickshell` — номера версий вида `0.55.1`), недоступное значение — `null`;
 - `lock` — `{"locked": true}`: экран блокировки запущен или уже работал;
 - `session logout|reboot|poweroff [--timeout S] [--force]` — корректно закрывает окна и выполняет
   действие: `{"action", "done": true}` или `{"action", "done": false, "remaining": [{"app", "title"}]}`;

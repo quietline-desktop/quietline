@@ -301,10 +301,18 @@ def _output(args: list[str]) -> str | None:
     return result.stdout if result.returncode == 0 else None
 
 
+def _version(text: str | None) -> str | None:
+    """Номер версии `X.Y[.Z]` из строки версии программы; без номера — первая строка, пусто — `None`."""
+    if not text or not text.strip():
+        return None
+    number = re.search(r"\d+\.\d+(?:\.\d+)*", text)
+    return number.group(0) if number else text.strip().splitlines()[0]
+
+
 def _hyprland() -> str | None:
     output = _output(["hyprctl", "version", "-j"])
     try:
-        return json.loads(output).get("tag") if output else None
+        return _version(json.loads(output).get("tag")) if output else None
     except (ValueError, AttributeError):
         return None
 
@@ -326,5 +334,5 @@ def about(
         "cpu": cpu.group(1).strip() if cpu else None,
         "memoryGb": round(int(memory.group(1)) / 1048576, 1) if memory else None,
         "hyprland": _hyprland(),
-        "quickshell": quickshell.strip().splitlines()[0] if quickshell and quickshell.strip() else None,
+        "quickshell": _version(quickshell),
     }

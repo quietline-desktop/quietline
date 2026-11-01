@@ -3,8 +3,8 @@ import QtQuick.Layouts
 import ".."
 
 // Строка группы настроек, не ниже 44 px: подпись и пояснение слева, элемент управления
-// справа (дочерние элементы). `fill` — дочерний элемент занимает всю ширину строки под
-// подписью (ползунок, список).
+// справа (дочерние элементы), всё по вертикали по центру строки. `fill` — дочерний элемент
+// занимает всю ширину строки под подписью (ползунок, список).
 Item {
     id: root
     property string label: ""
@@ -17,7 +17,7 @@ Item {
     implicitHeight: Math.max(44, fill ? column.implicitHeight + 20 : Math.max(texts.implicitHeight, slot.implicitHeight) + 20)
     ColumnLayout {
         id: column
-        x: 14; y: 10
+        x: 14; y: root.fill ? 10 : Math.round((root.height - implicitHeight) / 2)
         width: parent.width - 28
         spacing: 8
         RowLayout {

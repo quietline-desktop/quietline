@@ -222,13 +222,17 @@ Scope {
                         }
                     }
                 }
+                // Прокручивается только текущая страница: высота StackLayout — наибольшая из всех.
                 ScrollView {
                     id: pageScroll
                     Layout.fillWidth: true
                     Layout.fillHeight: true
                     rightPadding: ScrollBar.vertical.visible ? ScrollBar.vertical.width + 4 : 0
                     ScrollBar.vertical: ShellScrollBar {}
+                    contentWidth: availableWidth
+                    contentHeight: pages.children[pages.currentIndex] ? pages.children[pages.currentIndex].implicitHeight : 0
                     StackLayout {
+                        id: pages
                         width: pageScroll.availableWidth
                         currentIndex: root.sections.findIndex(item => item.id === root.section)
                         Page {
