@@ -1,30 +1,34 @@
 import QtQuick
+import QtQuick.Effects
 import QtQuick.Layouts
 import Quickshell
 import Quickshell.Wayland
 import Quickshell.Hyprland
 import ".."
-import "../controls"
 import "../logic/Models.js" as Models
 
 // Всплывающие карточки уведомлений справа под панелью на мониторе с фокусом. Обычные
 // скрываются по `Models.notificationTimeout`, критические — только по кнопке; скрытая карточка
-// оставляет уведомление в истории. Текст показывается без разметки.
+// оставляет уведомление в истории. Текст показывается без разметки. Слева, сверху и снизу от
+// карточек — поле под тень, щелчки в нём проходят насквозь.
 PanelWindow {
     id: root
     required property var service
+    readonly property int shadowMargin: 20
     screen: Quickshell.screens.find(screen => Hyprland.focusedMonitor && screen.name === Hyprland.focusedMonitor.name) || Quickshell.screens[0] || null
     visible: service.popups.length > 0
     anchors { top: true; right: true }
-    margins.top: Theme.outerMargin + Theme.barHeight + 8
-    margins.right: 12
+    margins.top: Theme.barHeight + Theme.popupGap - shadowMargin
+    margins.right: 0
     exclusionMode: ExclusionMode.Ignore
     exclusiveZone: 0
     WlrLayershell.layer: WlrLayer.Overlay
+    WlrLayershell.namespace: "quietline-notifications"
     WlrLayershell.keyboardFocus: WlrKeyboardFocus.None
-    implicitWidth: 340
-    implicitHeight: Math.max(1, column.implicitHeight)
+    implicitWidth: 352 + shadowMargin + Theme.screenMargin
+    implicitHeight: Math.max(1, column.implicitHeight + shadowMargin * 2)
     color: "transparent"
+    mask: Region { item: column }
 
     // Сроки идут у всех видимых карточек, в том числе не поместившихся на экран.
     Repeater {
@@ -42,64 +46,30 @@ PanelWindow {
 
     ColumnLayout {
         id: column
-        width: parent.width
+        x: root.shadowMargin; y: root.shadowMargin
+        width: 352
         spacing: 8
         Repeater {
             model: root.service.popups
-            delegate: Rectangle {
-                id: card
+            delegate: Item {
+                id: slot
                 required property var modelData
-                readonly property var defaultAction: modelData.actions.find(action => action.identifier === "default") || null
                 Layout.fillWidth: true
-                implicitHeight: body.implicitHeight + 24
-                radius: Theme.panelRadius
-                color: Theme.surface
-                border.width: 1
-                border.color: modelData.urgency === 2 ? Theme.danger : Theme.border
-                TapHandler {
-                    onTapped: { if (card.defaultAction) card.defaultAction.invoke(); else root.service.hidePopup(card.modelData, true); }
+                implicitHeight: card.implicitHeight
+                RectangularShadow {
+                    anchors.fill: card
+                    radius: card.radius
+                    blur: 30; offset.y: 10; spread: -4
+                    color: Theme.shadow
                 }
-                ColumnLayout {
-                    id: body
-                    anchors { left: parent.left; right: parent.right; top: parent.top; margins: 12 }
-                    spacing: 4
-                    RowLayout {
-                        Layout.fillWidth: true
-                        Text {
-                            renderType: Text.CurveRendering
-                            Layout.fillWidth: true
-                            text: card.modelData.appName || Lang.s.notificationDefaultApp
-                            color: Theme.muted; font.family: Theme.sans; font.pixelSize: Theme.smallFontSize
-                            elide: Text.ElideRight; textFormat: Text.PlainText
-                        }
-                        ShellButton { text: "×"; hint: Lang.s.notificationHide; implicitHeight: 22; onClicked: root.service.hidePopup(card.modelData, true) }
-                    }
-                    Text {
-                        renderType: Text.CurveRendering
-                        Layout.fillWidth: true
-                        visible: text.length > 0
-                        text: card.modelData.summary
-                        color: Theme.text; font.family: Theme.sans; font.pixelSize: Theme.fontSize; font.weight: Font.DemiBold
-                        wrapMode: Text.Wrap; maximumLineCount: 2; elide: Text.ElideRight; textFormat: Text.PlainText
-                    }
-                    Text {
-                        renderType: Text.CurveRendering
-                        Layout.fillWidth: true
-                        visible: text.length > 0
-                        text: card.modelData.body
-                        color: Theme.text; font.family: Theme.sans; font.pixelSize: Theme.smallFontSize
-                        wrapMode: Text.Wrap; maximumLineCount: 4; elide: Text.ElideRight; textFormat: Text.PlainText
-                    }
-                    Flow {
-                        Layout.fillWidth: true
-                        visible: actionRepeater.count > 0
-                        spacing: 6
-                        Repeater {
-                            id: actionRepeater
-                            model: card.modelData.actions.filter(action => action.identifier !== "default")
-                            delegate: ShellButton { required property var modelData; text: modelData.text; onClicked: modelData.invoke() }
-                        }
-                    }
+                NotificationCard {
+                    id: card
+                    width: parent.width
+                    notification: slot.modelData
+                    timeText: Lang.s.notificationsNow
+                    closeHint: Lang.s.notificationHide
+                    onCloseRequested: root.service.hidePopup(slot.modelData, true)
+                    onActivated: { if (!defaultAction) root.service.hidePopup(slot.modelData, true); }
                 }
             }
         }

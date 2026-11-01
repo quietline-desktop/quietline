@@ -577,3 +577,23 @@ test('clipboard entries are shown as text, link or image',()=>{
  assert.equal(M.clipboardKindLabel({kind:'text',preview:'hello'},ru),ru.clipboardText);
  assert.equal(M.clipboardKindLabel(null,en),en.clipboardText);
 });
+test('notification history is stacked by application in recency order',()=>{
+ const history=[{app:'tg',id:1},{app:'vpn',id:2},{app:'tg',id:3},{app:'ql',id:4}];
+ const groups=plain(M.notificationGroups(history,entry=>entry.app));
+ assert.deepEqual(groups.map(g=>[g.key,g.entries.map(e=>e.id)]),[['tg',[1,3]],['vpn',[2]],['ql',[4]]]);
+ assert.deepEqual(plain(M.notificationGroups([],e=>e.app)),[]);
+});
+test('month grid starts the week on the locale day and marks today',()=>{
+ // Ноябрь 2026: 1-е — воскресенье.
+ const monday=plain(M.monthGrid(2026,10,1,{year:2026,month:10,day:1}));
+ assert.equal(monday.length,42);
+ assert.deepEqual(monday.slice(0,7).map(c=>c.day),[26,27,28,29,30,31,1]);
+ assert.deepEqual(monday.slice(0,7).map(c=>c.current),[false,false,false,false,false,false,true]);
+ assert.equal(monday.filter(c=>c.today).length,1);
+ assert.equal(monday[6].today,true);
+ const sunday=plain(M.monthGrid(2026,10,0,null));
+ assert.equal(sunday[0].day,1);
+ assert.equal(sunday[0].current,true);
+ assert.equal(sunday.filter(c=>c.today).length,0);
+ assert.equal(sunday[41].current,false);
+});

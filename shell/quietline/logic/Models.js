@@ -780,3 +780,29 @@ function searchResults(query, apps, files, home, limit, s) {
     });
     return results.slice(0, max);
 }
+
+// Стопки центра уведомлений: записи истории (новые сверху) одного приложения подряд не
+// обязательно — группа встаёт на место своей самой новой записи, порядок внутри сохраняется.
+function notificationGroups(history, keyOf) {
+    var groups = [], byKey = {};
+    (history || []).forEach(function(entry) {
+        var key = keyOf(entry);
+        if (!byKey[key]) { byKey[key] = {key: key, entries: []}; groups.push(byKey[key]); }
+        byKey[key].entries.push(entry);
+    });
+    return groups;
+}
+
+// Сетка месяца для календаря: 6 недель по 7 дней, неделя начинается с `firstDay`
+// (0 — воскресенье … 6 — суббота). Дни чужого месяца — `current: false`; `today` — сегодня.
+function monthGrid(year, month, firstDay, today) {
+    var first = new Date(year, month, 1);
+    var shift = (first.getDay() - firstDay + 7) % 7;
+    var cells = [];
+    for (var i = 0; i < 42; i++) {
+        var date = new Date(year, month, 1 - shift + i);
+        cells.push({day: date.getDate(), current: date.getMonth() === month,
+                    today: !!today && date.getFullYear() === today.year && date.getMonth() === today.month && date.getDate() === today.day});
+    }
+    return cells;
+}

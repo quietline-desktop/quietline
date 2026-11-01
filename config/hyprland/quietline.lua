@@ -63,14 +63,15 @@ hl.curve("quietline", { type = "bezier", points = { { 0.2, 0.9 }, { 0.3, 1 } } }
 hl.animation({ leaf = "windowsIn", enabled = true, speed = 2.5, bezier = "quietline", style = "popin 96%" })
 hl.animation({ leaf = "workspaces", enabled = true, speed = 3, bezier = "quietline", style = "slide" })
 
--- Поверхности оболочки (namespace quietline-*) размываются под собой; прозрачные края
--- (поле под тень) не размываются. Появление и скрытие анимирует сама оболочка. Шаблон
--- namespace сравнивается со всей строкой.
+-- Поверхности оболочки (namespace quietline-*) размываются под собой. Размывается только
+-- плотная поверхность (непрозрачность от 0.4): тень вокруг всплывающих окон прозрачнее и не
+-- размывается. Появление и скрытие анимирует сама оболочка. Шаблон namespace сравнивается
+-- со всей строкой.
 hl.layer_rule({
     name = "quietline-surfaces",
     match = { namespace = "quietline-.*" },
     blur = true,
-    ignore_alpha = 0.05,
+    ignore_alpha = 0.4,
     no_anim = true,
 })
 

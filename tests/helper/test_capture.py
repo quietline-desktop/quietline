@@ -99,12 +99,13 @@ def test_no_focused_monitor_is_a_capture_error(tools, monkeypatch):
         capture.capture_output(NOW)
 
 
-def test_cancelled_region_does_nothing(tools, monkeypatch):
-    tools.selection = ""
+def test_region_capture_failure_does_not_open_satty(tools, monkeypatch):
+    tools.fail = "grim"
     started = []
     monkeypatch.setattr(subprocess, "Popen", lambda *args, **kwargs: started.append(args))
-    assert capture.capture_region() == {"cancelled": True}
-    assert started == [] and "grim" not in tools.names()
+    with pytest.raises(capture.CaptureError):
+        capture.capture_region()
+    assert started == [] and "slurp" not in tools.names()
 
 
 def test_region_opens_satty_with_the_capture(tools, tmp_path, monkeypatch):
@@ -124,10 +125,12 @@ def test_region_opens_satty_with_the_capture(tools, tmp_path, monkeypatch):
 
     monkeypatch.setattr(subprocess, "Popen", Editor)
     assert capture.capture_region() == {"started": True}
-    assert next(args for args, _ in tools.calls if args[0] == "grim") == ["grim", "-g", "10,20 300x200", "-"]
+    # Экран снимается сразу, до выбора области: открытые панели оболочки попадают в кадр.
+    assert next(args for args, _ in tools.calls if args[0] == "grim") == ["grim", "-o", "eDP-1", "-"]
+    assert "slurp" not in tools.names()
     args, kwargs = opened[0]
     directory = tmp_path / "Изображения" / "Screenshots"
     assert args == ["satty", "--filename", "-", "--output-filename", str(directory / "Screenshot_%Y-%m-%d_%H-%M-%S.png"),
-                    "--copy-command", "wl-copy", "--early-exit", "all"]
+                    "--copy-command", "wl-copy", "--early-exit", "all", "--fullscreen", "--initial-tool", "crop"]
     assert kwargs["start_new_session"] is True and opened[1] == b"PNGDATA"
     assert directory.is_dir()

@@ -3,8 +3,9 @@
 Снимок монитора: `grim -o <монитор> -` → файл `Screenshot_ГГГГ-ММ-ДД_ЧЧ-ММ-СС.png` в каталоге
 `Screenshots` внутри «Изображений» (`xdg-user-dir PICTURES`) → PNG в буфер через `wl-copy`.
 Уведомление об успехе — только после обоих шагов; ошибка называет неудавшийся шаг.
-Область: `slurp` (отмена — тихий выход) → `grim -g <область> -` → Satty, где Enter
-копирует, `Ctrl+S` сохраняет в тот же каталог, `Esc` отменяет.
+Область: `grim -o <монитор> -` сразу, пока открытые панели и меню оболочки ещё на экране →
+застывший снимок в Satty на весь экран с инструментом обрезки: выделение задаёт область,
+Enter копирует, `Ctrl+S` сохраняет в тот же каталог, `Esc` отменяет.
 """
 
 import json
@@ -105,19 +106,9 @@ def capture_output(now: datetime | None = None) -> dict[str, Any]:
 
 
 def capture_region() -> dict[str, bool]:
-    """Выбор области в `slurp` и разметка в Satty; отмена выбора — `{"cancelled": true}`."""
+    """Снимок монитора с фокусом и выбор области обрезкой в Satty поверх застывшего экрана."""
     try:
-        selection = subprocess.run(["slurp"], capture_output=True, text=True, timeout=300, check=False)
-    except FileNotFoundError as error:
-        notify(notification_text(_STEP_KEYS["capture"]), "slurp is not installed", urgency="critical")
-        raise CaptureError("capture", "slurp is not installed") from error
-    except subprocess.TimeoutExpired:
-        return {"cancelled": True}
-    region = selection.stdout.strip()
-    if selection.returncode or not region:
-        return {"cancelled": True}
-    try:
-        png = _bytes(["grim", "-g", region, "-"], "capture")
+        png = _bytes(["grim", "-o", focused_output(), "-"], "capture")
         directory = screenshots_dir()
         directory.mkdir(parents=True, exist_ok=True)
     except OSError as error:
@@ -128,7 +119,7 @@ def capture_region() -> dict[str, bool]:
         raise
     command = [
         "satty", "--filename", "-", "--output-filename", str(directory / f"{FILE_PATTERN}.png"),
-        "--copy-command", "wl-copy", "--early-exit", "all",
+        "--copy-command", "wl-copy", "--early-exit", "all", "--fullscreen", "--initial-tool", "crop",
     ]
     try:
         editor = subprocess.Popen(command, stdin=subprocess.PIPE, stdout=subprocess.DEVNULL,

@@ -3,17 +3,21 @@ import QtQuick.Layouts
 import Quickshell
 import ".."
 import "../controls"
-import "../inputs"
 import "../logic/Models.js" as Models
 
-// Центр уведомлений во всплывающем окне панели: «Не беспокоить», история сеанса новыми сверху,
-// действия уведомлений, закрытие по одному и всех сразу. Нажатие на строку выполняет действие
-// по умолчанию; не-`resident` уведомление после действия закрывает сам сервер.
+// Центр уведомлений (дата на панели, `Super+N`): календарь месяца, «Не беспокоить», история
+// сеанса новыми сверху. Уведомления одного приложения собраны в стопку: видна самая новая
+// карточка, «ещё N» раскрывает остальные. Нажатие на карточку выполняет действие по
+// умолчанию; не-`resident` уведомление после действия закрывает сам сервер.
 ColumnLayout {
     id: root
     required property var service
+    // Раскрытые стопки: имя приложения → true.
+    property var expanded: ({})
+    readonly property var groups: Models.notificationGroups(service.history, entry => entry.notification.appName || "")
     spacing: 10
 
+    function reset() { expanded = ({}); calendar.reset(); }
     SystemClock { id: clock; precision: SystemClock.Minutes }
     function ageText(received) {
         var age = Models.notificationAge(received, clock.date.getTime());
@@ -23,90 +27,97 @@ ColumnLayout {
         if (age.kind === "today") return Lang.time(when);
         return Lang.shortDate(when) + " " + Lang.time(when);
     }
+    function toggleGroup(key) {
+        var next = Object.assign({}, expanded);
+        next[key] = !next[key];
+        expanded = next;
+    }
 
+    MonthCalendar { id: calendar; Layout.fillWidth: true }
     RowLayout {
         Layout.fillWidth: true
+        Layout.leftMargin: 4
         Text {
             renderType: Text.CurveRendering
             Layout.fillWidth: true
             text: Lang.s.notificationsTitle
-            color: Theme.text; font.family: Theme.sans; font.pixelSize: Theme.titleFontSize; font.bold: true
+            color: Theme.text; font.family: Theme.sans; font.pixelSize: Theme.titleFontSize; font.weight: Font.Bold
         }
-        ShellSwitch {
+        ShellButton {
+            implicitHeight: 24
+            radius: 12
+            symbol: "do_not_disturb_on"
+            symbolSize: 15
+            symbolFilled: root.service.dnd
             text: Lang.s.notificationsDnd
-            checked: root.service.dnd
-            onToggled: root.service.setDnd(checked)
+            font.pixelSize: Theme.smallFontSize
+            emphasized: root.service.dnd
+            selected: true
+            onClicked: root.service.setDnd(!root.service.dnd)
         }
     }
     Text {
         renderType: Text.CurveRendering
         visible: root.service.history.length === 0
+        Layout.alignment: Qt.AlignHCenter
+        Layout.topMargin: 6; Layout.bottomMargin: 6
         text: Lang.s.notificationsEmpty
-        color: Theme.muted; font.family: Theme.sans; font.pixelSize: Theme.fontSize
+        color: Theme.text2; font.family: Theme.sans; font.pixelSize: Theme.fontSize
     }
     Repeater {
-        model: root.service.history
-        delegate: Rectangle {
-            id: row
+        model: root.groups
+        delegate: ColumnLayout {
+            id: group
             required property var modelData
-            readonly property var notification: modelData.notification
-            readonly property var defaultAction: notification.actions.find(action => action.identifier === "default") || null
+            readonly property bool open: !!root.expanded[modelData.key]
+            readonly property var shownEntries: open ? modelData.entries : modelData.entries.slice(0, 1)
             Layout.fillWidth: true
-            implicitHeight: body.implicitHeight + 20
-            radius: Theme.controlRadius
-            color: hover.hovered && defaultAction ? Theme.raised : Theme.background
-            border.width: 1
-            border.color: notification.urgency === 2 ? Theme.danger : Theme.border
-            HoverHandler { id: hover }
-            TapHandler { onTapped: { if (row.defaultAction) row.defaultAction.invoke(); } }
-            ColumnLayout {
-                id: body
-                anchors { left: parent.left; right: parent.right; top: parent.top; margins: 10 }
-                spacing: 3
-                RowLayout {
+            spacing: 6
+            Repeater {
+                model: group.shownEntries
+                delegate: Item {
+                    id: slot
+                    required property var modelData
+                    required property int index
+                    readonly property bool stacked: !group.open && group.modelData.entries.length > 1
                     Layout.fillWidth: true
-                    Text {
-                        renderType: Text.CurveRendering
-                        Layout.fillWidth: true
-                        text: (row.notification.appName || Lang.s.notificationDefaultApp) + " · " + root.ageText(row.modelData.received)
-                        color: Theme.muted; font.family: Theme.sans; font.pixelSize: Theme.smallFontSize
-                        elide: Text.ElideRight; textFormat: Text.PlainText
+                    implicitHeight: card.implicitHeight + (stacked ? 6 : 0)
+                    // Край следующей карточки под верхней — признак стопки.
+                    Rectangle {
+                        visible: slot.stacked
+                        x: 10; width: parent.width - 20
+                        y: card.implicitHeight - 10; height: 16
+                        radius: Theme.radiusCard
+                        color: Qt.rgba(1, 1, 1, 0.045)
                     }
-                    ShellButton { text: "×"; hint: Lang.s.notificationDismiss; implicitHeight: 22; onClicked: row.notification.dismiss() }
-                }
-                Text {
-                    renderType: Text.CurveRendering
-                    Layout.fillWidth: true
-                    visible: text.length > 0
-                    text: row.notification.summary
-                    color: Theme.text; font.family: Theme.sans; font.pixelSize: Theme.fontSize; font.weight: Font.DemiBold
-                    wrapMode: Text.Wrap; maximumLineCount: 2; elide: Text.ElideRight; textFormat: Text.PlainText
-                }
-                Text {
-                    renderType: Text.CurveRendering
-                    Layout.fillWidth: true
-                    visible: text.length > 0
-                    text: row.notification.body
-                    color: Theme.text; font.family: Theme.sans; font.pixelSize: Theme.smallFontSize
-                    wrapMode: Text.Wrap; maximumLineCount: 4; elide: Text.ElideRight; textFormat: Text.PlainText
-                }
-                Flow {
-                    Layout.fillWidth: true
-                    visible: actions.count > 0
-                    spacing: 6
-                    Repeater {
-                        id: actions
-                        model: row.notification.actions.filter(action => action.identifier !== "default")
-                        delegate: ShellButton { required property var modelData; text: modelData.text; onClicked: modelData.invoke() }
+                    NotificationCard {
+                        id: card
+                        width: parent.width
+                        notification: slot.modelData.notification
+                        timeText: root.ageText(slot.modelData.received)
+                        surfaceColor: Qt.rgba(1, 1, 1, 0.07)
+                        border.color: notification.urgency === 2 ? Theme.danger : Qt.rgba(1, 1, 1, 0.05)
+                        onCloseRequested: slot.modelData.notification.dismiss()
                     }
                 }
+            }
+            ShellButton {
+                visible: group.modelData.entries.length > 1
+                Layout.alignment: Qt.AlignRight
+                implicitHeight: 22
+                text: group.open ? Lang.s.notificationsCollapse : Lang.f(Lang.s.notificationsMore, group.modelData.entries.length - 1)
+                font.pixelSize: Theme.captionFontSize
+                foreground: Theme.text2
+                onClicked: root.toggleGroup(group.modelData.key)
             }
         }
     }
     ShellButton {
         visible: root.service.history.length > 0
-        Layout.alignment: Qt.AlignRight
+        Layout.alignment: Qt.AlignHCenter
+        implicitHeight: 26
         text: Lang.s.notificationsClearAll
+        foreground: Theme.text2
         onClicked: root.service.clearAll()
     }
 }

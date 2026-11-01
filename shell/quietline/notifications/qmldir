@@ -1,3 +1,5 @@
 NotificationService 1.0 NotificationService.qml
 NotificationPopups 1.0 NotificationPopups.qml
 NotificationCenter 1.0 NotificationCenter.qml
+NotificationCard 1.0 NotificationCard.qml
+MonthCalendar 1.0 MonthCalendar.qml

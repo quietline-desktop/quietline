@@ -17,7 +17,7 @@ QtObject {
     readonly property color barSurface: Qt.rgba(22 / 255, 22 / 255, 26 / 255, 0.50)
     readonly property color popupSurface: Qt.rgba(32 / 255, 32 / 255, 36 / 255, 0.80)
     readonly property color solidSurface: Qt.rgba(32 / 255, 32 / 255, 36 / 255, 0.88)
-    readonly property color dockSurface: Qt.rgba(40 / 255, 40 / 255, 46 / 255, 0.42)
+    readonly property color dockSurface: Qt.rgba(40 / 255, 40 / 255, 46 / 255, 0.5)
     readonly property color windowSurface: "#1f1f23"
     readonly property color sidebarSurface: "#28282d"
     readonly property color scrim: Qt.rgba(0, 0, 0, 0.28)
