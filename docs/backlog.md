@@ -89,7 +89,7 @@
 - **РФ3 ежедневных действий** — снимок не объявляется готовым до файла и буфера; `PrintScreen` снимает только монитор с фокусом (D12, D13).
 - **РФ4 ежедневных действий** — секреты, копирование из 1Password и запись на паузе не попадают в историю; блокировка и выход её очищают (D16–D18).
 - **РФ5 ежедневных действий** — калькулятор поиска без исполнения кода (D21; модульно — `models.test.cjs`).
-- **Экран блокировки Quickshell** — `WlSessionLock` и `PamContext` с конфигурацией `login` в Quickshell 0.3.2, импорт темы `import ".."` из `lock/LockScreen.qml` при запуске `qs -p`, выход процесса через `Qt.quit()` после разблокировки (D1).
+- **Экран блокировки Quickshell** — `WlSessionLock` и `PamContext` с конфигурацией `login` в Quickshell 0.3.2, тема и строки (`Theme`, `Lang`) у `LockScreen.qml` из корня конфигурации при запуске `qs -p`, выход процесса через `Qt.quit()` после разблокировки (D1).
 - **Метка блокировки** — `Quickshell.execDetached(["touch", …])` из `onSecureStateChanged` создаёт `lock.secure` за 5 с после запуска; `Quickshell.env("QUIETLINE_LOCK_MARKER")` видит переменную, переданную `quietline-shell lock` (D1).
 - **Модель уведомлений** — `Repeater { model: trackedNotifications }` в Quickshell 0.3.2 обновляется по одному уведомлению, и сроки не перезапускаются при приходе нового (D15).
 - **Привязка `locked = true`** — `Super+L` срабатывает на экране, заблокированном упавшим клиентом, и `misc.allow_session_lock_restore = true` разрешает новый экран блокировки (D2).
@@ -112,7 +112,7 @@
 
 - **`hyprctl eval` для раскладок** — `hyprctl eval 'hl.config({ input = { kb_layout = "…", kb_options = "…" } })'` существует в Hyprland 0.55 и меняет раскладки сразу; при ошибке Lua (`hyprctl eval 'x ='`) возвращает ненулевой код, иначе `"applied": true` в ответе `quietline-shell region` ложен (`apply_keyboard` в `src/quietline_shell/config.py`; L6, L9).
 - **`keyboard.lua` при загрузке конфигурации** — `quietline.lua` читает `~/.config/quietline/keyboard.lua` через `pcall(dofile, …)`: `dofile` доступен в Lua Hyprland, `hl.config({ input = … })` принят; без файла при первом входе — `us,ru` и левые `Alt+Shift`; порядок и сочетание после «Поменять местами» сохраняются после `hyprctl reload` и повторного входа (L6–L8); испорченный `keyboard.lua` даёт запасные `us,ru` и левые `Alt+Shift` (L9б).
-- **Синглтон `Lang`** — `Singleton` с `Process` в Quickshell 0.3.2 стартует, до ответа `quietline-shell region` язык берётся из `Quickshell.env("LANG")` без мелькания английского у русской системы; то же в отдельном процессе экрана блокировки `qs -p …/lock/LockScreen.qml` (L1, L3).
+- **Синглтон `Lang`** — `Singleton` с `Process` в Quickshell 0.3.2 стартует, до ответа `quietline-shell region` язык берётся из `Quickshell.env("LANG")` без мелькания английского у русской системы; то же в отдельном процессе экрана блокировки `qs -p …/LockScreen.qml` (L1, L3).
 - **Смена языка без перезапуска** — «Язык и регион» перерисовывает панель, док, открытые всплывающие окна, окно «Настройки», памятку `Super+F1` и экран блокировки; часы меняют формат сразу (L2, L3, L5).
 - **Окно «Настройки» при смене языка** — список разделов не зависит от языка, подпись берётся в делегате; после смены языка окно остаётся на «Язык и регион», а не сбрасывается на «Сеть» (L2).
 - **Даты по локали** — `toLocaleDateString(Qt.locale("ru_RU"), "dddd, d MMMM")` даёт родительный падеж месяца («среда, 28 октября»), `h:mm AP` для 12 часов; подписи вариантов даты в разделе — сегодняшняя дата (L4).

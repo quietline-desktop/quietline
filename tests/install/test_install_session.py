@@ -130,7 +130,7 @@ def ready_system(ctx, system, root):
     hypr = ctx.home / '.config/hypr/hyprland.lua'
     hypr.parent.mkdir(parents=True)
     hypr.write_text('dofile("/usr/share/quietline/hyprland/quietline.lua")\n')
-    lock = ctx.home / '.config/quickshell/quietline/lock/LockScreen.qml'
+    lock = ctx.home / '.config/quickshell/quietline/LockScreen.qml'
     lock.parent.mkdir(parents=True)
     lock.write_text('')
     region = ctx.home / '.config/quietline/region.json'
@@ -158,7 +158,7 @@ def test_check_reports_each_item_and_fails_on_missing(ctx, system, root):
 def test_check_needs_both_locales_and_lock_screen(ctx, system, root):
     ready_system(ctx, system, root)
     system.answer(['locale', '-a'], 'C\nen_US.utf8\n')
-    (ctx.home / '.config/quickshell/quietline/lock/LockScreen.qml').unlink()
+    (ctx.home / '.config/quickshell/quietline/LockScreen.qml').unlink()
     lines, ok = checks.run_checks(ctx, Plan(), which=lambda name: f'/usr/bin/{name}')
     assert not ok
     missing = ctx.t('ready.missing')

@@ -1,7 +1,7 @@
 """Сеанс и приложения: блокировка экрана, выход из сеанса, перезагрузка, выключение,
 корректный выход из приложения и его принудительное завершение.
 
-Экран блокировки — отдельный процесс Quickshell `qs -p <конфигурация>/lock/LockScreen.qml`,
+Экран блокировки — отдельный процесс Quickshell `qs -p <конфигурация>/LockScreen.qml`,
 не зависящий от панели; запущенный экземпляр записан в `$XDG_RUNTIME_DIR/quietline/lock.pid`,
 а метка `lock.secure` рядом означает, что блокировка подтверждена.
 Выход, перезагрузка и выключение сначала корректно закрывают все окна Hyprland и
@@ -52,9 +52,9 @@ def runtime_dir() -> Path:
 
 
 def lock_screen_path() -> Path:
-    """`$XDG_CONFIG_HOME/quickshell/quietline/lock/LockScreen.qml`."""
+    """`$XDG_CONFIG_HOME/quickshell/quietline/LockScreen.qml`."""
     directory = os.environ.get("XDG_CONFIG_HOME") or Path.home() / ".config"
-    return Path(directory) / "quickshell" / "quietline" / "lock" / "LockScreen.qml"
+    return Path(directory) / "quickshell" / "quietline" / "LockScreen.qml"
 
 
 def run(args: list[str], timeout: float = 5) -> str:

@@ -111,7 +111,7 @@ def lock_env(tmp_path, monkeypatch, clock):
     """Экран блокировки: `behaviour` — `lock` (создаёт метку), `exit` (падает) или `hang` (висит)."""
     monkeypatch.setenv("XDG_RUNTIME_DIR", str(tmp_path / "run"))
     monkeypatch.setenv("XDG_CONFIG_HOME", str(tmp_path / "config"))
-    screen = tmp_path / "config" / "quickshell" / "quietline" / "lock" / "LockScreen.qml"
+    screen = tmp_path / "config" / "quickshell" / "quietline" / "LockScreen.qml"
     screen.parent.mkdir(parents=True)
     screen.write_text("ShellRoot {}\n")
 

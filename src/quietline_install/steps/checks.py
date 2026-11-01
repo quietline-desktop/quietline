@@ -19,7 +19,7 @@ def run_checks(ctx: Ctx, plan: Plan, which=shutil.which) -> tuple[list[str], boo
     items += [(unit, ctx.system.ok(['systemctl', 'is-enabled', '--quiet', unit]))
               for unit in [*plan.services, 'greetd.service']]
     config = ctx.home / '.config'
-    lock = config / 'quickshell/quietline/lock/LockScreen.qml'
+    lock = config / 'quickshell/quietline/LockScreen.qml'
     hypr = config / 'hypr/hyprland.lua'
     region = config / 'quietline/region.json'
     items.append((str(lock), lock.is_file()))

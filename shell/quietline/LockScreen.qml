@@ -2,10 +2,11 @@ import QtQuick
 import Quickshell
 import Quickshell.Wayland
 import Quickshell.Services.Pam
-import ".."
+import "lock"
 
-// Экран блокировки — отдельный процесс `qs -p …/lock/LockScreen.qml`, его запускает
-// `quietline-shell lock`. Поверхность на каждом экране; пароль проверяет PAM по
+// Экран блокировки — отдельный процесс `qs -p …/LockScreen.qml`, его запускает
+// `quietline-shell lock`. Файл должен лежать в корне конфигурации: синглтоны `Theme`
+// и `Lang` видны только процессу, чей корень — эта папка. Поверхность на каждом экране; пароль проверяет PAM по
 // конфигурации `login`. Когда Hyprland подтвердил блокировку всех экранов, создаётся метка
 // `QUIETLINE_LOCK_MARKER` для `quietline-shell lock`; после успешной проверки пароля метка
 // удаляется, блокировка снимается и процесс завершается.
