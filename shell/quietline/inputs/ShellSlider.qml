@@ -9,6 +9,9 @@ Slider {
     id: root
     property string label: ""
     property string symbol: ""
+    // Значок внутри ползунка нажимается (например, выключает звук): сигнал `symbolClicked`.
+    property bool symbolClickable: false
+    signal symbolClicked()
     focusPolicy: Qt.StrongFocus
     stepSize: 0.01
     hoverEnabled: true
@@ -34,6 +37,12 @@ Slider {
             filled: true
             size: 16
             color: "#3a3a40"
+            MouseArea {
+                anchors.fill: parent; anchors.margins: -4
+                enabled: root.symbolClickable
+                cursorShape: Qt.PointingHandCursor
+                onClicked: root.symbolClicked()
+            }
         }
     }
     handle: Rectangle {

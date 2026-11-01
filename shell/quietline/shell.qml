@@ -1,3 +1,4 @@
+//@ pragma Env QML_DISABLE_DISTANCEFIELD=1
 import QtQuick
 import Quickshell
 import Quickshell.Io

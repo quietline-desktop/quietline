@@ -1,5 +1,6 @@
 import QtQuick
 import QtQuick.Controls
+import QtQuick.Effects
 import QtQuick.Layouts
 import Quickshell
 import Quickshell.Wayland
@@ -177,12 +178,21 @@ PanelWindow {
                             if (modelData.onlyMenu) showMenu();
                             else modelData.activate();
                         }
+                        // Значки трея обесцвечены: на панели они одного тона, детали сохраняются.
                         Image {
+                            id: trayIcon
                             anchors.centerIn: parent
                             width: 16; height: 16
                             source: parent.modelData.icon
                             sourceSize.width: 32; sourceSize.height: 32
-                            opacity: 0.85
+                            visible: false
+                        }
+                        MultiEffect {
+                            anchors.fill: trayIcon
+                            source: trayIcon
+                            saturation: -1
+                            brightness: 0.15
+                            opacity: 0.9
                         }
                         TapHandler { acceptedButtons: Qt.RightButton; onTapped: parent.showMenu() }
                     }
@@ -202,9 +212,11 @@ PanelWindow {
                         radius: 4
                         color: "transparent"
                         border.width: 1.5; border.color: Theme.text
+                        // Заглавные Inter стоят выше середины строки: подпись опущена до центра рамки.
                         Text {
                             id: layoutText
                             anchors.centerIn: parent
+                            anchors.verticalCenterOffset: 0.75
                             text: root.desktop.keyboardLayout
                             color: Theme.text
                             font.family: Theme.sans; font.pixelSize: 10; font.weight: Font.Bold
@@ -239,29 +251,32 @@ PanelWindow {
                     Row {
                         id: batteryRow
                         anchors.centerIn: parent
-                        spacing: 2
+                        spacing: 1
                         Rectangle {
+                            id: batteryCell
                             anchors.verticalCenter: parent.verticalCenter
-                            width: 24; height: 12; radius: 3.5
+                            width: 25; height: 12; radius: 3.5
                             color: "transparent"
-                            border.width: 1.5; border.color: Qt.rgba(1, 1, 1, 0.55)
+                            border.width: 1.2; border.color: Qt.rgba(1, 1, 1, 0.5)
                             Rectangle {
-                                x: 2.5; y: 2.5
-                                height: parent.height - 5
-                                width: Math.max(2, (parent.width - 5) * root.services.power.percent / 100)
+                                x: 2; y: 2
+                                height: parent.height - 4
+                                width: Math.max(2, (parent.width - 4) * root.services.power.percent / 100)
                                 radius: 1.5
                                 color: root.services.power.percent <= 10 && !root.services.power.charging ? Theme.danger : Theme.text
+                            }
+                            // При зарядке молния — внутри ячейки, тёмная на светлой заливке.
+                            Icon {
+                                visible: root.services.power.charging
+                                anchors.centerIn: parent
+                                name: "bolt"; filled: true; weight: 600; size: 12
+                                color: root.services.power.percent > 45 ? "#1c1c20" : Theme.text
                             }
                         }
                         Rectangle {
                             anchors.verticalCenter: parent.verticalCenter
-                            width: 2; height: 4; radius: 1
-                            color: Qt.rgba(1, 1, 1, 0.55)
-                        }
-                        Icon {
-                            visible: root.services.power.charging
-                            anchors.verticalCenter: parent.verticalCenter
-                            name: "bolt"; filled: true; size: 13
+                            width: 1.5; height: 4; radius: 1
+                            color: Qt.rgba(1, 1, 1, 0.5)
                         }
                     }
                 }
@@ -285,7 +300,7 @@ PanelWindow {
             ShellButton {
                 id: details
                 implicitHeight: Theme.barItemHeight
-                symbol: "toggle_on"
+                symbol: "tune"
                 hint: Lang.s.quickSettingsTitle
                 selected: popout.opened && popout.showingQuick
                 onClicked: popout.toggle("quick")
@@ -385,9 +400,11 @@ PanelWindow {
                     visible: popout.showingQuick
                     Layout.fillWidth: true
                     services: root.services
+                    indicators: root.indicators
                     builtinScreen: Models.isBuiltinOutput(root.monitorName)
                     onNetworkRequested: popout.open("network")
-                    onSettingsRequested: { popout.close(); root.services.settings.open(""); }
+                    onSettingsRequested: section => { popout.close(); root.services.settings.open(section); }
+                    onCloseRequested: popout.close()
                 }
                 // Трей, скрытый с узкой панели, остаётся доступным здесь.
                 Text { visible: popout.showingQuick && root.compact && SystemTray.items.values.length > 0; text: Lang.s.barBackgroundApps; color: Theme.text2; font.family: Theme.sans; font.pixelSize: Theme.smallFontSize }
