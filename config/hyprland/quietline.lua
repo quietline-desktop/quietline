@@ -95,7 +95,10 @@ hl.window_rule({
 -- Symbols (close, crop_square, horizontal_rule; в Inter точки нет). Шрифт «Quietline Titlebar» — правило fontconfig
 -- пакета (50-quietline-titlebar.conf): название окна — Inter, значки — Material Symbols
 -- Rounded раньше запасных шрифтов, где те же точки заняты другими глифами.
--- Цвет кнопки под указателем и подсказки hyprbars не поддерживает.
+-- Под указателем кнопка получает кружок — «закрыть» красный, остальные светло-серый — и белый
+-- значок (`hover_bg_color`, `hover_fg_color`); цвет появляется и гаснет за 120 мс (`hover_fade`).
+-- hyprbars без этих возможностей поля кнопок пропускает, `hover_fade` задаётся, только если
+-- плагин его знает (`hl.get_config`), и кнопки остаются серыми без подсветки.
 -- «Свернуть» уносит окно на скрытое пространство special:quietline-minimized, вернуть его
 -- можно из дока. В колонках «Тайлов» заголовков нет.
 if hl.plugin and hl.plugin.hyprbars then
@@ -121,6 +124,8 @@ if hl.plugin and hl.plugin.hyprbars then
     hl.plugin.hyprbars.add_button({
         bg_color = "rgba(00000000)",
         fg_color = "rgba(ffffffcc)",
+        hover_bg_color = "rgb(e5484d)",
+        hover_fg_color = "rgb(ffffff)",
         size = 26,
         icon = "\u{E5CD}",
         action = [[hyprctl dispatch 'hl.dsp.window.close()']],
@@ -128,6 +133,8 @@ if hl.plugin and hl.plugin.hyprbars then
     hl.plugin.hyprbars.add_button({
         bg_color = "rgba(00000000)",
         fg_color = "rgba(ffffffcc)",
+        hover_bg_color = "rgba(ffffff24)",
+        hover_fg_color = "rgb(ffffff)",
         size = 26,
         icon = "\u{E3C6}",
         action = [[hyprctl dispatch 'hl.dsp.window.fullscreen({ mode = "maximized", action = "toggle" })']],
@@ -135,10 +142,15 @@ if hl.plugin and hl.plugin.hyprbars then
     hl.plugin.hyprbars.add_button({
         bg_color = "rgba(00000000)",
         fg_color = "rgba(ffffffcc)",
+        hover_bg_color = "rgba(ffffff24)",
+        hover_fg_color = "rgb(ffffff)",
         size = 26,
         icon = "\u{F108}",
         action = [[hyprctl dispatch 'hl.dsp.window.move({ workspace = "special:quietline-minimized", follow = false })']],
     })
+    if hl.get_config("plugin:hyprbars:hover_fade") ~= nil then
+        hl.config({ plugin = { hyprbars = { hover_fade = 120 } } })
+    end
     hl.window_rule({
         name = "quietline-tiled-no-bar",
         match = { float = false },
