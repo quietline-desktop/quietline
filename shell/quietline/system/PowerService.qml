@@ -16,12 +16,14 @@ Scope {
         ? (battery.timeToFull > 0 ? Lang.f(Lang.s.powerUntilFull, Models.formatDuration(battery.timeToFull, Lang.s)) : Lang.s.powerCharging)
         : (battery.timeToEmpty > 0 ? Lang.f(Lang.s.powerRemaining, Models.formatDuration(battery.timeToEmpty, Lang.s)) : "")
     // Предупреждение о низком заряде — уведомлением, как от любой программы: всплывает,
-    // попадает в историю; на критическом пороге — критическое. После зарядки счёт заново.
+    // попадает в историю; на критическом пороге — критическое. Разряд — только когда система
+    // на батарее и устройство разряжается; иначе счёт начинается заново.
+    readonly property bool discharging: hasBattery && UPower.onBattery && battery.state === UPowerDeviceState.Discharging
     property var warned: null
     function checkBattery() {
         if (!hasBattery) return;
-        if (charging) { warned = null; return; }
-        var level = Models.batteryWarning(warned, percent, charging);
+        if (!discharging) { warned = null; return; }
+        var level = Models.batteryWarning(warned, percent, discharging);
         if (level === null) return;
         warned = level;
         var critical = level === Models.BATTERY_CRITICAL;
@@ -29,7 +31,7 @@ Scope {
                                  Lang.f(Lang.s.batteryLowTitle, percent), critical ? Lang.s.batteryCriticalBody : Lang.s.batteryLowBody]);
     }
     onPercentChanged: checkBattery()
-    onChargingChanged: checkBattery()
+    onDischargingChanged: checkBattery()
     onHasBatteryChanged: checkBattery()
     // PowerProfiles отдаёт значение и без службы, поэтому её наличие проверяет powerprofilesctl.
     property bool profilesAvailable: false

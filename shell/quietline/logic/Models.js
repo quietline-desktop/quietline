@@ -393,14 +393,15 @@ function osdView(kind, value, muted) {
 }
 function osdSuppressed(localUntil, now) { return now < localUntil; }
 
-// Пороги предупреждения о заряде без зарядки; последний — критическое уведомление.
+// Пороги предупреждения о заряде при разряде; последний — критическое уведомление.
 var BATTERY_LEVELS = [20, 10, 5];
 var BATTERY_CRITICAL = 5;
 // Порог, о котором пора предупредить: наименьший из тех, до которых заряд опустился и о
 // которых ещё не предупреждали (`warned` — последний предупреждённый порог, `null` после
-// зарядки). Колебание заряда около порога не повторяет предупреждение.
-function batteryWarning(warned, percent, charging) {
-    if (charging) return null;
+// зарядки). Колебание заряда около порога не повторяет предупреждение. Без разряда и при
+// нулевом заряде (UPower ещё не отдал значение) предупреждения нет.
+function batteryWarning(warned, percent, discharging) {
+    if (!discharging || !(percent > 0)) return null;
     var found = null;
     for (var i = 0; i < BATTERY_LEVELS.length; i++) {
         var level = BATTERY_LEVELS[i];

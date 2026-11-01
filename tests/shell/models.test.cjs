@@ -460,24 +460,25 @@ test('volume and brightness keys are described in the shortcuts list',()=>{
 test('battery warnings fire once per threshold crossed while discharging',()=>{
  assert.deepEqual(plain(M.BATTERY_LEVELS),[20,10,5]);
  assert.equal(M.BATTERY_CRITICAL,5);
- assert.equal(M.batteryWarning(null,20,false),20);
- assert.equal(M.batteryWarning(20,19,false),null);
- assert.equal(M.batteryWarning(20,9,false),10);
- assert.equal(M.batteryWarning(null,8,false),10);
- assert.equal(M.batteryWarning(10,4,false),5);
- assert.equal(M.batteryWarning(null,15,true),null);
- assert.equal(M.batteryWarning(null,50,false),null);
+ assert.equal(M.batteryWarning(null,20,true),20);
+ assert.equal(M.batteryWarning(20,19,true),null);
+ assert.equal(M.batteryWarning(20,9,true),10);
+ assert.equal(M.batteryWarning(null,8,true),10);
+ assert.equal(M.batteryWarning(10,4,true),5);
+ assert.equal(M.batteryWarning(null,15,false),null);
+ assert.equal(M.batteryWarning(null,50,true),null);
+ assert.equal(M.batteryWarning(null,0,true),null);
 });
 test('battery level bouncing around a threshold warns only once until charging',()=>{
  let warned=null; const fired=[];
  for(const percent of [21,20,21,20]){
-  const level=M.batteryWarning(warned,percent,false);
+  const level=M.batteryWarning(warned,percent,true);
   if(level!==null){warned=level;fired.push(level);}
  }
  assert.deepEqual(fired,[20]);
- assert.equal(M.batteryWarning(warned,25,true),null);
+ assert.equal(M.batteryWarning(warned,25,false),null);
  warned=null;
- assert.equal(M.batteryWarning(warned,20,false),20);
+ assert.equal(M.batteryWarning(warned,20,true),20);
 });
 test('do not disturb lets only critical cards through, the open centre none',()=>{
  assert.equal(M.popupAllowed(2,true,false),true);
