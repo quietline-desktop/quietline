@@ -172,6 +172,34 @@ def test_snapshot_reads_window_tags_and_dialog_marks():
     assert snap.active_window is not None and snap.active_window.tags == ()
 
 
+def test_snapshot_reads_special_workspace_without_id():
+    """Hyprland 0.57 не отдаёт `id` специального пространства: окно и пространство читаются."""
+    runner = FakeRunner()
+    special = {"address": "special:quietline-minimized", "type": "special", "name": "special:quietline-minimized"}
+    minimized = client("0xe6", 1, 0, (300, 300), (400, 300), floating=True)
+    minimized["workspace"] = special
+    runner.replies[("hyprctl", "-j", "clients")] = json.dumps([*CLIENTS, minimized])
+    runner.replies[("hyprctl", "-j", "workspaces")] = json.dumps([
+        *WORKSPACES,
+        {**special, "monitor": "DP-1", "monitorID": 0, "windows": 1, "tiledLayout": "scrolling"},
+    ])
+    snap = Hyprland(runner=runner).snapshot()
+
+    assert snap.windows[-1].workspace_id == hyprland.SPECIAL_WORKSPACE_ID < 0
+    assert [w.id for w in snap.workspaces] == [1, 1001, hyprland.SPECIAL_WORKSPACE_ID]
+    # Окно со специального пространства не входит в колонки обычного.
+    assert "0xe6" not in [address for column in snap.columns(1) for address in column.addresses]
+
+
+def test_snapshot_still_rejects_normal_workspace_without_id():
+    runner = FakeRunner()
+    broken = client("0xe6", 1, 0, (300, 300), (400, 300))
+    broken["workspace"] = {"name": "7"}
+    runner.replies[("hyprctl", "-j", "clients")] = json.dumps([broken])
+    with pytest.raises(HyprlandError):
+        Hyprland(runner=runner).snapshot()
+
+
 @pytest.mark.parametrize("tags", [None, "quietline-modal", [1], [["quietline-modal"]]])
 def test_snapshot_rejects_malformed_or_missing_tags(tags):
     runner = FakeRunner()

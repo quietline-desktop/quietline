@@ -162,9 +162,24 @@ def _monitor(raw: Mapping) -> Monitor:
     )
 
 
+# Специальное пространство (scratchpad, свёрнутые окна): Hyprland ≥ 0.57 не отдаёт его `id`
+# ни в `workspaces`, ни в `clients`. Движок видит такие пространства под одним отрицательным
+# id — он не совпадает ни с одним управляемым пространством, поэтому их окна не планируются.
+SPECIAL_WORKSPACE_ID = -1
+
+
+def _workspace_id(raw: Mapping) -> int:
+    """ID пространства из записи hyprctl; специальное без `id` — `SPECIAL_WORKSPACE_ID`."""
+    if "id" in raw:
+        return raw["id"]
+    if raw.get("type") == "special" or str(raw.get("name", "")).startswith("special:"):
+        return SPECIAL_WORKSPACE_ID
+    raise KeyError("id")
+
+
 def _workspace(raw: Mapping) -> Workspace:
     return Workspace(
-        id=raw["id"],
+        id=_workspace_id(raw),
         name=raw["name"],
         monitor=raw["monitor"],
         monitor_id=raw["monitorID"],
@@ -178,7 +193,7 @@ def _window(raw: Mapping) -> Window:
     width, height = raw["size"]
     return Window(
         address=raw["address"],
-        workspace_id=raw["workspace"]["id"],
+        workspace_id=_workspace_id(raw["workspace"]),
         monitor_id=raw["monitor"],
         at=(at_x, at_y),
         size=(width, height),
