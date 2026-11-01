@@ -3,6 +3,7 @@ import QtQuick.Controls
 import QtQuick.Layouts
 import Quickshell
 import Quickshell.Io
+import Quickshell.Hyprland
 import ".."
 import "../controls"
 import "../panels"
@@ -237,30 +238,15 @@ Scope {
                         currentIndex: root.sections.findIndex(item => item.id === root.section)
                         Page {
                             PageTitle { text: Lang.s.settingsNetwork }
-                            SettingsGroup {
-                                SettingsRow {
-                                    fill: true
-                                    NetworkControls { width: parent.width; network: root.services.network; compact: false }
-                                }
-                            }
+                            NetworkControls { Layout.fillWidth: true; Layout.maximumWidth: 640; network: root.services.network; compact: false }
                         }
                         Page {
                             PageTitle { text: "Bluetooth" }
-                            SettingsGroup {
-                                SettingsRow {
-                                    fill: true
-                                    BluetoothControls { width: parent.width; bluetooth: root.services.bluetooth; compact: false }
-                                }
-                            }
+                            BluetoothControls { Layout.fillWidth: true; Layout.maximumWidth: 640; bluetooth: root.services.bluetooth }
                         }
                         Page {
                             PageTitle { text: Lang.s.settingsAudio }
-                            SettingsGroup {
-                                SettingsRow {
-                                    fill: true
-                                    AudioControls { width: parent.width; audio: root.services.audio; compact: false }
-                                }
-                            }
+                            AudioControls { Layout.fillWidth: true; Layout.maximumWidth: 640; audio: root.services.audio }
                         }
                         Page {
                             PageTitle { text: Lang.s.settingsDisplay }
@@ -278,12 +264,15 @@ Scope {
                             }
                             SettingsGroup {
                                 title: Lang.s.settingsMonitors
+                                // Режим и масштаб — из Hyprland: у экрана Qt целый `devicePixelRatio`.
                                 Repeater {
-                                    model: Quickshell.screens
+                                    model: Hyprland.monitors.values
                                     delegate: SettingsRow {
                                         required property var modelData
-                                        label: modelData.name + (modelData.model ? " · " + modelData.model : "")
-                                        Value { text: modelData.width + "×" + modelData.height }
+                                        symbol: Models.isBuiltinOutput(modelData.name) ? "laptop" : "desktop_windows"
+                                        label: Models.isBuiltinOutput(modelData.name) ? Lang.s.displayBuiltin : (modelData.description || modelData.name)
+                                        note: modelData.name
+                                        Value { text: Lang.f(Lang.s.displayMode, modelData.width, modelData.height, Math.round(modelData.scale * 100)) }
                                     }
                                 }
                             }
@@ -291,12 +280,7 @@ Scope {
                         }
                         Page {
                             PageTitle { text: Lang.s.settingsPower }
-                            SettingsGroup {
-                                SettingsRow {
-                                    fill: true
-                                    PowerControls { width: parent.width; power: root.services.power }
-                                }
-                            }
+                            PowerControls { Layout.fillWidth: true; Layout.maximumWidth: 640; power: root.services.power }
                         }
                         Page {
                             PageTitle { text: Lang.s.settingsNotifications }

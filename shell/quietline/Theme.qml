@@ -12,7 +12,6 @@ QtObject {
     readonly property color accentForeground: "#ffffff"
     readonly property color danger: "#ff453a"
     readonly property color success: "#30d158"
-    readonly property color closeButton: "#e5484d"
     // Поверхности: панель, всплывающие окна, окна по центру (поиск, буфер), окно «Настройки».
     readonly property color barSurface: Qt.rgba(22 / 255, 22 / 255, 26 / 255, 0.50)
     readonly property color popupSurface: Qt.rgba(32 / 255, 32 / 255, 36 / 255, 0.80)

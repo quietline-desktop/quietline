@@ -312,6 +312,10 @@ test('binds to missing applications are not listed',()=>{
  const both=plain(M.describeBinds(binds,en,[{id:'com.mitchellh.ghostty',name:'Ghostty',icon:'x'},{id:'org.kde.dolphin',name:'Dolphin',icon:'x'}]));
  assert.equal(both.length,3);
 });
+test('wifi signal maps to bars',()=>{
+ assert.deepEqual([100,75,74,50,49,25,24,0].map(M.wifiSymbol),
+  ['signal_wifi_4_bar','signal_wifi_4_bar','network_wifi_3_bar','network_wifi_3_bar','network_wifi_2_bar','network_wifi_2_bar','network_wifi_1_bar','network_wifi_1_bar']);
+});
 test('lua binds are described by their description',()=>{
  const lua=(modmask,key,dispatcher,description)=>({modmask,key,dispatcher:`HL.Dispatcher(${dispatcher})`,arg:'17',description,has_description:!!description});
  const rows=plain(M.describeBinds([
@@ -333,7 +337,7 @@ test('lua binds are described by their description',()=>{
   {keys:'Super+1…0',action:'Открыть пространство 1–10'},
   {keys:'Super+Shift+1…0',action:'Перенести окно на пространство 1–10'},
   {keys:'Super+M',action:'Сменить режим «Окна / Тайлы»'},
-  {keys:'Super+K',action:'exec_cmd'},
+  {keys:'Super+K',action:'Запустить команду'},
   {keys:'Super+J',action:'quietline:unknown'},
  ]);
  assert.equal(M.bindAction('quietline:float',en),'Take window out of its column or put it back');

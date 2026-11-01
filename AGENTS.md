@@ -53,7 +53,7 @@ config/hypridle/          — `hypridle.conf`: блокировка, отклю�
 config/fontconfig/        — `50-quietline-titlebar.conf`: шрифт заголовков окон «Quietline Titlebar» (Inter и значки Material Symbols)
 scripts/                  — сценарии проверки в живом сеансе (`smoke-window-engine.md`, `smoke-quickshell.md`, `smoke-system-panels.md`, `smoke-daily-actions.md`, `smoke-language.md`, `smoke-installer.md`, `smoke-idle-notifications.md`, `smoke-shell-redesign.md`), запуск оболочки из репозитория `run-shell`, проверка имён пакетов каталога `check-catalog.py`
 shell/quietline/          — конфигурация Quickshell (`qs -c quietline`): `shell.qml`, тема `Theme.qml`, стенд IPC `IpcHarness.qml`
-shell/quietline/controls/ — общие элементы: значок Material Symbols, кнопка, сегменты, пункт меню, полоса прокрутки
+shell/quietline/controls/ — общие элементы: значок Material Symbols, кнопка, сегменты, пункт меню, полоса прокрутки, группа и строка настроек
 shell/quietline/surfaces/ — поверхности: всплывающее окно, диалог по центру, подсказка
 shell/quietline/inputs/   — поля форм: текстовое поле, переключатель, ползунок
 shell/quietline/bar/      — верхняя панель `TopBar.qml`

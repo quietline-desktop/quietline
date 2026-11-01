@@ -3,3 +3,5 @@ ShellScrollBar 1.0 ShellScrollBar.qml
 ShellMenuItem 1.0 ShellMenuItem.qml
 Icon 1.0 Icon.qml
 SegmentedControl 1.0 SegmentedControl.qml
+SettingsGroup 1.0 SettingsGroup.qml
+SettingsRow 1.0 SettingsRow.qml

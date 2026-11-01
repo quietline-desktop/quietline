@@ -346,6 +346,14 @@ function deviceLabel(device, s) {
     return s.deviceUnavailable;
 }
 
+// Значок Material Symbols силы сигнала Wi-Fi по уровню 0–100: четыре, три, две или одна дуга.
+function wifiSymbol(signal) {
+    if (signal >= 75) return "signal_wifi_4_bar";
+    if (signal >= 50) return "network_wifi_3_bar";
+    if (signal >= 25) return "network_wifi_2_bar";
+    return "network_wifi_1_bar";
+}
+
 // Секунды до отката: округление вверх, не меньше 0.
 function secondsLeft(deadlineMs, nowMs) { return Math.max(0, Math.ceil((deadlineMs - nowMs) / 1000)); }
 
@@ -494,6 +502,7 @@ function bindAction(command, s) {
     if (command === "wpctl set-mute @DEFAULT_AUDIO_SOURCE@ toggle") return s.bindMicMute;
     if (/^brightnessctl .* set \d+%\+/.test(command)) return s.bindBrightnessUp;
     if (/^brightnessctl .* set \d+%-/.test(command)) return s.bindBrightnessDown;
+    if (command === "exec_cmd") return s.bindCommand;
     return command;
 }
 

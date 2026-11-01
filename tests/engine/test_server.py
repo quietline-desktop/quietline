@@ -630,11 +630,14 @@ def test_cli_prints_results_and_fails_on_errors(path, env, monkeypatch, capsys):
 
 def test_shortcuts_target_expected_cli_calls():
     text = LUA_CONFIG.read_text(encoding="utf-8")
-    # Каждая привязка — одна строка `hl.bind("<клавиши>", <действие>` или многострочная функция.
-    keys = re.findall(r'^hl\.bind\("([^"]+)"', text, re.M)
-    assert len(keys) == len(set(keys)) == text.count("hl.bind(")
-    binds = re.findall(r'^hl\.bind\("([^"]+)",\s*hl\.dsp\.exec_cmd\("([^"]+)"\)(?:,\s*\{[^}]*\})?\)$', text, re.M)
-    flags = dict(re.findall(r'^hl\.bind\("([^"]+)",.*\{([^}]*)\}\)$', text, re.M))
+    # `hl.bind` вызывают только помощники `run` (команда — она же описание) и `act`
+    # (диспетчер с описанием `quietline:<действие>`): у каждой привязки есть описание.
+    assert text.count("hl.bind(") == 2
+    assert "opts.description = command" in text and 'opts.description = "quietline:" .. name' in text
+    keys = re.findall(r'^(?:run|act)\("([^"]+)"', text, re.M)
+    assert len(keys) == len(set(keys))
+    binds = re.findall(r'^run\("([^"]+)",\s*"([^"]+)"(?:,\s*\{[^}]*\})?\)$', text, re.M)
+    flags = dict(re.findall(r'^(?:run|act)\("([^"]+)",.*\{([^}]*)\}\)$', text, re.M))
     locked = [key for key, value in flags.items() if re.search(r"\blocked\s*=\s*true\b", value)]
     repeating = [key for key, value in flags.items() if re.search(r"\brepeating\s*=\s*true\b", value)]
     media = ["XF86AudioRaiseVolume", "XF86AudioLowerVolume", "XF86AudioMute", "XF86AudioMicMute",
@@ -643,31 +646,36 @@ def test_shortcuts_target_expected_cli_calls():
     assert sorted(locked) == sorted(["SUPER + L", *media])
     assert sorted(repeating) == sorted(["XF86AudioRaiseVolume", "XF86AudioLowerVolume",
                                         "XF86MonBrightnessUp", "XF86MonBrightnessDown"])
-    # Действие без закрывающей скобки самого hl.bind.
-    others = {
-        key: action[:-1] if action.count(")") > action.count("(") else action
-        for key, action in re.findall(r'^hl\.bind\("([^"]+)",\s*(.+)$', text, re.M)
-        if not action.startswith("hl.dsp.exec_cmd(")
-    }
+    # `act("<клавиши>", <действие>, "<имя>"[, {…}])`; многострочная функция — до `end, "<имя>")`.
+    others = {}
+    for key, action, name, options in re.findall(
+            r'^act\("([^"]+)",\s*(.+?),\s*"([a-z-]+)"(?:,\s*(\{[^}]*\}))?\)$', text, re.M | re.S):
+        others[key] = (action.split("\n")[0], name, options)
     assert len(binds) + len(others) == len(keys)
     directions = {"Left": "l", "Right": "r", "Up": "u", "Down": "d"}
+    names = {"Left": "left", "Right": "right", "Up": "up", "Down": "down"}
     expected_others = {
-        "SUPER + W": "hl.dsp.window.close()",
-        "SUPER + ALT + Space": 'hl.dsp.window.float({ action = "toggle" })',
-        "SUPER + F": 'hl.dsp.window.fullscreen({ mode = "maximized" })',
-        "SUPER + SHIFT + F": 'hl.dsp.window.fullscreen({ mode = "fullscreen" })',
-        "ALT + Tab": "function ()",
-        "SUPER + mouse:272": "hl.dsp.window.drag(), { mouse = true }",
-        "SUPER + mouse:273": "hl.dsp.window.resize(), { mouse = true }",
-        "SUPER + ALT + Left": 'hl.dsp.focus({ monitor = "l" })',
-        "SUPER + ALT + Right": 'hl.dsp.focus({ monitor = "r" })',
+        "SUPER + W": ("hl.dsp.window.close()", "close", ""),
+        "SUPER + ALT + Space": ('hl.dsp.window.float({ action = "toggle" })', "float", ""),
+        "SUPER + F": ('hl.dsp.window.fullscreen({ mode = "maximized" })', "maximize", ""),
+        "SUPER + SHIFT + F": ('hl.dsp.window.fullscreen({ mode = "fullscreen" })', "fullscreen", ""),
+        "ALT + Tab": ("function ()", "cycle", ""),
+        "SUPER + mouse:272": ("hl.dsp.window.drag()", "drag", "{ mouse = true }"),
+        "SUPER + mouse:273": ("hl.dsp.window.resize()", "resize", "{ mouse = true }"),
+        "SUPER + ALT + Left": ('hl.dsp.focus({ monitor = "l" })', "monitor-left", ""),
+        "SUPER + ALT + Right": ('hl.dsp.focus({ monitor = "r" })', "monitor-right", ""),
     }
     for key, letter in directions.items():
-        expected_others[f"SUPER + {key}"] = f'hl.dsp.focus({{ direction = "{letter}" }})'
+        expected_others[f"SUPER + {key}"] = (f'hl.dsp.focus({{ direction = "{letter}" }})', f"focus-{names[key]}", "")
     nudges = {"Left": "-NUDGE, 0", "Right": "NUDGE, 0", "Up": "0, -NUDGE", "Down": "0, NUDGE"}
     for key, letter in directions.items():
-        expected_others[f"SUPER + SHIFT + {key}"] = f'move_or_nudge("{letter}", {nudges[key]})'
+        expected_others[f"SUPER + SHIFT + {key}"] = (f'move_or_nudge("{letter}", {nudges[key]})', f"move-{names[key]}", "")
     assert others == expected_others
+    # Каждое имя `quietline:<действие>` памятка оболочки знает.
+    models = (LUA_CONFIG.parents[2] / "shell" / "quietline" / "logic" / "Models.js").read_text(encoding="utf-8")
+    known = re.search(r"var QUIETLINE_BIND_KEYS = \{(.*?)\};", models, re.S)
+    assert known
+    assert {name for _, name, _ in others.values()} <= set(re.findall(r'"([a-z-]+)":', known.group(1)))
     expected = {}
     for number in range(1, 11):
         key = str(number % 10)

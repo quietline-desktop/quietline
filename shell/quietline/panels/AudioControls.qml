@@ -4,64 +4,103 @@ import ".."
 import "../controls"
 import "../inputs"
 
-// Громкость и микрофон; в полном виде (`compact: false`) ещё выбор выхода звука.
+// Страница «Звук» окна «Настройки»: группа выхода (громкость, кнопка звука, выбор
+// устройства с галочкой у текущего) и группа микрофона.
 ColumnLayout {
     id: root
     required property var audio
-    property bool compact: true
-    spacing: 8
-    Text {
-        renderType: Text.CurveRendering
+    spacing: 18
+
+    // Ползунок громкости с кнопкой выключения слева и процентом справа.
+    component VolumeLine: RowLayout {
+        id: line
+        property bool muted: false
+        property real volume: 0
+        property string symbol: ""
+        property string mutedSymbol: ""
+        property string hint: ""
+        property string label: ""
+        signal toggled()
+        signal moved(real value)
+        Layout.fillWidth: true
+        spacing: 8
+        ShellButton {
+            symbol: line.muted ? line.mutedSymbol : line.symbol
+            foreground: line.muted ? Theme.danger : Theme.text
+            hint: line.hint
+            onClicked: line.toggled()
+        }
+        ShellSlider {
+            Layout.fillWidth: true
+            label: line.label
+            to: 1.0
+            value: line.volume
+            onMoved: line.moved(value)
+        }
+        Text {
+            renderType: Text.CurveRendering
+            Layout.preferredWidth: 40
+            horizontalAlignment: Text.AlignRight
+            text: Math.round(line.volume * 100) + "%"
+            color: Theme.text2; font.family: Theme.sans; font.pixelSize: Theme.smallFontSize
+            font.features: ({ "tnum": 1 })
+        }
+    }
+
+    SettingsGroup {
         visible: !root.audio.available
-        text: Lang.s.audioNotFound
-        color: Theme.text2; font.family: Theme.sans; font.pixelSize: Theme.smallFontSize
+        SettingsRow { symbol: "volume_off"; note: Lang.s.audioNotFound }
     }
-    RowLayout {
+
+    SettingsGroup {
         visible: root.audio.available
-        Layout.fillWidth: true
-        ShellButton {
-            symbol: root.audio.available && root.audio.sink.audio.muted ? "volume_off" : "volume_up"
-            hint: root.audio.available && root.audio.sink.audio.muted ? Lang.s.audioUnmute : Lang.s.audioMute
-            onClicked: root.audio.toggleMute()
-        }
-        ShellSlider {
-            Layout.fillWidth: true
+        title: Lang.s.audioOutput
+        SettingsRow {
             label: Lang.s.audioVolume
-            to: 1.0
-            value: root.audio.available ? root.audio.sink.audio.volume : 0
-            onMoved: root.audio.setVolume(value)
+            fill: true
+            VolumeLine {
+                width: parent.width
+                muted: root.audio.available && root.audio.sink.audio.muted
+                volume: root.audio.available ? root.audio.sink.audio.volume : 0
+                symbol: "volume_up"; mutedSymbol: "volume_off"
+                hint: muted ? Lang.s.audioUnmute : Lang.s.audioMute
+                label: Lang.s.audioVolume
+                onToggled: root.audio.toggleMute()
+                onMoved: value => root.audio.setVolume(value)
+            }
+        }
+        Repeater {
+            model: root.audio.sinks
+            delegate: SettingsRow {
+                id: sinkRow
+                required property var modelData
+                readonly property bool current: root.audio.sink === modelData
+                symbol: "speaker"
+                label: modelData.description || modelData.nickname || modelData.name
+                labelBold: current
+                clickable: !current
+                onClicked: root.audio.selectSink(modelData)
+                Icon { visible: sinkRow.current; name: "check"; size: 18; weight: 600; color: Theme.accent }
+            }
         }
     }
-    RowLayout {
+
+    SettingsGroup {
         visible: root.audio.micAvailable
-        Layout.fillWidth: true
-        ShellButton {
-            symbol: root.audio.micAvailable && root.audio.source.audio.muted ? "mic_off" : "mic"
-            hint: root.audio.micAvailable && root.audio.source.audio.muted ? Lang.s.audioMicUnmute : Lang.s.audioMicMute
-            onClicked: root.audio.toggleMicMute()
-        }
-        ShellSlider {
-            Layout.fillWidth: true
-            label: Lang.s.audioMic
-            to: 1.0
-            value: root.audio.micAvailable ? root.audio.source.audio.volume : 0
-            onMoved: root.audio.setMicVolume(value)
-        }
-    }
-    Text {
-        renderType: Text.CurveRendering
-        visible: !root.compact && root.audio.sinks.length > 1
-        text: Lang.s.audioOutput
-        color: Theme.text2; font.family: Theme.sans; font.pixelSize: Theme.smallFontSize
-    }
-    Repeater {
-        model: root.compact ? [] : root.audio.sinks
-        delegate: ShellButton {
-            required property var modelData
-            Layout.fillWidth: true
-            text: modelData.description || modelData.nickname || modelData.name
-            emphasized: root.audio.sink === modelData
-            onClicked: root.audio.selectSink(modelData)
+        title: Lang.s.audioMic
+        SettingsRow {
+            label: Lang.s.audioInputLevel
+            fill: true
+            VolumeLine {
+                width: parent.width
+                muted: root.audio.micAvailable && root.audio.source.audio.muted
+                volume: root.audio.micAvailable ? root.audio.source.audio.volume : 0
+                symbol: "mic"; mutedSymbol: "mic_off"
+                hint: muted ? Lang.s.audioMicUnmute : Lang.s.audioMicMute
+                label: Lang.s.audioMic
+                onToggled: root.audio.toggleMicMute()
+                onMoved: value => root.audio.setMicVolume(value)
+            }
         }
     }
 }
