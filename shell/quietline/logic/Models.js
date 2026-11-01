@@ -517,15 +517,18 @@ var SESSION_QUESTION_KEYS = {logout: "sessionLogoutQuestion", reboot: "sessionRe
 function sessionLabel(action, s) { var key = textKey(SESSION_LABEL_KEYS, action, ""); return key ? s[key] : ""; }
 function sessionQuestion(action, s) { var key = textKey(SESSION_QUESTION_KEYS, action, ""); return key ? s[key] : ""; }
 
-// Приложения, окна которых не закрылись: «Не завершились: Code (notes.md), Telegram».
-function remainingText(remaining, s) {
-    var names = [];
+// Приложения, которые не закрылись перед выходом: имя desktop-записи (иначе класс окна),
+// несколько окон одного приложения — числом в скобках, окно без имени — отдельной подписью.
+function remainingText(remaining, s, entries) {
+    var names = [], counts = {};
     (remaining || []).forEach(function(window) {
-        var name = window.app || s.sessionUntitledWindow;
-        var label = window.title && window.title !== name ? name + " (" + window.title + ")" : name;
-        if (names.indexOf(label) < 0) names.push(label);
+        var entry = window.app ? desktopFor(window.app, entries || []) : null;
+        var name = entry ? entry.name : (window.app || s.sessionUntitledWindow);
+        if (!(name in counts)) { counts[name] = 0; names.push(name); }
+        counts[name] += 1;
     });
-    return names.length ? format(s.sessionRemaining, [names.join(", ")]) : "";
+    var labels = names.map(function(name) { return counts[name] > 1 ? name + " (" + counts[name] + ")" : name; });
+    return labels.length ? format(s.sessionRemaining, [labels.join(", ")]) : "";
 }
 
 function sessionErrorText(action, detail, s) {

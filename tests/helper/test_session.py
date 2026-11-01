@@ -67,6 +67,15 @@ def test_window_with_unsaved_document_stops_poweroff(monkeypatch, clock):
     assert clock[0] >= 3
 
 
+def test_forced_session_end_acts_without_closing_windows(monkeypatch, clock):
+    fake = FakeHyprland(CLIENTS, stubborn={"0xb2"})
+    monkeypatch.setattr(subprocess, "run", fake)
+    assert session.end_session("poweroff", force=True) == {"action": "poweroff", "done": True}
+    assert not any("close" in args[2] for args in fake.commands if args[:2] == ["hyprctl", "dispatch"])
+    assert fake.commands[-1] == ["systemctl", "poweroff"]
+    assert clock[0] == 0
+
+
 def test_session_without_windows_acts_at_once(monkeypatch, clock):
     fake = FakeHyprland([])
     monkeypatch.setattr(subprocess, "run", fake)

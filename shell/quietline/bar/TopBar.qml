@@ -428,12 +428,14 @@ PanelWindow {
     CenterDialog {
         id: sessionDialog
         parentPanel: root
+        cardWidth: 340
         reducedMotion: root.reducedMotion
         locked: root.services.session.busy
         onDismissed: root.services.session.reset()
         SessionDialog {
             id: sessionContent
             session: root.services.session
+            entries: root.desktop.entries
             onDone: sessionDialog.close()
         }
     }

@@ -256,21 +256,24 @@ def lock() -> dict[str, bool]:
     return {"locked": True}
 
 
-def end_session(action: str, timeout: float = CLOSE_TIMEOUT) -> dict[str, Any]:
+def end_session(action: str, timeout: float = CLOSE_TIMEOUT, force: bool = False) -> dict[str, Any]:
     """Корректно закрывает все окна и выполняет `logout`, `reboot` или `poweroff`.
 
     Действие выполняется, только когда окон не осталось совсем, в том числе открытых во
-    время ожидания; иначе — `{"done": false, "remaining": […]}`.
+    время ожидания; иначе — `{"done": false, "remaining": […]}`. С `force` — сразу, без
+    закрытия окон: пользователь уже видел список оставшихся приложений и подтвердил, что
+    выходит без них (несохранённое в них теряется).
     """
     if action not in SESSION_ACTIONS:
         raise ValueError(f"unknown session action: {action!r}")
-    for window in windows():
-        close_window(window["address"])
-    remaining = wait_for_windows(lambda window: True, timeout)
-    if not remaining:
-        remaining = windows()
-    if remaining:
-        return {"action": action, "done": False, "remaining": _remaining(remaining)}
+    if not force:
+        for window in windows():
+            close_window(window["address"])
+        remaining = wait_for_windows(lambda window: True, timeout)
+        if not remaining:
+            remaining = windows()
+        if remaining:
+            return {"action": action, "done": False, "remaining": _remaining(remaining)}
     match action:
         case "logout":
             _wipe_clipboard()

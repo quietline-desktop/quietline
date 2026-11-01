@@ -313,8 +313,11 @@ test('binds to missing applications are not listed',()=>{
  assert.equal(both.length,3);
 });
 test('session menu names the applications that did not quit',()=>{
- assert.equal(M.remainingText([{app:'code',title:'notes.md'},{app:'code',title:'notes.md'},{app:'Telegram',title:'Telegram'}],ru),
-  'Не завершились: code (notes.md), Telegram. Сохраните документы и повторите.');
+ assert.equal(M.remainingText([{app:'code',title:'notes.md'},{app:'code',title:'todo.md'},{app:'Telegram',title:'Telegram'}],ru),
+  'Не завершились: code (2), Telegram. Сохраните документы и повторите.');
+ const entries=[{id:'com.mitchellh.ghostty',name:'Ghostty',startupClass:''},{id:'brave-browser',name:'Brave',startupClass:''}];
+ assert.equal(M.remainingText([{app:'brave-browser',title:'Quietline'},{app:'com.mitchellh.ghostty',title:'a'},{app:'com.mitchellh.ghostty',title:'b'}],ru,entries),
+  'Не завершились: Brave, Ghostty (2). Сохраните документы и повторите.');
  assert.equal(M.remainingText([],ru),'');
  assert.equal(M.remainingText([{app:'',title:''}],ru),'Не завершились: окно без названия. Сохраните документы и повторите.');
  assert.equal(M.sessionErrorText('poweroff','systemctl failed',ru),'Выключить не удалось: systemctl failed');
@@ -379,7 +382,7 @@ test('texts follow the English table',()=>{
  assert.equal(M.bindAction('quietline-engine move 3',en),'Move window to workspace 3');
  assert.equal(M.bindAction('my-tool --flag',en),'my-tool --flag');
  assert.equal(M.remainingText([{app:'code',title:'notes.md'},{app:'',title:''}],en),
-  'Still running: code (notes.md), untitled window. Save your documents and try again.');
+  'Still running: code, untitled window. Save your documents and try again.');
  for(const query of ['сеть','network']){
   const rows=plain(M.searchResults(query,[],[],'/home/k',undefined,en));
   assert.equal(rows[0].kind,'settings',query); assert.equal(rows[0].id,'network',query);

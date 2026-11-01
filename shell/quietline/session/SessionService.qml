@@ -17,14 +17,15 @@ Scope {
     function lock() { Quickshell.execDetached(["quietline-shell", "lock"]); }
     // Результат прошлого действия (оставшиеся приложения, ошибка) держится до нового действия
     // или явной отмены: меню показывает его и после повторного открытия.
-    function end(name) {
+    // `force` — выполнить действие сразу, не закрывая окна (после списка оставшихся приложений).
+    function end(name, force) {
         if (busy || Models.SESSION_ACTIONS.indexOf(name) < 0) return;
         busy = true;
         action = name;
         remaining = [];
         errorMessage = "";
         ending.answered = false;
-        ending.command = ["quietline-shell", "session", name];
+        ending.command = force ? ["quietline-shell", "session", name, "--force"] : ["quietline-shell", "session", name];
         ending.running = true;
     }
     function reset() { if (!busy) { action = ""; remaining = []; errorMessage = ""; } }

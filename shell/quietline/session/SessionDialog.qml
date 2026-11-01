@@ -9,6 +9,8 @@ import "../logic/Models.js" as Models
 ColumnLayout {
     id: root
     required property var session
+    // Desktop-записи для названий приложений, которые не закрылись.
+    property var entries: []
     // Действие сеанса: `logout`, `reboot` или `poweroff`.
     property string action: ""
     signal done()
@@ -39,7 +41,7 @@ ColumnLayout {
         Layout.topMargin: 6
         Layout.bottomMargin: 16
         text: root.session.busy ? Lang.s.sessionClosingApps
-            : root.session.remaining.length > 0 ? Models.remainingText(root.session.remaining, Lang.s)
+            : root.session.remaining.length > 0 ? Models.remainingText(root.session.remaining, Lang.s, root.entries) + " " + Lang.s.sessionForceNote
             : root.session.errorMessage.length > 0 ? root.session.errorMessage
             : Lang.s.sessionDialogBody
         color: root.session.remaining.length > 0 || root.session.errorMessage.length > 0 ? Theme.danger : Theme.text2
@@ -68,7 +70,21 @@ ColumnLayout {
             busy: root.session.busy
             enabled: !root.session.busy
             KeyNavigation.left: cancelButton
-            onClicked: root.session.end(root.action)
+            KeyNavigation.down: forceButton
+            onClicked: root.session.end(root.action, false)
         }
+    }
+    // Приложения не закрылись: выполнить действие без них, после явного выбора.
+    ShellButton {
+        id: forceButton
+        visible: root.session.remaining.length > 0 && !root.session.busy
+        Layout.fillWidth: true
+        Layout.topMargin: 8
+        implicitHeight: 30; radius: Theme.radiusControl
+        text: Lang.f(Lang.s.sessionForce, Models.sessionLabel(root.action, Lang.s))
+        foreground: Theme.danger
+        selected: true
+        KeyNavigation.up: confirm
+        onClicked: root.session.end(root.action, true)
     }
 }

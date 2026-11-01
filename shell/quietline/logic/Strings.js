@@ -197,6 +197,8 @@ var STRINGS = {
         menuLock: "Заблокировать экран",
         menuLogout: "Выйти из сеанса…",
         sessionDialogBody: "Открытые приложения закроются. Несохранённые документы приложения предложат сохранить.",
+        sessionForce: "{0} всё равно",
+        sessionForceNote: "Несохранённое в этих приложениях пропадёт.",
         barRetryConnection: "Повторить подключение",
 
         // Док
@@ -591,6 +593,8 @@ var STRINGS = {
         menuLock: "Lock screen",
         menuLogout: "Log out…",
         sessionDialogBody: "Open applications will close. Applications will offer to save unsaved documents.",
+        sessionForce: "{0} anyway",
+        sessionForceNote: "Unsaved work in these applications will be lost.",
         barRetryConnection: "Retry connection",
 
         // Док
