@@ -20,7 +20,7 @@ ColumnLayout {
         Layout.fillWidth: true
         ShellButton {
             font.family: Theme.icons
-            text: root.audio.available && root.audio.sink.audio.muted ? "" : ""
+            text: root.audio.available && root.audio.sink.audio.muted ? "" : ""
             hint: root.audio.available && root.audio.sink.audio.muted ? Lang.s.audioUnmute : Lang.s.audioMute
             onClicked: root.audio.toggleMute()
         }

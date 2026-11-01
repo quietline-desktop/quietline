@@ -194,7 +194,7 @@ PanelWindow {
             ShellButton {
                 id: networkButton
                 font.family: Theme.icons
-                text: root.network.connected ? "\uf796" : "\uf127"
+                text: root.network.wifiConnected ? "\uf1eb" : root.network.connected ? "\uf0e8" : "\uf127"
                 hint: Lang.f(Lang.s.barNetworkHint, root.network.summary)
                 onClicked: popout.toggle("network")
             }

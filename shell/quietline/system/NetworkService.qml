@@ -26,6 +26,7 @@ Scope {
     readonly property var ethernet: devices.filter(device => device.type === "ethernet")
     readonly property var wifiDevice: devices.find(device => device.type === "wifi") || null
     readonly property bool connected: devices.some(device => Models.deviceLabel(device, Lang.s) === Lang.s.deviceConnected)
+    readonly property bool wifiConnected: !!wifiDevice && Models.deviceLabel(wifiDevice, Lang.s) === Lang.s.deviceConnected
     // Подсказка значка сети: активные интерфейсы, профиль и адреса.
     readonly property string summary: {
         var lines = devices.filter(device => device.state === "connected" || device.state === "connecting")

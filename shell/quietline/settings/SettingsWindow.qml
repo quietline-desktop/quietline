@@ -22,7 +22,7 @@ Scope {
     // Разделы не зависят от языка: подпись берётся в делегате по `labelKey`, поэтому смена языка
     // не пересоздаёт модель списка и не сбрасывает текущий раздел.
     readonly property var sections: [
-        {id: "network", labelKey: "settingsNetwork", icon: ""},
+        {id: "network", labelKey: "settingsNetwork", icon: ""},
         {id: "audio", labelKey: "settingsAudio", icon: ""},
         {id: "display", labelKey: "settingsDisplay", icon: ""},
         {id: "bluetooth", labelKey: "settingsBluetooth", icon: ""},
