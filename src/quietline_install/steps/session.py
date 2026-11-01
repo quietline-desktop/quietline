@@ -143,7 +143,10 @@ def amneziavpn_step() -> Step:
     return Step('amneziavpn', 'step.amneziavpn', 'amnezia.org', _manual_check('amneziavpn', present), run,
                 manual=True)
 
-HYPRLAND_PLUGINS = 'https://github.com/hyprwm/hyprland-plugins'
+# Форк hyprland-plugins организации Quietline: hyprbars с подсветкой кнопок под указателем.
+# У официального репозитория то же имя `hyprland-plugins`, поэтому hyprpm держит только один из них.
+HYPRLAND_PLUGINS = 'https://github.com/quietline-desktop/hyprland-plugins'
+PLUGINS_AUTHOR = 'quietline-desktop'
 
 
 def hyprbars_enabled(listing: str) -> bool:
@@ -160,23 +163,38 @@ def hyprbars_enabled(listing: str) -> bool:
     return False
 
 
+def plugins_author(listing: str) -> str | None:
+    """Владелец установленного репозитория `hyprland-plugins` по выводу `hyprpm list`; нет его — `None`.
+
+    hyprpm называет владельцем часть адреса репозитория перед его именем: `(by hyprwm)`.
+    """
+    plain = re.sub(r'\x1b\[[0-9;]*m', '', listing)
+    found = re.search(r'Repository hyprland-plugins \(by ([^)]+)\)', plain)
+    return found.group(1) if found else None
+
+
 def hyprbars_step() -> Step:
-    """Заголовки окон: hyprpm собирает hyprbars из hyprland-plugins под установленный Hyprland.
+    """Заголовки окон: hyprpm собирает hyprbars из форка hyprland-plugins под установленный Hyprland.
 
     `hyprpm update` скачивает заголовки Hyprland и пересобирает плагины, sudo он спрашивает
-    сам. Шаг требует запущенного сеанса Hyprland; без него hyprpm падает, и шаг повторяют из
-    сеанса: `./install.sh --from hyprbars`.
+    сам. Официальный `hyprland-plugins` убирается командой `hyprpm remove`, которая сама
+    спрашивает подтверждение, и на его место ставится форк. Шаг требует запущенного сеанса
+    Hyprland; без него hyprpm падает, и шаг повторяют из сеанса: `./install.sh --from hyprbars`.
     """
     def listing(ctx: Ctx) -> str:
         return ctx.system.run(['hyprpm', 'list'], check=False)
 
     def check(ctx: Ctx) -> bool:
-        return hyprbars_enabled(listing(ctx))
+        current = listing(ctx)
+        return hyprbars_enabled(current) and plugins_author(current) == PLUGINS_AUTHOR
 
     def run(ctx: Ctx) -> None:
         ctx.system.run(['hyprpm', 'update'], interactive=True)
-        if 'hyprland-plugins' not in listing(ctx):
+        author = plugins_author(listing(ctx))
+        if author is not None and author != PLUGINS_AUTHOR:
+            ctx.system.run(['hyprpm', 'remove', 'hyprland-plugins'], interactive=True)
+        if author != PLUGINS_AUTHOR:
             ctx.system.run(['hyprpm', 'add', HYPRLAND_PLUGINS], interactive=True)
         ctx.system.run(['hyprpm', 'enable', 'hyprbars'], interactive=True)
 
-    return Step('hyprbars', 'step.hyprbars', 'github.com/hyprwm/hyprland-plugins', check, run)
+    return Step('hyprbars', 'step.hyprbars', 'github.com/quietline-desktop/hyprland-plugins', check, run)

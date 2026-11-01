@@ -189,13 +189,17 @@ def test_unselected_programs_have_no_steps():
     assert 'greetd' in ids and 'default-shell' in ids and 'hyprbars' in ids
 
 
-LISTING_ENABLED = """→ Repository hyprland-plugins (by Vaxry):
+LISTING_ENABLED = """→ Repository hyprland-plugins (by quietline-desktop):
   │ Plugin hyprbars
   └─ enabled: true
 """
-LISTING_DISABLED = """→ Repository hyprland-plugins (by Vaxry):
+LISTING_DISABLED = """→ Repository hyprland-plugins (by quietline-desktop):
   │ Plugin hyprbars
   └─ enabled: false
+"""
+LISTING_OFFICIAL = """→ Repository hyprland-plugins (by hyprwm):
+  │ Plugin hyprbars
+  └─ enabled: true
 """
 
 
@@ -208,6 +212,9 @@ def test_hyprbars_enabled_reads_hyprpm_list():
     assert session.hyprbars_enabled(LISTING_ENABLED)
     assert not session.hyprbars_enabled(LISTING_DISABLED)
     assert not session.hyprbars_enabled('')
+    assert session.plugins_author(colored) == 'hyprwm'
+    assert session.plugins_author(LISTING_ENABLED) == 'quietline-desktop'
+    assert session.plugins_author('') is None
 
 
 def test_hyprbars_step_adds_repository_once_and_enables_plugin(ctx, system):
@@ -223,3 +230,15 @@ def test_hyprbars_step_adds_repository_once_and_enables_plugin(ctx, system):
     assert ['hyprpm', 'add', session.HYPRLAND_PLUGINS] not in system.commands()
     system.answer(['hyprpm', 'list'], LISTING_ENABLED)
     assert step.check(ctx)
+
+
+def test_hyprbars_step_replaces_official_repository_with_fork(ctx, system):
+    step = session.hyprbars_step()
+    system.answer(['hyprpm', 'list'], LISTING_OFFICIAL)
+    # Включённый hyprbars из официального репозитория — шаг не выполнен.
+    assert not step.check(ctx)
+    system.calls.clear()
+    step.run(ctx)
+    assert system.commands() == [['hyprpm', 'update'], ['hyprpm', 'list'], ['hyprpm', 'remove', 'hyprland-plugins'],
+                                 ['hyprpm', 'add', session.HYPRLAND_PLUGINS], ['hyprpm', 'enable', 'hyprbars']]
+    assert all(call['interactive'] for call in system.calls if call['args'][1] != 'list')

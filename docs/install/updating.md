@@ -18,6 +18,20 @@
 
 Повторный `./install.sh` открывает каталог: установленное отмечено и неактивно, можно добавить новые программы. Удалять программы установщик не умеет — это делается обычными средствами (`pacman -Rns`, `flatpak uninstall --user`).
 
+## Форк hyprland-plugins
+
+Заголовки окон собираются из форка [quietline-desktop/hyprland-plugins](https://github.com/quietline-desktop/hyprland-plugins): это `main` апстрима hyprwm и поверх него коммиты Quietline (цвета кнопок под указателем, плавный переход, центровка значков). Когда hyprwm подстраивает плагины под новый Hyprland, форк надо догнать, иначе после обновления Hyprland `hyprpm update` не соберёт hyprbars и окна останутся без заголовков (остальное работает). В клоне форка (`origin` — форк, `upstream` — hyprwm):
+
+```sh
+git fetch upstream
+git rebase upstream/main          # конфликт — чаще всего в hyprbars/barDeco.cpp
+make -C hyprbars all              # проверка сборки; заголовки Hyprland — PKG_CONFIG_PATH=/var/cache/hyprpm/$USER/headersRoot/share/pkgconfig
+git push --force-with-lease origin main
+hyprpm update
+```
+
+Если форк уже догнан, а Hyprland в Arch ещё старый, hyprpm берёт закреплённую в `hyprpm.toml` версию апстрима: кнопки серые без подсветки до обновления Hyprland.
+
 ## Перед обновлением Hyprland
 
 Quietline управляет окнами через Lua-команды Hyprland и встроенную раскладку `scrolling`; нативного модуля с привязкой к ABI нет. Перед `pacman -Syu` или `yay`, которые обновляют Hyprland, прочитай заметки к выпуску. После обновления пройди [smoke-window-engine.md](../../scripts/smoke-window-engine.md): локальные пространства, «Окна ↔ Тайлы», ширина и порядок колонок, диалоги, отключение монитора. Если что-то сломалось, верни прошлую версию из кэша: `sudo pacman -U /var/cache/pacman/pkg/hyprland-<версия>-x86_64.pkg.tar.zst`.

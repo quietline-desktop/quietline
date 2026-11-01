@@ -8,7 +8,7 @@
 
 ```sh
 sudo pacman -S --needed hyprpm inter-font ttf-material-symbols-variable ttf-jetbrains-mono
-hyprpm update && hyprpm add https://github.com/hyprwm/hyprland-plugins && hyprpm enable hyprbars
+hyprpm update && hyprpm add https://github.com/quietline-desktop/hyprland-plugins && hyprpm enable hyprbars
 hyprctl reload
 ```
 

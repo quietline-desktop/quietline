@@ -48,7 +48,7 @@
 
 ## Task 1. Живая проверка hyprbars и диспетчеров (стоп-условие)
 
-Нужен пользователь: `sudo pacman -S hyprpm`, затем в терминале `hyprpm update && hyprpm add https://github.com/hyprwm/hyprland-plugins && hyprpm enable hyprbars` (hyprpm спрашивает пароль sudo).
+Нужен пользователь: `sudo pacman -S hyprpm`, затем в терминале `hyprpm update && hyprpm add https://github.com/quietline-desktop/hyprland-plugins && hyprpm enable hyprbars` (hyprpm спрашивает пароль sudo).
 
 - [x] `hyprpm reload -n` загружает hyprbars на 0.57; `hl.plugin.hyprbars.add_button` и `hl.config({ plugin = { hyprbars = … } })` работают из `hyprctl eval`.
 - [x] Значки кнопок: кодовые точки Material Symbols (`U+E5CD`, `U+E3C6`, `U+E15B`) отрисовываются через подстановку шрифта; иначе — `✕ ▢ —`.
