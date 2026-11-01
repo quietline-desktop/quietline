@@ -14,6 +14,8 @@
 | Docker Desktop | новый пакет со страницы Docker для Arch: `sudo pacman -U ./docker-desktop-x86_64.pkg.tar.zst` |
 | AmneziaVPN | новый стабильный `.run` со страницы выпусков AmneziaVPN |
 
+После обновления пакета `quietline` Hyprland и оболочка продолжают работать со старыми файлами: Hyprland не следит за `/usr/share/quietline/hyprland/quietline.lua`, подключённым через `dofile`. Новая конфигурация (клавиши, заголовки окон, тени) применяется командой `hyprctl reload`, оболочка — перезапуском `pkill -x qs; hyprctl dispatch 'hl.dsp.exec_cmd("qs -c quietline")'`. Надёжнее всего выйти из сеанса и войти снова: тогда же подхватываются новые правила fontconfig.
+
 Повторный `./install.sh` открывает каталог: установленное отмечено и неактивно, можно добавить новые программы. Удалять программы установщик не умеет — это делается обычными средствами (`pacman -Rns`, `flatpak uninstall --user`).
 
 ## Перед обновлением Hyprland

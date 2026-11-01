@@ -1,7 +1,7 @@
 # Локальный пакет из клона Quietline. ./install.sh копирует этот файл в каталог сборки
 # и задаёт QUIETLINE_REPO; в пакет попадает только закоммиченный код.
 pkgname=quietline
-pkgver=0.1.0
+pkgver=0.1.0.r155.ge6dfe07
 pkgrel=1
 pkgdesc="Quietline desktop: per-monitor Hyprland window engine and Quickshell shell"
 arch=('any')
