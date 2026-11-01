@@ -14,7 +14,7 @@ QtObject {
     readonly property color border: "#56685e"
     readonly property color danger: "#edb5ad"
     readonly property string sans: "IBM Plex Sans"
-    readonly property string icons: "JetBrainsMono Nerd Font Mono"
+    readonly property string icons: "JetBrainsMono Nerd Font Propo"
     readonly property string mono: "IBM Plex Mono"
     readonly property int fontSize: 13
     readonly property int smallFontSize: 11
