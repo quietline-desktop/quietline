@@ -168,12 +168,13 @@ function barWorkspaces(items) {
 }
 
 // Название активного приложения монитора `monitor` для панели: имя desktop-записи,
-// иначе appId или класс окна; без активного окна — пусто.
+// иначе заголовок окна (собственные окна оболочки — «Настройки»), иначе appId или класс;
+// без активного окна — пусто.
 function activeAppName(windows, monitor, entries) {
     var window = (windows || []).find(function(candidate) { return candidate.monitor === monitor && candidate.activated; });
     if (!window) return "";
     var entry = desktopFor(window.appId || window.className, entries || []);
-    return entry ? entry.name : (window.appId || window.className || window.title || "");
+    return entry ? entry.name : (window.title || window.appId || window.className || "");
 }
 
 function normalizedId(id) { return String(id || "").toLowerCase().replace(/\.desktop$/, ""); }
@@ -667,6 +668,7 @@ var SETTINGS_SECTIONS = [
     {id: "display", label: "settingsDisplay", keywords: "settingsDisplayKeywords"},
     {id: "bluetooth", label: "settingsBluetooth", keywords: "settingsBluetoothKeywords"},
     {id: "power", label: "settingsPower", keywords: "settingsPowerKeywords"},
+    {id: "notifications", label: "settingsNotifications", keywords: "settingsNotificationsKeywords"},
     {id: "region", label: "settingsRegion", keywords: "settingsRegionKeywords"},
     {id: "shortcuts", label: "settingsShortcuts", keywords: "settingsShortcutsKeywords"},
     {id: "about", label: "settingsAbout", keywords: "settingsAboutKeywords"}

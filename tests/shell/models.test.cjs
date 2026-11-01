@@ -524,6 +524,7 @@ test('bar names the active application of its monitor by desktop entry',()=>{
  assert.equal(M.activeAppName(windows,'DP-1',entries),'Telegram');
  assert.equal(M.activeAppName(windows,'HDMI-A-1',entries),'');
  assert.equal(M.activeAppName([{monitor:'eDP-1',activated:true,appId:'',className:'',title:'Untitled'}],'eDP-1',entries),'Untitled');
+ assert.equal(M.activeAppName([{monitor:'eDP-1',activated:true,appId:'org.quickshell',className:'org.quickshell',title:'Settings'}],'eDP-1',entries),'Settings');
 });
 test('minimized windows stay in the dock with a hollow mark',()=>{
  const entries=[{id:'com.mitchellh.ghostty',name:'Ghostty',startupClass:''}];

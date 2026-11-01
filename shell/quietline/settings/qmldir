@@ -1,1 +1,3 @@
 SettingsWindow 1.0 SettingsWindow.qml
+SettingsGroup 1.0 SettingsGroup.qml
+SettingsRow 1.0 SettingsRow.qml
