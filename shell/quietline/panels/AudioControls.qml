@@ -14,14 +14,13 @@ ColumnLayout {
         renderType: Text.CurveRendering
         visible: !root.audio.available
         text: Lang.s.audioNotFound
-        color: Theme.muted; font.family: Theme.sans; font.pixelSize: Theme.smallFontSize
+        color: Theme.text2; font.family: Theme.sans; font.pixelSize: Theme.smallFontSize
     }
     RowLayout {
         visible: root.audio.available
         Layout.fillWidth: true
         ShellButton {
-            font.family: Theme.icons
-            text: root.audio.available && root.audio.sink.audio.muted ? "" : ""
+            symbol: root.audio.available && root.audio.sink.audio.muted ? "volume_off" : "volume_up"
             hint: root.audio.available && root.audio.sink.audio.muted ? Lang.s.audioUnmute : Lang.s.audioMute
             onClicked: root.audio.toggleMute()
         }
@@ -37,8 +36,7 @@ ColumnLayout {
         visible: root.audio.micAvailable
         Layout.fillWidth: true
         ShellButton {
-            font.family: Theme.icons
-            text: root.audio.micAvailable && root.audio.source.audio.muted ? "" : ""
+            symbol: root.audio.micAvailable && root.audio.source.audio.muted ? "mic_off" : "mic"
             hint: root.audio.micAvailable && root.audio.source.audio.muted ? Lang.s.audioMicUnmute : Lang.s.audioMicMute
             onClicked: root.audio.toggleMicMute()
         }
@@ -54,7 +52,7 @@ ColumnLayout {
         renderType: Text.CurveRendering
         visible: !root.compact && root.audio.sinks.length > 1
         text: Lang.s.audioOutput
-        color: Theme.muted; font.family: Theme.sans; font.pixelSize: Theme.smallFontSize
+        color: Theme.text2; font.family: Theme.sans; font.pixelSize: Theme.smallFontSize
     }
     Repeater {
         model: root.compact ? [] : root.audio.sinks

@@ -43,7 +43,7 @@ ColumnLayout {
     }
     component Muted: Text {
         renderType: Text.CurveRendering
-        color: Theme.muted; font.family: Theme.sans; font.pixelSize: Theme.smallFontSize
+        color: Theme.text2; font.family: Theme.sans; font.pixelSize: Theme.smallFontSize
         wrapMode: Text.Wrap; Layout.fillWidth: true
     }
 
@@ -60,8 +60,8 @@ ColumnLayout {
         visible: !!root.network.pending
         Layout.fillWidth: true
         implicitHeight: pendingColumn.implicitHeight + 20
-        radius: Theme.controlRadius
-        color: Theme.raised
+        radius: Theme.radiusControl
+        color: Theme.fill2
         border.width: 1; border.color: Theme.accent
         ColumnLayout {
             id: pendingColumn

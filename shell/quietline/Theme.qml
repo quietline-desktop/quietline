@@ -66,20 +66,4 @@ QtObject {
     readonly property var emphasizedCurve: [0.2, 0.9, 0.3, 1, 1, 1]
     readonly property real hoverLift: 4
     readonly property real hoverScale: 1.06
-
-    // Имена прежней палитры: поверхности, ещё не переписанные под вариант B.
-    readonly property color background: windowSurface
-    readonly property color surface: popupSurface
-    readonly property color raised: fill2
-    readonly property color hover: fillHover
-    readonly property color accentText: accentForeground
-    readonly property color muted: text2
-    readonly property string icons: "JetBrainsMono Nerd Font Propo"
-    readonly property int iconFontSize: 15
-    readonly property int dockGlyphSize: 25
-    readonly property int outerMargin: 0
-    readonly property int controlRadius: radiusControl
-    readonly property int panelRadius: radiusPopup
-    readonly property int dockRadius: radiusDock
-    readonly property int hoverDuration: motionDuration
 }

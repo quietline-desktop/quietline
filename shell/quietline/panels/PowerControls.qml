@@ -14,13 +14,13 @@ ColumnLayout {
         text: root.power.hasBattery
             ? Lang.f(Lang.s.powerBattery, root.power.percent) + (root.power.timeText ? " · " + root.power.timeText : "")
             : Lang.s.powerOnMains
-        color: root.power.hasBattery ? Theme.text : Theme.muted
+        color: root.power.hasBattery ? Theme.text : Theme.text2
         font.family: Theme.sans; font.pixelSize: Theme.fontSize
     }
     Text {
         renderType: Text.CurveRendering
         text: root.power.profilesAvailable ? Lang.s.powerMode : Lang.s.powerDaemonMissing
-        color: Theme.muted; font.family: Theme.sans; font.pixelSize: Theme.smallFontSize
+        color: Theme.text2; font.family: Theme.sans; font.pixelSize: Theme.smallFontSize
     }
     Flow {
         visible: root.power.profilesAvailable

@@ -14,7 +14,7 @@ ColumnLayout {
         renderType: Text.CurveRendering
         visible: !root.bluetooth.available
         text: Lang.s.btNotFound
-        color: Theme.muted; font.family: Theme.sans; font.pixelSize: Theme.smallFontSize
+        color: Theme.text2; font.family: Theme.sans; font.pixelSize: Theme.smallFontSize
     }
     ShellSwitch {
         visible: root.bluetooth.available
