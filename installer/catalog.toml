@@ -4,7 +4,7 @@
 
 [core]
 packages = [
-  "hyprland", "quickshell", "greetd", "greetd-tuigreet",
+  "hyprland", "hyprpm", "quickshell", "greetd", "greetd-tuigreet",
   "xdg-desktop-portal-hyprland", "xdg-desktop-portal-gtk", "hyprpolkitagent", "hypridle", "qt6-wayland", "polkit",
   "pipewire", "pipewire-pulse", "wireplumber", "networkmanager", "bluez", "bluez-utils",
   "power-profiles-daemon", "brightnessctl", "upower", "libnotify", "glib2",

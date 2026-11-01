@@ -175,7 +175,7 @@ def test_login_session_comes_before_aur_and_manual_steps_last():
     ids = [step.id for step in build_steps(FULL)]
     assert ids == ['system-upgrade', 'repo-packages', 'graphics', 'locales', 'quietline-package', 'services',
                    'hyprland-config', 'fish', 'micro', 'quickshell-link', 'user-dirs', 'region', 'pins', 'greetd',
-                   'flatpak', 'fnm', 'uv', 'aur-google-chrome', 'aur-1password', 'default-shell', 'docker-group',
+                   'flatpak', 'fnm', 'uv', 'aur-google-chrome', 'aur-1password', 'default-shell', 'hyprbars', 'docker-group',
                    'docker-desktop', 'amneziavpn']
     steps = {step.id: step for step in build_steps(FULL)}
     assert all(steps[name].manual for name in ('docker-desktop', 'amneziavpn'))
@@ -186,4 +186,35 @@ def test_unselected_programs_have_no_steps():
     for absent in ('flatpak', 'fnm', 'uv', 'docker-group', 'docker-desktop', 'amneziavpn'):
         assert absent not in ids
     assert not any(name.startswith('aur-') for name in ids)
-    assert 'greetd' in ids and 'default-shell' in ids
+    assert 'greetd' in ids and 'default-shell' in ids and 'hyprbars' in ids
+
+
+LISTING_ENABLED = """→ Repository hyprland-plugins (by Vaxry):
+  │ Plugin hyprbars
+  └─ enabled: true
+"""
+LISTING_DISABLED = """→ Repository hyprland-plugins (by Vaxry):
+  │ Plugin hyprbars
+  └─ enabled: false
+"""
+
+
+def test_hyprbars_enabled_reads_hyprpm_list():
+    assert session.hyprbars_enabled(LISTING_ENABLED)
+    assert not session.hyprbars_enabled(LISTING_DISABLED)
+    assert not session.hyprbars_enabled('')
+
+
+def test_hyprbars_step_adds_repository_once_and_enables_plugin(ctx, system):
+    step = session.hyprbars_step()
+    assert not step.check(ctx)
+    step.run(ctx)
+    assert system.commands() == [['hyprpm', 'list'], ['hyprpm', 'update'], ['hyprpm', 'list'],
+                                 ['hyprpm', 'add', session.HYPRLAND_PLUGINS], ['hyprpm', 'enable', 'hyprbars']]
+    assert all(call['interactive'] for call in system.calls if call['args'][1] != 'list')
+    system.calls.clear()
+    system.answer(['hyprpm', 'list'], LISTING_DISABLED)
+    step.run(ctx)
+    assert ['hyprpm', 'add', session.HYPRLAND_PLUGINS] not in system.commands()
+    system.answer(['hyprpm', 'list'], LISTING_ENABLED)
+    assert step.check(ctx)

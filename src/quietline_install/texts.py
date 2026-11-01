@@ -102,7 +102,7 @@ TEXTS = {
         'summary.snapshotNone': 'Снимка не будет: откат по журналу установщика.',
         'ask.yes': 'д',
         'ask.suffix': '[д/Н]',
-        'update.hint': 'Пакеты Arch и AUR, в том числе поставленные вами: yay. Flatpak: flatpak update --user. Docker Desktop и AmneziaVPN — по выпускам производителей.',
+        'update.hint': 'Пакеты Arch и AUR, в том числе поставленные вами: yay. Flatpak: flatpak update --user. Docker Desktop и AmneziaVPN — по выпускам производителей. После обновления Hyprland заголовки окон пересобираются: hyprpm update.',
         'update.none': 'Пакеты AUR обновлять не нужно.',
 
         # Ошибки
@@ -145,6 +145,7 @@ TEXTS = {
         'ready.ok': 'готово',
         'ready.missing': 'нет',
         'step.default-shell': 'fish по умолчанию',
+        'step.hyprbars': 'Заголовки окон (hyprbars)',
         'step.docker-group': 'Группа docker',
         'step.docker-desktop': 'Docker Desktop (вручную)',
         'step.amneziavpn': 'AmneziaVPN (вручную)',
@@ -276,7 +277,7 @@ TEXTS = {
         'summary.snapshotNone': 'No snapshot: rollback follows the installer journal.',
         'ask.yes': 'y',
         'ask.suffix': '[y/N]',
-        'update.hint': 'Arch and AUR packages, including ones you installed yourself: yay. Flatpak: flatpak update --user. Docker Desktop and AmneziaVPN: vendor releases.',
+        'update.hint': 'Arch and AUR packages, including ones you installed yourself: yay. Flatpak: flatpak update --user. Docker Desktop and AmneziaVPN: vendor releases. After a Hyprland update the window title bars are rebuilt: hyprpm update.',
         'update.none': 'No AUR packages need updating.',
 
         'error.stepFailed': 'Step "{step}" failed: {reason}',
@@ -317,6 +318,7 @@ TEXTS = {
         'ready.ok': 'ready',
         'ready.missing': 'missing',
         'step.default-shell': 'fish as the default shell',
+        'step.hyprbars': 'Window title bars (hyprbars)',
         'step.docker-group': 'docker group',
         'step.docker-desktop': 'Docker Desktop (manual)',
         'step.amneziavpn': 'AmneziaVPN (manual)',

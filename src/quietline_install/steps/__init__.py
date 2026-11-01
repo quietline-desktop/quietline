@@ -1,4 +1,5 @@
-"""Шаги установки по выбору пользователя: всё для входа в сеанс — раньше AUR, ручные шаги — последними."""
+"""Шаги установки по выбору пользователя: всё для входа в сеанс — раньше AUR, заголовки окон (hyprbars) —
+после них, ручные шаги — последними."""
 
 from quietline_install.catalog import Plan
 from quietline_install.runner import Step
@@ -19,6 +20,7 @@ def build_steps(plan: Plan) -> list[Step]:
         steps.append(packages.uv_step(plan.uv))
     steps += [aur.aur_step(name) for name in plan.aur]
     steps.append(session.default_shell_step())
+    steps.append(session.hyprbars_step())
     if 'docker' in plan.repo:
         steps.append(session.docker_group_step())
     manual = {'docker-desktop': session.docker_desktop_step, 'amneziavpn': session.amneziavpn_step}

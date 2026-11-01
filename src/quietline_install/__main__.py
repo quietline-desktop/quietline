@@ -272,6 +272,8 @@ def main(argv=None, screens=None, system=None, home: Path | None = None, root: P
             aur_install(ctx, name)
         if not outdated:
             out(ctx.t('update.none'))
+        # Заголовки окон собраны под прежний Hyprland: hyprpm пересобирает их под установленный.
+        ctx.system.run(['hyprpm', 'update'], interactive=True, check=False)
         return 0
 
     try:

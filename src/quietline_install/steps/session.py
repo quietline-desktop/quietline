@@ -141,3 +141,37 @@ def amneziavpn_step() -> Step:
 
     return Step('amneziavpn', 'step.amneziavpn', 'amnezia.org', _manual_check('amneziavpn', present), run,
                 manual=True)
+
+HYPRLAND_PLUGINS = 'https://github.com/hyprwm/hyprland-plugins'
+
+
+def hyprbars_enabled(listing: str) -> bool:
+    """Включён ли hyprbars по выводу `hyprpm list`: строка плагина и следующая за ней `enabled`."""
+    lines = [line.strip(' │└─├→\t') for line in listing.splitlines()]
+    for index, line in enumerate(lines):
+        if line.lower().endswith('hyprbars'):
+            following = ' '.join(lines[index + 1:index + 3]).lower()
+            return 'enabled' in following and any(mark in following for mark in ('true', 'yes', '✔'))
+    return False
+
+
+def hyprbars_step() -> Step:
+    """Заголовки окон: hyprpm собирает hyprbars из hyprland-plugins под установленный Hyprland.
+
+    `hyprpm update` скачивает заголовки Hyprland и пересобирает плагины, sudo он спрашивает
+    сам. Шаг требует запущенного сеанса Hyprland; без него hyprpm падает, и шаг повторяют из
+    сеанса: `./install.sh --from hyprbars`.
+    """
+    def listing(ctx: Ctx) -> str:
+        return ctx.system.run(['hyprpm', 'list'], check=False)
+
+    def check(ctx: Ctx) -> bool:
+        return hyprbars_enabled(listing(ctx))
+
+    def run(ctx: Ctx) -> None:
+        ctx.system.run(['hyprpm', 'update'], interactive=True)
+        if 'hyprland-plugins' not in listing(ctx):
+            ctx.system.run(['hyprpm', 'add', HYPRLAND_PLUGINS], interactive=True)
+        ctx.system.run(['hyprpm', 'enable', 'hyprbars'], interactive=True)
+
+    return Step('hyprbars', 'step.hyprbars', 'github.com/hyprwm/hyprland-plugins', check, run)
