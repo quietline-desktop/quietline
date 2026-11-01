@@ -97,6 +97,7 @@ hl.window_rule({
 -- Rounded раньше запасных шрифтов, где те же точки заняты другими глифами.
 -- Под указателем кнопка получает кружок — «закрыть» красный, остальные светло-серый — и белый
 -- значок (`hover_bg_color`, `hover_fg_color`); цвет появляется и гаснет за 120 мс (`hover_fade`).
+-- Крестик крупнее, квадрат мельче (`icon_size`), чтобы три значка выглядели соразмерно.
 -- hyprbars без этих возможностей поля кнопок пропускает, `hover_fade` задаётся, только если
 -- плагин его знает (`hl.get_config`), и кнопки остаются серыми без подсветки.
 -- «Свернуть» уносит окно на скрытое пространство special:quietline-minimized, вернуть его
@@ -127,6 +128,7 @@ if hl.plugin and hl.plugin.hyprbars then
         hover_bg_color = "rgb(e5484d)",
         hover_fg_color = "rgb(ffffff)",
         size = 26,
+        icon_size = 19,
         icon = "\u{E5CD}",
         action = [[hyprctl dispatch 'hl.dsp.window.close()']],
     })
@@ -136,6 +138,7 @@ if hl.plugin and hl.plugin.hyprbars then
         hover_bg_color = "rgba(ffffff24)",
         hover_fg_color = "rgb(ffffff)",
         size = 26,
+        icon_size = 14,
         icon = "\u{E3C6}",
         action = [[hyprctl dispatch 'hl.dsp.window.fullscreen({ mode = "maximized", action = "toggle" })']],
     })
