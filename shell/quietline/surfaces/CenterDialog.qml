@@ -52,7 +52,8 @@ PanelWindow {
         width: root.cardWidth
         height: body.childrenRect.height + 40
         radius: Theme.radiusCard
-        color: Theme.solidSurface
+        // Под диалогом нет размытия Hyprland: карточка почти непрозрачна.
+        color: Qt.rgba(32 / 255, 32 / 255, 36 / 255, 0.97)
         border.width: 1; border.color: Theme.border
         opacity: shown
         scale: 0.96 + 0.04 * shown

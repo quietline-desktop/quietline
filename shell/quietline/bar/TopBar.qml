@@ -440,6 +440,7 @@ PanelWindow {
     CenterDialog {
         id: killDialog
         parentPanel: root
+        cardWidth: 360
         reducedMotion: root.reducedMotion
         KillConfirm {
             id: killContent

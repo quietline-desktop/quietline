@@ -63,13 +63,14 @@ hl.curve("quietline", { type = "bezier", points = { { 0.2, 0.9 }, { 0.3, 1 } } }
 hl.animation({ leaf = "windowsIn", enabled = true, speed = 2.5, bezier = "quietline", style = "popin 96%" })
 hl.animation({ leaf = "workspaces", enabled = true, speed = 3, bezier = "quietline", style = "slide" })
 
--- Поверхности оболочки (namespace quietline-*) размываются под собой. Размывается только
--- плотная поверхность (непрозрачность от 0.4): тень вокруг всплывающих окон прозрачнее и не
--- размывается. Появление и скрытие анимирует сама оболочка. Шаблон namespace сравнивается
--- со всей строкой.
+-- Панель, всплывающие окна, док, индикатор и уведомления оболочки размываются под собой.
+-- Размывается только плотная поверхность (непрозрачность от 0.4): тень вокруг всплывающих
+-- окон прозрачнее и не размывается. Диалог с затемнением экрана (quietline-dialog) не
+-- размывается: затемнение вместе с тенью плотнее порога и размылось бы прямоугольником.
+-- Появление и скрытие анимирует сама оболочка. Шаблон namespace сравнивается со всей строкой.
 hl.layer_rule({
     name = "quietline-surfaces",
-    match = { namespace = "quietline-.*" },
+    match = { namespace = "quietline-(bar|popup|dock|osd|notifications)" },
     blur = true,
     ignore_alpha = 0.4,
     no_anim = true,
