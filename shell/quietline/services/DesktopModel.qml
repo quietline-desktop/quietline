@@ -22,12 +22,15 @@ Scope {
     readonly property var entries: DesktopEntries.applications.values.filter(entry => !entry.noDisplay).map(entry => ({
         id: entry.id, name: entry.name, icon: entry.icon, startupClass: entry.startupClass
     })).sort((a, b) => a.name.localeCompare(b.name))
+    // `activated` — окно с фокусом на видимом пространстве своего монитора: на пустом
+    // пространстве ни одно окно не активно, хотя у прежнего окна флаг `activated` остаётся.
     readonly property var windows: Hyprland.toplevels.values.map(window => {
         var data = window.lastIpcObject || {};
+        var visible = !!window.monitor && !!window.workspace && window.monitor.activeWorkspace === window.workspace;
         return {address: window.address, appId: window.wayland ? window.wayland.appId : data.class,
                 className: data.class || "", title: window.title,
                 monitor: window.monitor ? window.monitor.name : "", workspace_id: window.workspace ? window.workspace.id : -1,
-                activated: window.activated, fullscreen: data.fullscreen || 0,
+                activated: window.activated && visible, fullscreen: data.fullscreen || 0,
                 focusHistoryID: data.focusHistoryID, mapped: data.mapped !== false, hidden: data.hidden || false,
                 pid: data.pid || -1};
     })
