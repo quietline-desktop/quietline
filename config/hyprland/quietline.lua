@@ -89,8 +89,9 @@ hl.window_rule({
 -- hyprpm). Плагин грузится при старте (`hyprpm reload`) и после загрузки сам перечитывает
 -- конфигурацию; без него, например после обновления Hyprland до `hyprpm update`, этот блок
 -- пропускается и окна остаются без заголовков. Кнопки справа налево: «закрыть» на красном
--- кружке, «развернуть», «свернуть» на прозрачной подложке; значки — символы «×», «□», «−»
--- из Inter (символы личной области Unicode hyprbars берёт из Nerd Font, а там другие глифы).
+-- кружке, «развернуть», «свернуть» на прозрачной подложке; значки — «×» из Inter и символы
+-- управления окном «🗕», «🗖» (U+1F5D5, U+1F5D6, Noto Sans Symbols 2): они выровнены по
+-- середине строки, в отличие от «□»; значки из личной области Unicode hyprbars берёт из Nerd Font.
 -- У неактивного окна подложка всех кнопок почти прозрачна, красный кружок пропадает.
 -- «Свернуть» уносит окно на скрытое пространство special:quietline-minimized, вернуть его
 -- можно из дока. В колонках «Тайлов» заголовков нет.
@@ -126,14 +127,14 @@ if hl.plugin and hl.plugin.hyprbars then
         bg_color = "rgba(00000000)",
         fg_color = "rgba(ffffffcc)",
         size = 22,
-        icon = "\u{25A1}",
+        icon = "\u{1F5D6}",
         action = [[hyprctl dispatch 'hl.dsp.window.fullscreen({ mode = "maximized", action = "toggle" })']],
     })
     hl.plugin.hyprbars.add_button({
         bg_color = "rgba(00000000)",
         fg_color = "rgba(ffffffcc)",
         size = 22,
-        icon = "\u{2212}",
+        icon = "\u{1F5D5}",
         action = [[hyprctl dispatch 'hl.dsp.window.move({ workspace = "special:quietline-minimized", follow = false })']],
     })
     hl.window_rule({
