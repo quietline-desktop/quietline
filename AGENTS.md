@@ -50,6 +50,7 @@ config/hyprland/          — Lua-конфигурация Hyprland: раскл�
 config/fish/              — `quietline-locale.fish`: сообщения программ в терминале fish остаются английскими
 config/polkit/            — правило polkit для сетевых профилей и отката NetworkManager
 config/hypridle/          — `hypridle.conf`: блокировка, отключение экрана и сон по простою, блокировка перед сном
+config/fontconfig/        — `50-quietline-titlebar.conf`: шрифт заголовков окон «Quietline Titlebar» (Inter и значки Material Symbols)
 scripts/                  — сценарии проверки в живом сеансе (`smoke-window-engine.md`, `smoke-quickshell.md`, `smoke-system-panels.md`, `smoke-daily-actions.md`, `smoke-language.md`, `smoke-installer.md`, `smoke-idle-notifications.md`, `smoke-shell-redesign.md`), запуск оболочки из репозитория `run-shell`, проверка имён пакетов каталога `check-catalog.py`
 shell/quietline/          — конфигурация Quickshell (`qs -c quietline`): `shell.qml`, тема `Theme.qml`, стенд IPC `IpcHarness.qml`
 shell/quietline/controls/ — общие элементы: значок Material Symbols, кнопка, сегменты, пункт меню, полоса прокрутки

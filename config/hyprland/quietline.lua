@@ -89,9 +89,10 @@ hl.window_rule({
 -- hyprpm). Плагин грузится при старте (`hyprpm reload`) и после загрузки сам перечитывает
 -- конфигурацию; без него, например после обновления Hyprland до `hyprpm update`, этот блок
 -- пропускается и окна остаются без заголовков. Кнопки справа налево: «закрыть» на красном
--- кружке, «развернуть», «свернуть» на прозрачной подложке; значки — «×» из Inter и символы
--- управления окном «🗕», «🗖» (U+1F5D5, U+1F5D6, Noto Sans Symbols 2): они выровнены по
--- середине строки, в отличие от «□»; значки из личной области Unicode hyprbars берёт из Nerd Font.
+-- кружке, «развернуть», «свернуть» на прозрачной подложке; значки — кодовые точки Material
+-- Symbols (close, crop_square, horizontal_rule; в Inter точки нет). Шрифт «Quietline Titlebar» — правило fontconfig
+-- пакета (50-quietline-titlebar.conf): название окна — Inter, значки — Material Symbols
+-- Rounded раньше запасных шрифтов, где те же точки заняты другими глифами.
 -- У неактивного окна подложка всех кнопок почти прозрачна, красный кружок пропадает.
 -- «Свернуть» уносит окно на скрытое пространство special:quietline-minimized, вернуть его
 -- можно из дока. В колонках «Тайлов» заголовков нет.
@@ -102,8 +103,8 @@ if hl.plugin and hl.plugin.hyprbars then
                 bar_height = 32,
                 bar_color = "rgb(2b2b30)",
                 ["col.text"] = "rgba(ffffffd1)",
-                bar_text_font = "Inter",
-                bar_text_size = 12,
+                bar_text_font = "Quietline Titlebar",
+                bar_text_size = 13,
                 bar_text_weight = "semibold",
                 bar_text_align = "center",
                 bar_buttons_alignment = "right",
@@ -119,22 +120,22 @@ if hl.plugin and hl.plugin.hyprbars then
     hl.plugin.hyprbars.add_button({
         bg_color = "rgb(e5484d)",
         fg_color = "rgb(ffffff)",
-        size = 20,
-        icon = "\u{00D7}",
+        size = 22,
+        icon = "\u{E5CD}",
         action = [[hyprctl dispatch 'hl.dsp.window.close()']],
     })
     hl.plugin.hyprbars.add_button({
         bg_color = "rgba(00000000)",
         fg_color = "rgba(ffffffcc)",
-        size = 22,
-        icon = "\u{1F5D6}",
+        size = 26,
+        icon = "\u{E3C6}",
         action = [[hyprctl dispatch 'hl.dsp.window.fullscreen({ mode = "maximized", action = "toggle" })']],
     })
     hl.plugin.hyprbars.add_button({
         bg_color = "rgba(00000000)",
         fg_color = "rgba(ffffffcc)",
-        size = 22,
-        icon = "\u{1F5D5}",
+        size = 26,
+        icon = "\u{F108}",
         action = [[hyprctl dispatch 'hl.dsp.window.move({ workspace = "special:quietline-minimized", follow = false })']],
     })
     hl.window_rule({

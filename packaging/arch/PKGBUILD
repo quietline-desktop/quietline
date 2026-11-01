@@ -40,5 +40,10 @@ package() {
     install -Dm644 config/hypridle/hypridle.conf "$pkgdir/usr/share/quietline/hypridle/hypridle.conf"
     install -Dm644 config/fish/quietline-locale.fish "$pkgdir/usr/share/quietline/fish/quietline-locale.fish"
     install -Dm644 config/polkit/50-quietline-network.rules "$pkgdir/usr/share/polkit-1/rules.d/50-quietline-network.rules"
+    # Шрифт заголовков окон «Quietline Titlebar»: правило включается ссылкой в conf.default,
+    # хук fontconfig переносит её в /etc/fonts/conf.d.
+    install -Dm644 config/fontconfig/50-quietline-titlebar.conf "$pkgdir/usr/share/fontconfig/conf.avail/50-quietline-titlebar.conf"
+    install -dm755 "$pkgdir/usr/share/fontconfig/conf.default"
+    ln -s ../conf.avail/50-quietline-titlebar.conf "$pkgdir/usr/share/fontconfig/conf.default/50-quietline-titlebar.conf"
     install -Dm644 LICENSE "$pkgdir/usr/share/licenses/$pkgname/LICENSE"
 }
