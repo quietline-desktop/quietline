@@ -47,6 +47,8 @@ PanelWindow {
     function openApplications() { popout.open("applications"); }
     function openSummary() { popout.open("quick"); }
     function openClipboard() { popout.open("clipboard"); }
+    function toggleApplications() { popout.toggle("applications"); }
+    function toggleClipboard() { popout.toggle("clipboard"); }
     function toggleNotifications() { popout.toggle("notifications"); }
     // Открыт ли здесь центр уведомлений (shell.qml собирает это со всех панелей).
     readonly property bool notificationsOpen: popout.opened && popout.showingNotifications

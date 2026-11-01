@@ -61,10 +61,11 @@ ShellRoot {
                     dockVisible: item.dock.visible, dockReserved: item.dock.exclusiveZone,
                     barHeight: item.bar.implicitHeight, applicationsOpen: item.bar.applicationsOpen, summaryOpen: item.bar.summaryOpen, apps: item.dock.apps.map(app => ({id:app.id, count:app.windows.length, last:app.lastWindow ? app.lastWindow.address : null}))}))});
         }
+        // `Super+Space`: поиск на мониторе с фокусом; повторный вызов закрывает его.
         function launcher(): void {
             var name = Hyprland.focusedMonitor ? Hyprland.focusedMonitor.name : "";
             var item = root.surfaces.find(item => item.bar.monitorName === name) || root.surfaces[0];
-            if (item) item.bar.openApplications();
+            if (item) item.bar.toggleApplications();
         }
         function focusDock(): void {
             var name = Hyprland.focusedMonitor ? Hyprland.focusedMonitor.name : "";
@@ -85,11 +86,11 @@ ShellRoot {
             if (item) item.bar.openSummary();
         }
         function movePin(from: int, to: int): void { desktopService.movePin(from, to); }
-        // `Super+V`: история буфера на мониторе с фокусом.
+        // `Super+V`: история буфера на мониторе с фокусом; повторный вызов закрывает её.
         function clipboard(): void {
             var name = Hyprland.focusedMonitor ? Hyprland.focusedMonitor.name : "";
             var item = root.surfaces.find(item => item.bar.monitorName === name) || root.surfaces[0];
-            if (item) item.bar.openClipboard();
+            if (item) item.bar.toggleClipboard();
         }
         // `Super+Shift+Q`: подтверждение принудительного завершения активного окна на мониторе с фокусом.
         function confirmKill(): void {
