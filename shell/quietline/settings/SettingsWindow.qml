@@ -59,6 +59,7 @@ Scope {
         if (section === "shortcuts" && !bindsProcess.running) bindsProcess.running = true;
         if (section === "about" && !aboutProcess.running) aboutProcess.running = true;
         if (section === "network") services.network.refresh();
+        if (section === "display") Hyprland.refreshMonitors();
     }
 
     Process {
@@ -223,7 +224,7 @@ Scope {
                         }
                     }
                 }
-                // Прокручивается только текущая страница: высота StackLayout — наибольшая из всех.
+                // Высота прокрутки — высота текущей страницы.
                 ScrollView {
                     id: pageScroll
                     Layout.fillWidth: true
@@ -264,7 +265,7 @@ Scope {
                             }
                             SettingsGroup {
                                 title: Lang.s.settingsMonitors
-                                // Режим и масштаб — из Hyprland: у экрана Qt целый `devicePixelRatio`.
+                                // Режим и масштаб мониторов — из Hyprland.
                                 Repeater {
                                     model: Hyprland.monitors.values
                                     delegate: SettingsRow {

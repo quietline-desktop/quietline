@@ -323,8 +323,8 @@ test('lua binds are described by their description',()=>{
   lua(64,'W','close','quietline:close'),
   lua(65,'Left','function','quietline:move-left'),
   lua(64,'mouse:272','drag','quietline:drag'),
-  ...['1','2','3','0'].map((key,i)=>lua(64,key,'exec_cmd',`quietline-engine switch ${key==='0'?10:i+1}`)),
-  ...['1','0'].map(key=>lua(65,key,'exec_cmd',`quietline-engine move ${key==='0'?10:1}`)),
+  ...[1,2,3,4,5,6,7,8,9,10].map(n=>lua(64,String(n%10),'exec_cmd',`quietline-engine switch ${n}`)),
+  ...[1,2,3,4,5,6,7,8,9,10].map(n=>lua(65,String(n%10),'exec_cmd',`quietline-engine move ${n}`)),
   lua(64,'M','exec_cmd','quietline-engine toggle'),
   lua(64,'K','exec_cmd',''),
   lua(64,'J','exec_cmd','quietline:unknown'),
@@ -341,6 +341,12 @@ test('lua binds are described by their description',()=>{
   {keys:'Super+J',action:'quietline:unknown'},
  ]);
  assert.equal(M.bindAction('quietline:float',en),'Take window out of its column or put it back');
+ const gaps=plain(M.describeBinds([
+  lua(64,'1','exec_cmd','quietline-engine switch 1'),lua(64,'2','exec_cmd','quietline-engine switch 2'),
+  lua(64,'5','exec_cmd','quietline-engine switch 5'),lua(64,'W','close','quietline:close'),
+  lua(64,'6','exec_cmd','quietline-engine switch 6'),
+ ],ru)).map(r=>r.keys);
+ assert.deepEqual(gaps,['Super+1…2','Super+5','Super+W','Super+6']);
 });
 test('session menu names the applications that did not quit',()=>{
  assert.equal(M.remainingText([{app:'code',title:'notes.md'},{app:'code',title:'todo.md'},{app:'Telegram',title:'Telegram'}],ru),

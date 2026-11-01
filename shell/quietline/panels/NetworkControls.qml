@@ -91,7 +91,7 @@ ColumnLayout {
                 label: Lang.f(Lang.s.netPasswordFor, wifiRow.item.ssid || "")
                 placeholderText: Lang.s.password
                 echoMode: TextInput.Password
-                onAccepted: join.clicked()
+                onAccepted: { if (join.enabled) join.clicked(); }
                 onVisibleChanged: { if (visible) forceActiveFocus(); else clear(); }
                 Keys.onEscapePressed: wifiRow.host.passwordFor = ""
             }
@@ -214,14 +214,18 @@ ColumnLayout {
                 + (root.adapter.gateway ? (root.adapter.addresses.length ? " · " : "") + Lang.f(Lang.s.netGateway, root.adapter.gateway) : "") : ""
             fill: root.compact
             Flow {
-                width: root.compact ? parent.width : implicitWidth
+                id: ethernetActions
+                width: root.compact ? parent.width
+                     : dhcpButton.implicitWidth + (recentButton.visible ? spacing + recentButton.implicitWidth : 0)
                 spacing: 6
                 RowButton {
+                    id: dhcpButton
                     text: Lang.s.netUseDhcp
                     enabled: !root.network.busy && !root.network.pending
                     onClicked: root.network.useDhcp(root.adapter.device)
                 }
                 RowButton {
+                    id: recentButton
                     visible: !!root.recentProfile
                     text: root.recentProfile ? Lang.f(Lang.s.netApplyRecent, root.recentProfile.name) : ""
                     hint: Lang.s.netRecentProfile

@@ -31,14 +31,14 @@ Item {
     Accessible.role: clickable ? Accessible.Button : Accessible.StaticText
     Accessible.name: label
     Accessible.description: note
-    Keys.onReturnPressed: { if (clickable) clicked(); }
-    Keys.onSpacePressed: { if (clickable) clicked(); }
+    Keys.onReturnPressed: event => { if (clickable && activeFocus) clicked(); else event.accepted = false; }
+    Keys.onSpacePressed: event => { if (clickable && activeFocus) clicked(); else event.accepted = false; }
 
     // Подсветка и нажатие — только по основной строке, без содержимого `below`.
     Rectangle {
         x: 4; y: 4
         width: parent.width - 8
-        height: (root.expanded ? line.y + line.height + column.y : parent.height) - 8
+        height: (root.expanded ? 2 * column.y + line.height : parent.height) - 8
         radius: Theme.radiusControl
         color: root.clickable && pressArea.pressed ? Theme.fillStrong
              : root.clickable && pressArea.containsMouse ? Theme.fill : "transparent"

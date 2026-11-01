@@ -539,11 +539,11 @@ function bindKeys(bind, s) {
 }
 
 // Памятка сочетаний из `hyprctl binds -j`: `[{keys: "Super+Shift+1", action}]`.
-// Привязки к приложениям, которых нет среди `entries`, в памятку не входят. Несколько
-// привязок `switch N` (или `move N`) с одними модификаторами — одна строка
-// `Super+1…0` с диапазоном пространств на месте первой из них.
+// Привязки к приложениям, которых нет среди `entries`, в памятку не входят. Идущие подряд
+// привязки `switch N` (или `move N`) с одними модификаторами и номерами N, N+1, … —
+// одна строка `Super+1…0` с диапазоном пространств на месте первой из них.
 function describeBinds(binds, s, entries) {
-    var rows = [], ranges = {};
+    var rows = [], ranges = [], open = {};
     (binds || []).forEach(function(bind) {
         if (!bind || typeof bind !== "object") return;
         var command = bindCommand(bind);
@@ -551,20 +551,20 @@ function describeBinds(binds, s, entries) {
         if (appId && !desktopFor(appId, entries || [])) return;
         var workspace = /^quietline-engine (switch|move) (\d+)$/.exec(command);
         if (workspace) {
-            var id = workspace[1] + ":" + bind.modmask;
-            if (ranges[id]) {
-                ranges[id].lastKey = bind.key;
-                ranges[id].lastNumber = workspace[2];
-                ranges[id].count += 1;
+            var id = workspace[1] + ":" + bind.modmask, range = open[id], number = Number(workspace[2]);
+            if (range && range.row === rows.length - 1 && number === range.lastNumber + 1) {
+                range.lastKey = bind.key;
+                range.lastNumber = number;
+                range.count += 1;
                 return;
             }
-            ranges[id] = {row: rows.length, bind: bind, kind: workspace[1], firstNumber: workspace[2],
-                          lastKey: bind.key, lastNumber: workspace[2], count: 1};
+            open[id] = {row: rows.length, bind: bind, kind: workspace[1], firstNumber: number,
+                        lastKey: bind.key, lastNumber: number, count: 1};
+            ranges.push(open[id]);
         }
         rows.push({keys: bindKeys(bind, s), action: bindAction(command, s)});
     });
-    Object.keys(ranges).forEach(function(id) {
-        var range = ranges[id];
+    ranges.forEach(function(range) {
         if (range.count < 2) return;
         rows[range.row] = {
             keys: bindKeys(range.bind, s) + "…" + range.lastKey,
