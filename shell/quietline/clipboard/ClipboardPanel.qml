@@ -19,7 +19,7 @@ ColumnLayout {
     function reset() { search.clear(); confirmWipe = false; clipboard.refresh(); search.forceActiveFocus(); }
     Connections { target: root.clipboard; function onRestored() { root.done(); } }
 
-    Text { text: Lang.s.clipboardTitle; color: Theme.text; font.family: Theme.sans; font.pixelSize: Theme.titleFontSize; font.bold: true }
+    Text { renderType: Text.CurveRendering; text: Lang.s.clipboardTitle; color: Theme.text; font.family: Theme.sans; font.pixelSize: Theme.titleFontSize; font.bold: true }
     ShellTextField {
         id: search
         Layout.fillWidth: true
@@ -28,6 +28,7 @@ ColumnLayout {
         onAccepted: { if (root.matches.length) root.clipboard.restore(root.matches[0].id); }
     }
     Text {
+        renderType: Text.CurveRendering
         visible: root.clipboard.errorMessage.length > 0
         Layout.fillWidth: true
         text: root.clipboard.errorMessage
@@ -68,6 +69,7 @@ ColumnLayout {
                                 cache: false
                             }
                             Text {
+                                renderType: Text.CurveRendering
                                 Layout.fillWidth: true
                                 text: row.modelData.kind === "image" ? Models.clipboardImageLabel(row.modelData.preview, Lang.s) : row.modelData.preview
                                 color: Theme.text; font.family: Theme.sans; font.pixelSize: Theme.fontSize
@@ -80,6 +82,7 @@ ColumnLayout {
                 }
             }
             Text {
+                renderType: Text.CurveRendering
                 visible: root.matches.length === 0
                 text: root.clipboard.entries.length ? Lang.s.nothingFound : Lang.s.clipboardEmpty
                 color: Theme.muted; font.family: Theme.sans; font.pixelSize: Theme.fontSize
@@ -88,6 +91,7 @@ ColumnLayout {
         }
     }
     Text {
+        renderType: Text.CurveRendering
         visible: root.clipboard.paused
         Layout.fillWidth: true
         text: Lang.s.clipboardPausedNote

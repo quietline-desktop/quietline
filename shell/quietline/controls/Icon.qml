@@ -10,6 +10,7 @@ Text {
     property int weight: 400
     property real size: Theme.iconSize
     text: name
+    renderType: Text.CurveRendering
     color: Theme.text
     font.family: Theme.symbols
     font.pixelSize: size

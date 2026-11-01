@@ -10,6 +10,7 @@ ColumnLayout {
     required property var power
     spacing: 8
     Text {
+        renderType: Text.CurveRendering
         text: root.power.hasBattery
             ? Lang.f(Lang.s.powerBattery, root.power.percent) + (root.power.timeText ? " · " + root.power.timeText : "")
             : Lang.s.powerOnMains
@@ -17,6 +18,7 @@ ColumnLayout {
         font.family: Theme.sans; font.pixelSize: Theme.fontSize
     }
     Text {
+        renderType: Text.CurveRendering
         text: root.power.profilesAvailable ? Lang.s.powerMode : Lang.s.powerDaemonMissing
         color: Theme.muted; font.family: Theme.sans; font.pixelSize: Theme.smallFontSize
     }

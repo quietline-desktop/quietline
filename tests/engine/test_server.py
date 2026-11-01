@@ -710,6 +710,7 @@ def test_shortcuts_target_expected_cli_calls():
     start = re.search(r'hl\.on\("hyprland\.start",\s*function\s*\(\)(.*?)\nend\)', text, re.S)
     assert start
     assert re.findall(r'hl\.exec_cmd\("([^"]+)"\)', start.group(1)) == [
+        "hyprpm reload -n",
         "quietline-engine serve",
         "qs -c quietline",
         "hypridle -c /usr/share/quietline/hypridle/hypridle.conf",
@@ -718,7 +719,7 @@ def test_shortcuts_target_expected_cli_calls():
         "quietline-shell files --update",
     ]
 
-    modals = re.search(r"hl\.window_rule\(\{(.*?)\n\}\)", text, re.S)
+    modals = re.search(r"hl\.window_rule\(\{(\s*name = \"quietline-modals\".*?)\n\}\)", text, re.S)
     assert modals
     assert re.search(r"match\s*=\s*\{\s*modal\s*=\s*true\s*\}", modals.group(1))
     assert re.search(r"float\s*=\s*true", modals.group(1))

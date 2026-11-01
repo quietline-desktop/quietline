@@ -31,6 +31,7 @@ ColumnLayout {
         border.width: 1; border.color: Qt.rgba(1, 1, 1, 0.04)
     }
     component Caption: Text {
+        renderType: Text.CurveRendering
         color: Theme.text
         font.family: Theme.sans; font.pixelSize: 12; font.weight: Font.DemiBold
     }
@@ -146,6 +147,7 @@ ColumnLayout {
                 Layout.fillWidth: true
                 Caption { text: Lang.s.quickSound }
                 Text {
+                    renderType: Text.CurveRendering
                     Layout.fillWidth: true
                     horizontalAlignment: Text.AlignRight
                     text: root.audio.available ? (root.audio.sink.description || root.audio.sink.nickname || root.audio.sink.name) : ""
@@ -214,6 +216,7 @@ ColumnLayout {
                 Layout.fillWidth: true; Layout.preferredWidth: 1
                 spacing: 5
                 Text {
+                    renderType: Text.CurveRendering
                     textFormat: Text.StyledText
                     text: parent.label + "  <b>" + parent.value + "</b>"
                     color: Theme.text2
@@ -242,6 +245,7 @@ ColumnLayout {
         Layout.fillWidth: true
         Layout.leftMargin: 4
         Text {
+            renderType: Text.CurveRendering
             Layout.fillWidth: true
             text: !root.power.hasBattery ? Lang.s.powerOnMains
                 : root.power.charging ? (root.power.percent >= 100 ? Lang.s.quickCharged : Lang.s.quickCharging + " · " + root.power.percent + "%")

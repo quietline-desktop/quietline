@@ -28,6 +28,7 @@ Switch {
         }
     }
     contentItem: Text {
+        renderType: Text.CurveRendering
         text: root.text
         rightPadding: root.indicator.width + 8
         color: root.enabled ? Theme.text : Theme.text3

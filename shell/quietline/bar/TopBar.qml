@@ -101,6 +101,7 @@ PanelWindow {
                 }
             }
             Text {
+                renderType: Text.CurveRendering
                 visible: !root.narrow && root.activeApp.length > 0
                 Layout.maximumWidth: Math.max(0, root.width * 0.22)
                 leftPadding: 6; rightPadding: 6
@@ -214,6 +215,7 @@ PanelWindow {
                         border.width: 1.5; border.color: Theme.text
                         // Заглавные Inter стоят выше середины строки: подпись опущена до центра рамки.
                         Text {
+                            renderType: Text.CurveRendering
                             id: layoutText
                             anchors.centerIn: parent
                             anchors.verticalCenterOffset: 0.75
@@ -389,7 +391,7 @@ PanelWindow {
                     Layout.fillWidth: true
                     service: root.services.notifications
                 }
-                Text { visible: popout.showingNetwork; text: Lang.s.settingsNetwork; color: Theme.text; font.family: Theme.sans; font.pixelSize: Theme.titleFontSize; font.weight: Font.Bold }
+                Text { renderType: Text.CurveRendering; visible: popout.showingNetwork; text: Lang.s.settingsNetwork; color: Theme.text; font.family: Theme.sans; font.pixelSize: Theme.titleFontSize; font.weight: Font.Bold }
                 Loader {
                     active: popout.showingNetwork && popout.opened
                     visible: active
@@ -407,7 +409,7 @@ PanelWindow {
                     onCloseRequested: popout.close()
                 }
                 // Трей, скрытый с узкой панели, остаётся доступным здесь.
-                Text { visible: popout.showingQuick && root.compact && SystemTray.items.values.length > 0; text: Lang.s.barBackgroundApps; color: Theme.text2; font.family: Theme.sans; font.pixelSize: Theme.smallFontSize }
+                Text { renderType: Text.CurveRendering; visible: popout.showingQuick && root.compact && SystemTray.items.values.length > 0; text: Lang.s.barBackgroundApps; color: Theme.text2; font.family: Theme.sans; font.pixelSize: Theme.smallFontSize }
                 Repeater {
                     model: popout.showingQuick && root.compact ? SystemTray.items : null
                     delegate: ShellButton { required property var modelData; Layout.fillWidth: true; text: modelData.title || modelData.id; onClicked: { modelData.onlyMenu ? modelData.display(root, root.width - 300, 70) : modelData.activate(); } }
@@ -452,6 +454,7 @@ PanelWindow {
             border.color: parent.visualFocus ? Theme.accent : Theme.border
         }
         contentItem: Text {
+            renderType: Text.CurveRendering
             text: root.message; color: root.errorText ? Theme.danger : Theme.text; font.family: Theme.sans
             font.pixelSize: Theme.smallFontSize; elide: Text.ElideRight; verticalAlignment: Text.AlignVCenter
             leftPadding: 10; rightPadding: 10

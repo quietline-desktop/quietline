@@ -33,6 +33,112 @@ if loaded and type(chosen) == "table"
 end
 hl.config({ input = { kb_layout = keyboard.kb_layout, kb_options = keyboard.kb_options } })
 
+-- Оформление окон варианта B: скругление 10, тонкая светлая рамка, мягкая тень, отступы 4/8.
+-- Размытие включено для полупрозрачных поверхностей оболочки (правило слоёв ниже); у окон
+-- приложений фон непрозрачный, им размытие не мешает.
+hl.config({
+    general = {
+        border_size = 1,
+        gaps_in = 4,
+        gaps_out = 8,
+        col = { active_border = "rgba(ffffff29)", inactive_border = "rgba(ffffff14)" },
+    },
+    decoration = {
+        rounding = 10,
+        rounding_power = 2,
+        shadow = {
+            enabled = true,
+            range = 24,
+            render_power = 3,
+            offset = "0 8",
+            color = "rgba(00000073)",
+            color_inactive = "rgba(00000059)",
+        },
+        blur = { enabled = true, size = 8, passes = 3, noise = 0.02, vibrancy = 0.17 },
+    },
+})
+
+-- Окна появляются из 96 % масштаба, пространства сдвигаются; кривая — та же, что у оболочки.
+hl.curve("quietline", { type = "bezier", points = { { 0.2, 0.9 }, { 0.3, 1 } } })
+hl.animation({ leaf = "windowsIn", enabled = true, speed = 2.5, bezier = "quietline", style = "popin 96%" })
+hl.animation({ leaf = "workspaces", enabled = true, speed = 3, bezier = "quietline", style = "slide" })
+
+-- Поверхности оболочки (namespace quietline-*) размываются под собой; прозрачные края
+-- (поле под тень) не размываются. Появление и скрытие анимирует сама оболочка.
+hl.layer_rule({
+    name = "quietline-surfaces",
+    match = { namespace = "^quietline-" },
+    blur = true,
+    ignore_alpha = 0.05,
+    no_anim = true,
+})
+
+-- В «Тайлах» у окон нет заголовков и теней в колонках: активное окно выделено рамкой
+-- акцента 2 px. Правило динамическое: плавающее окно возвращает обычную рамку.
+hl.window_rule({
+    name = "quietline-tiled-border",
+    match = { float = false },
+    border_size = 2,
+    border_color = "rgba(0a84ffd9) rgba(ffffff14)",
+})
+
+-- Заголовки плавающих окон — плагин hyprbars (hyprland-plugins, ставится и собирается через
+-- hyprpm). Плагин грузится при старте (`hyprpm reload`) и после загрузки сам перечитывает
+-- конфигурацию; без него, например после обновления Hyprland до `hyprpm update`, этот блок
+-- пропускается и окна остаются без заголовков. Кнопки справа налево: «закрыть» на красном
+-- кружке, «развернуть», «свернуть» на прозрачной подложке; значки — Material Symbols. У
+-- неактивного окна подложка всех кнопок почти прозрачна, красный кружок пропадает.
+-- «Свернуть» уносит окно на скрытое пространство special:quietline-minimized, вернуть его
+-- можно из дока. В колонках «Тайлов» заголовков нет.
+if hl.plugin and hl.plugin.hyprbars then
+    hl.config({
+        plugin = {
+            hyprbars = {
+                bar_height = 32,
+                bar_color = "rgb(2b2b30)",
+                ["col.text"] = "rgba(ffffffd1)",
+                bar_text_font = "Inter",
+                bar_text_size = 12,
+                bar_text_weight = "semibold",
+                bar_text_align = "center",
+                bar_buttons_alignment = "right",
+                bar_padding = 8,
+                bar_button_padding = 6,
+                bar_part_of_window = true,
+                bar_precedence_over_border = true,
+                inactive_button_color = "rgba(ffffff01)",
+                on_double_click = [[hyprctl dispatch 'hl.dsp.window.fullscreen({ mode = "maximized", action = "toggle" })']],
+            },
+        },
+    })
+    hl.plugin.hyprbars.add_button({
+        bg_color = "rgb(e5484d)",
+        fg_color = "rgb(ffffff)",
+        size = 18,
+        icon = "\u{E5CD}",
+        action = [[hyprctl dispatch 'hl.dsp.window.close()']],
+    })
+    hl.plugin.hyprbars.add_button({
+        bg_color = "rgba(00000000)",
+        fg_color = "rgba(ffffffcc)",
+        size = 20,
+        icon = "\u{E3C6}",
+        action = [[hyprctl dispatch 'hl.dsp.window.fullscreen({ mode = "maximized", action = "toggle" })']],
+    })
+    hl.plugin.hyprbars.add_button({
+        bg_color = "rgba(00000000)",
+        fg_color = "rgba(ffffffcc)",
+        size = 20,
+        icon = "\u{E15B}",
+        action = [[hyprctl dispatch 'hl.dsp.window.move({ workspace = "special:quietline-minimized", follow = false })']],
+    })
+    hl.window_rule({
+        name = "quietline-tiled-no-bar",
+        match = { float = false },
+        ["hyprbars:no_bar"] = true,
+    })
+end
+
 -- Модальные окна плавают и получают тег quietline-modal; движок видит теги в
 -- hyprctl -j clients и такие окна не переставляет.
 hl.window_rule({
@@ -59,6 +165,7 @@ end)
 -- домашнего каталога для поиска строится при входе. Простоем и блокировкой перед сном
 -- управляет hypridle: он работает и без оболочки.
 hl.on("hyprland.start", function ()
+    hl.exec_cmd("hyprpm reload -n")
     hl.exec_cmd("quietline-engine serve")
     hl.exec_cmd("qs -c quietline")
     hl.exec_cmd("hypridle -c /usr/share/quietline/hypridle/hypridle.conf")

@@ -103,6 +103,7 @@ PanelWindow {
             anchors { fill: parent; leftMargin: 14; rightMargin: 14 }
             spacing: 12
             Text {
+                renderType: Text.CurveRendering
                 text: root.view.icon
                 color: Theme.text; font.family: Theme.icons; font.pixelSize: Theme.iconFontSize
                 Layout.preferredWidth: 18
@@ -121,6 +122,7 @@ PanelWindow {
                 }
             }
             Text {
+                renderType: Text.CurveRendering
                 Layout.fillWidth: root.view.fill < 0
                 horizontalAlignment: root.view.fill < 0 ? Text.AlignLeft : Text.AlignRight
                 text: root.view.text

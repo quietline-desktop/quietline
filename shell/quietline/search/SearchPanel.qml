@@ -39,7 +39,7 @@ ColumnLayout {
         }
     }
 
-    Text { text: Lang.s.searchTitle; color: Theme.text; font.family: Theme.sans; font.pixelSize: Theme.titleFontSize; font.bold: true }
+    Text { renderType: Text.CurveRendering; text: Lang.s.searchTitle; color: Theme.text; font.family: Theme.sans; font.pixelSize: Theme.titleFontSize; font.bold: true }
     TextField {
         id: field
         Layout.fillWidth: true
@@ -76,6 +76,7 @@ ColumnLayout {
                     contentItem: Column {
                         leftPadding: 6
                         Text {
+                            renderType: Text.CurveRendering
                             width: row.width - 12
                             text: row.modelData.title
                             color: row.emphasized ? Theme.accentText : Theme.text
@@ -83,6 +84,7 @@ ColumnLayout {
                             elide: Text.ElideRight; textFormat: Text.PlainText
                         }
                         Text {
+                            renderType: Text.CurveRendering
                             width: row.width - 12
                             text: row.modelData.subtitle
                             color: row.emphasized ? Theme.accentText : Theme.muted
@@ -92,8 +94,9 @@ ColumnLayout {
                     }
                 }
             }
-            Text { visible: list.count === 0; text: Lang.s.nothingFound; color: Theme.muted; font.family: Theme.sans; topPadding: 12 }
+            Text { renderType: Text.CurveRendering; visible: list.count === 0; text: Lang.s.nothingFound; color: Theme.muted; font.family: Theme.sans; topPadding: 12 }
             Text {
+                renderType: Text.CurveRendering
                 visible: root.finder.errorMessage.length > 0
                 width: scroll.availableWidth
                 text: root.finder.errorMessage

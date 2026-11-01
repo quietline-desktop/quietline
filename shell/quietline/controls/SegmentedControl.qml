@@ -61,6 +61,7 @@ Rectangle {
                         color: segment.current ? Theme.text : Theme.text2
                     }
                     Text {
+                        renderType: Text.CurveRendering
                         visible: root.showLabels && !!segment.modelData.label
                         anchors.verticalCenter: parent.verticalCenter
                         text: segment.modelData.label || ""

@@ -68,6 +68,7 @@ Button {
                 color: root.contentColor
             }
             Text {
+                renderType: Text.CurveRendering
                 id: label
                 visible: text.length > 0
                 anchors.verticalCenter: parent.verticalCenter

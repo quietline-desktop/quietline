@@ -27,6 +27,7 @@ ColumnLayout {
     RowLayout {
         Layout.fillWidth: true
         Text {
+            renderType: Text.CurveRendering
             Layout.fillWidth: true
             text: Lang.s.notificationsTitle
             color: Theme.text; font.family: Theme.sans; font.pixelSize: Theme.titleFontSize; font.bold: true
@@ -38,6 +39,7 @@ ColumnLayout {
         }
     }
     Text {
+        renderType: Text.CurveRendering
         visible: root.service.history.length === 0
         text: Lang.s.notificationsEmpty
         color: Theme.muted; font.family: Theme.sans; font.pixelSize: Theme.fontSize
@@ -64,6 +66,7 @@ ColumnLayout {
                 RowLayout {
                     Layout.fillWidth: true
                     Text {
+                        renderType: Text.CurveRendering
                         Layout.fillWidth: true
                         text: (row.notification.appName || Lang.s.notificationDefaultApp) + " · " + root.ageText(row.modelData.received)
                         color: Theme.muted; font.family: Theme.sans; font.pixelSize: Theme.smallFontSize
@@ -72,6 +75,7 @@ ColumnLayout {
                     ShellButton { text: "×"; hint: Lang.s.notificationDismiss; implicitHeight: 22; onClicked: row.notification.dismiss() }
                 }
                 Text {
+                    renderType: Text.CurveRendering
                     Layout.fillWidth: true
                     visible: text.length > 0
                     text: row.notification.summary
@@ -79,6 +83,7 @@ ColumnLayout {
                     wrapMode: Text.Wrap; maximumLineCount: 2; elide: Text.ElideRight; textFormat: Text.PlainText
                 }
                 Text {
+                    renderType: Text.CurveRendering
                     Layout.fillWidth: true
                     visible: text.length > 0
                     text: row.notification.body

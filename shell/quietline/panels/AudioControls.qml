@@ -11,6 +11,7 @@ ColumnLayout {
     property bool compact: true
     spacing: 8
     Text {
+        renderType: Text.CurveRendering
         visible: !root.audio.available
         text: Lang.s.audioNotFound
         color: Theme.muted; font.family: Theme.sans; font.pixelSize: Theme.smallFontSize
@@ -50,6 +51,7 @@ ColumnLayout {
         }
     }
     Text {
+        renderType: Text.CurveRendering
         visible: !root.compact && root.audio.sinks.length > 1
         text: Lang.s.audioOutput
         color: Theme.muted; font.family: Theme.sans; font.pixelSize: Theme.smallFontSize

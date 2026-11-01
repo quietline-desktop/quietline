@@ -66,6 +66,7 @@ PanelWindow {
                     RowLayout {
                         Layout.fillWidth: true
                         Text {
+                            renderType: Text.CurveRendering
                             Layout.fillWidth: true
                             text: card.modelData.appName || Lang.s.notificationDefaultApp
                             color: Theme.muted; font.family: Theme.sans; font.pixelSize: Theme.smallFontSize
@@ -74,6 +75,7 @@ PanelWindow {
                         ShellButton { text: "×"; hint: Lang.s.notificationHide; implicitHeight: 22; onClicked: root.service.hidePopup(card.modelData, true) }
                     }
                     Text {
+                        renderType: Text.CurveRendering
                         Layout.fillWidth: true
                         visible: text.length > 0
                         text: card.modelData.summary
@@ -81,6 +83,7 @@ PanelWindow {
                         wrapMode: Text.Wrap; maximumLineCount: 2; elide: Text.ElideRight; textFormat: Text.PlainText
                     }
                     Text {
+                        renderType: Text.CurveRendering
                         Layout.fillWidth: true
                         visible: text.length > 0
                         text: card.modelData.body

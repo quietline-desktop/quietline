@@ -18,11 +18,13 @@ WlSessionLockSurface {
         width: Math.min(360, parent.width - 48)
         spacing: 14
         Text {
+            renderType: Text.CurveRendering
             Layout.alignment: Qt.AlignHCenter
             text: Lang.time(clock.date)
             color: Theme.text; font.family: Theme.mono; font.pixelSize: 64
         }
         Text {
+            renderType: Text.CurveRendering
             Layout.alignment: Qt.AlignHCenter
             text: Lang.longDate(clock.date)
             color: Theme.muted; font.family: Theme.sans; font.pixelSize: Theme.fontSize
@@ -50,6 +52,7 @@ WlSessionLockSurface {
             Component.onCompleted: forceActiveFocus()
         }
         Text {
+            renderType: Text.CurveRendering
             Layout.fillWidth: true
             visible: text.length > 0
             text: root.context.message

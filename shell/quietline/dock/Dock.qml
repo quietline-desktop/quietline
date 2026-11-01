@@ -85,6 +85,7 @@ PanelWindow {
                             sourceSize.width: 48; sourceSize.height: 48
                         }
                         Text {
+                            renderType: Text.CurveRendering
                             anchors.centerIn: parent
                             text: "\uf2d0"
                             font.family: Theme.icons; font.pixelSize: Theme.dockGlyphSize

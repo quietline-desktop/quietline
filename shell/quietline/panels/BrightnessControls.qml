@@ -8,12 +8,14 @@ RowLayout {
     id: root
     required property var brightness
     Text {
+        renderType: Text.CurveRendering
         visible: !root.brightness.supported
         Layout.fillWidth: true
         text: Lang.s.brightnessUnavailable
         color: Theme.muted; font.family: Theme.sans; font.pixelSize: Theme.smallFontSize
     }
     Text {
+        renderType: Text.CurveRendering
         visible: root.brightness.supported
         text: ""
         font.family: Theme.icons; font.pixelSize: Theme.iconFontSize

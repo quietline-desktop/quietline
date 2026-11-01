@@ -37,15 +37,18 @@ ColumnLayout {
     }
 
     component SectionTitle: Text {
+        renderType: Text.CurveRendering
         color: Theme.text; font.family: Theme.sans; font.pixelSize: Theme.fontSize; font.weight: Font.DemiBold
         Layout.topMargin: 4
     }
     component Muted: Text {
+        renderType: Text.CurveRendering
         color: Theme.muted; font.family: Theme.sans; font.pixelSize: Theme.smallFontSize
         wrapMode: Text.Wrap; Layout.fillWidth: true
     }
 
     Text {
+        renderType: Text.CurveRendering
         visible: text.length > 0
         text: root.network.errorMessage || root.network.statusError || root.network.notice
         color: root.network.errorMessage || root.network.statusError ? Theme.danger : Theme.text

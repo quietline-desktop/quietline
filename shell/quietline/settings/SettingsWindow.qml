@@ -69,12 +69,15 @@ Scope {
     }
 
     component PageTitle: Text {
+        renderType: Text.CurveRendering
         color: Theme.text; font.family: Theme.sans; font.pixelSize: Theme.titleFontSize; font.bold: true
     }
     component Heading: Text {
+        renderType: Text.CurveRendering
         color: Theme.text; font.family: Theme.sans; font.pixelSize: Theme.fontSize; font.bold: true
     }
     component Line: Text {
+        renderType: Text.CurveRendering
         color: Theme.text; font.family: Theme.sans; font.pixelSize: Theme.fontSize
         wrapMode: Text.Wrap; Layout.fillWidth: true
     }
@@ -123,6 +126,7 @@ Scope {
                                 spacing: 10
                                 leftPadding: 6
                                 Text {
+                                    renderType: Text.CurveRendering
                                     width: 18
                                     anchors.verticalCenter: parent.verticalCenter
                                     text: modelData.icon
@@ -130,6 +134,7 @@ Scope {
                                     color: root.section === modelData.id ? Theme.accentText : Theme.muted
                                 }
                                 Text {
+                                    renderType: Text.CurveRendering
                                     anchors.verticalCenter: parent.verticalCenter
                                     text: Lang.s[modelData.labelKey]
                                     font.family: Theme.sans; font.pixelSize: Theme.fontSize
@@ -259,7 +264,7 @@ Scope {
                                 delegate: RowLayout {
                                     required property var modelData
                                     Layout.fillWidth: true
-                                    Text { Layout.preferredWidth: 180; text: modelData.keys; color: Theme.accent; font.family: Theme.mono; font.pixelSize: Theme.fontSize }
+                                    Text { renderType: Text.CurveRendering; Layout.preferredWidth: 180; text: modelData.keys; color: Theme.accent; font.family: Theme.mono; font.pixelSize: Theme.fontSize }
                                     Line { text: modelData.action }
                                 }
                             }
@@ -276,7 +281,7 @@ Scope {
                                 delegate: RowLayout {
                                     required property var modelData
                                     Layout.fillWidth: true
-                                    Text { Layout.preferredWidth: 160; text: modelData[0]; color: Theme.muted; font.family: Theme.sans; font.pixelSize: Theme.fontSize }
+                                    Text { renderType: Text.CurveRendering; Layout.preferredWidth: 160; text: modelData[0]; color: Theme.muted; font.family: Theme.sans; font.pixelSize: Theme.fontSize }
                                     Line { text: modelData[1] || Lang.s.noData }
                                 }
                             }

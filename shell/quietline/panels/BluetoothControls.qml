@@ -11,6 +11,7 @@ ColumnLayout {
     property bool compact: true
     spacing: 6
     Text {
+        renderType: Text.CurveRendering
         visible: !root.bluetooth.available
         text: Lang.s.btNotFound
         color: Theme.muted; font.family: Theme.sans; font.pixelSize: Theme.smallFontSize
@@ -29,6 +30,7 @@ ColumnLayout {
             required property var modelData
             Layout.fillWidth: true
             Text {
+                renderType: Text.CurveRendering
                 Layout.fillWidth: true
                 text: root.bluetooth.label(deviceRow.modelData)
                     + (deviceRow.modelData.connected ? " · " + Lang.s.btConnected : deviceRow.modelData.paired ? " · " + Lang.s.btPaired : "")

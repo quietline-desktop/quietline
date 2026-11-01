@@ -47,6 +47,7 @@ PopupWindow {
         color: Qt.rgba(30 / 255, 30 / 255, 34 / 255, 0.94)
         border.width: 1; border.color: Theme.border
         Text {
+            renderType: Text.CurveRendering
             id: label
             x: 10; y: 5
             width: Math.min(implicitWidth, 320)

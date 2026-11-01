@@ -23,6 +23,7 @@ MenuItem {
             color: root.lit ? Theme.accentForeground : Theme.text2
         }
         Text {
+            renderType: Text.CurveRendering
             anchors.verticalCenter: parent.verticalCenter
             width: parent.width - (root.symbol.length > 0 ? 26 : 0) - shortcutLabel.implicitWidth - 10
             text: root.text
@@ -32,6 +33,7 @@ MenuItem {
             elide: Text.ElideRight
         }
         Text {
+            renderType: Text.CurveRendering
             id: shortcutLabel
             anchors.verticalCenter: parent.verticalCenter
             text: root.shortcut

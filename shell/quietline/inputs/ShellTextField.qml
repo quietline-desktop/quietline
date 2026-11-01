@@ -13,6 +13,7 @@ TextField {
     selectionColor: Theme.accent
     selectedTextColor: Theme.accentForeground
     selectByMouse: true
+    renderType: Text.CurveRendering
     implicitHeight: 30
     leftPadding: 10; rightPadding: 10
     Accessible.name: label
