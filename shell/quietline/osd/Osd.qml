@@ -4,10 +4,11 @@ import Quickshell
 import Quickshell.Wayland
 import Quickshell.Hyprland
 import ".."
+import "../controls"
 import "../logic/Models.js" as Models
 
-// Индикатор громкости, микрофона, яркости и раскладки: короткая карточка по центру снизу над
-// доком на мониторе с фокусом. Громкость и микрофон показываются по изменению PipeWire от
+// Индикатор громкости, микрофона, яркости и раскладки: капсула 280×52 по центру снизу
+// на мониторе с фокусом. Громкость и микрофон показываются по изменению PipeWire от
 // любой программы, кроме ползунков самой оболочки и смены устройства по умолчанию; яркость —
 // по `show("brightness")` после перечитывания; раскладка — по смене кода в `DesktopModel`.
 // Окно не принимает ввод и видно поверх полноэкранных окон.
@@ -46,15 +47,16 @@ PanelWindow {
     screen: Quickshell.screens.find(screen => Hyprland.focusedMonitor && screen.name === Hyprland.focusedMonitor.name) || Quickshell.screens[0] || null
     visible: shown || card.opacity > 0
     anchors.bottom: true
-    // Над окном дока (84 px) с зазором 16 px — на одном месте в «Окнах» и «Тайлах».
-    margins.bottom: 100
+    // Над местом дока — на одном месте в «Окнах» и «Тайлах».
+    margins.bottom: 72
     exclusionMode: ExclusionMode.Ignore
     exclusiveZone: 0
     mask: Region {}
     WlrLayershell.layer: WlrLayer.Overlay
     WlrLayershell.keyboardFocus: WlrKeyboardFocus.None
-    implicitWidth: 240
-    implicitHeight: 44 + 8
+    WlrLayershell.namespace: "quietline-osd"
+    implicitWidth: 280
+    implicitHeight: 52 + 8
     color: "transparent"
 
     Timer { id: hideTimer; interval: Models.OSD_HIDE_MS; onTriggered: root.shown = false }
@@ -90,35 +92,35 @@ PanelWindow {
     Rectangle {
         id: card
         width: root.implicitWidth
-        height: 44
+        height: 52
         y: root.shown ? 0 : 8
         opacity: root.shown ? 1 : 0
-        radius: Theme.panelRadius
-        color: Theme.surface
+        radius: 26
+        color: Theme.solidSurface
         border.width: 1
         border.color: Theme.border
         Behavior on opacity { NumberAnimation { duration: root.motion } }
         Behavior on y { NumberAnimation { duration: root.motion; easing.type: Easing.OutCubic } }
         RowLayout {
-            anchors { fill: parent; leftMargin: 14; rightMargin: 14 }
+            anchors { fill: parent; leftMargin: 18; rightMargin: 18 }
             spacing: 12
-            Text {
-                renderType: Text.CurveRendering
-                text: root.view.icon
-                color: Theme.text; font.family: Theme.icons; font.pixelSize: Theme.iconFontSize
-                Layout.preferredWidth: 18
+            Icon {
+                name: root.view.icon
+                filled: true
+                size: 22
             }
             Rectangle {
                 visible: root.view.fill >= 0
                 Layout.fillWidth: true
-                implicitHeight: 4
-                radius: 2
-                color: Theme.raised
+                implicitHeight: 6
+                radius: 3
+                color: Qt.rgba(1, 1, 1, 0.18)
                 Rectangle {
                     width: parent.width * Math.max(0, root.view.fill)
                     height: parent.height
-                    radius: 2
-                    color: root.kind !== "brightness" && (root.kind === "mic" ? root.micAudio && root.micAudio.muted : root.sinkAudio && root.sinkAudio.muted) ? Theme.muted : Theme.accent
+                    radius: 3
+                    color: root.kind !== "brightness" && (root.kind === "mic" ? root.micAudio && root.micAudio.muted : root.sinkAudio && root.sinkAudio.muted) ? Theme.text3 : "#ffffff"
+                    Behavior on width { NumberAnimation { duration: root.motion / 2 } }
                 }
             }
             Text {
@@ -126,8 +128,9 @@ PanelWindow {
                 Layout.fillWidth: root.view.fill < 0
                 horizontalAlignment: root.view.fill < 0 ? Text.AlignLeft : Text.AlignRight
                 text: root.view.text
-                color: Theme.text; font.family: Theme.mono; font.pixelSize: Theme.fontSize
-                Layout.preferredWidth: root.view.fill < 0 ? -1 : 44
+                color: Theme.text; font.family: Theme.sans; font.pixelSize: Theme.smallFontSize; font.weight: Font.DemiBold
+                font.features: { "tnum": 1 }
+                Layout.preferredWidth: root.view.fill < 0 ? -1 : 36
             }
         }
     }

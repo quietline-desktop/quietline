@@ -153,6 +153,33 @@ def test_lock_waits_for_the_lock_then_wipes_the_clipboard(lock_env, monkeypatch)
     assert started.commands[-1][0] == "cliphist" and started.commands[-1][-1] == "wipe"
 
 
+def test_lock_captures_each_monitor_for_the_backdrop(lock_env, monkeypatch):
+    tmp_path, _screen, started = lock_env
+    state = tmp_path / "run" / "quietline"
+    state.mkdir(parents=True)
+    (state / "lock-old.png").write_bytes(b"stale")
+    commands = []
+
+    def run(args, **kwargs):
+        commands.append(list(args))
+        reply = b'[{"name": "eDP-1"}, {"name": "../x"}, {"name": "DP-1"}]' if args[:2] == ["hyprctl", "-j"] else b""
+        return subprocess.CompletedProcess(args, 0, reply, b"")
+
+    monkeypatch.setattr(subprocess, "run", run)
+    assert session.lock() == {"locked": True}
+    grims = [command for command in commands if command[0] == "grim"]
+    assert grims == [["grim", "-o", "eDP-1", str(state / "lock-eDP-1.png")], ["grim", "-o", "DP-1", str(state / "lock-DP-1.png")]]
+    assert not (state / "lock-old.png").exists()
+    assert started[0][1]["env"]["QUIETLINE_LOCK_BACKDROPS"] == str(state)
+
+
+def test_lock_without_monitor_list_still_locks(lock_env, monkeypatch):
+    _tmp_path, _screen, started = lock_env
+    monkeypatch.setattr(subprocess, "run", lambda args, **kwargs: subprocess.CompletedProcess(args, 0, b"not json", b""))
+    assert session.lock() == {"locked": True}
+    assert started[0][0][0] == "qs"
+
+
 def test_running_confirmed_lock_is_not_started_twice(lock_env, monkeypatch):
     _tmp_path, _screen, started = lock_env
     session.lock()

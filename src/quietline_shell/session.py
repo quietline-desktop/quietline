@@ -189,10 +189,33 @@ def _wipe_clipboard() -> None:
         pass
 
 
+def _capture_backdrops(state: Path) -> None:
+    """Снимки мониторов `lock-<монитор>.png` для размытого фона экрана блокировки.
+
+    Снимки лежат в каталоге состояния сеанса (0700) только до загрузки экраном блокировки:
+    он удаляет их сразу после чтения. Ошибка снимка не мешает блокировке — фон будет тёмным.
+    """
+    for stale in state.glob("lock-*.png"):
+        stale.unlink(missing_ok=True)
+    try:
+        reply = subprocess.run(["hyprctl", "-j", "monitors"], capture_output=True, timeout=5, check=False)
+        names = [item["name"] for item in json.loads(reply.stdout or b"[]") if isinstance(item, dict) and "name" in item]
+    except (OSError, subprocess.TimeoutExpired, ValueError, TypeError):
+        return
+    for name in names:
+        if not isinstance(name, str) or "/" in name or not name:
+            continue
+        try:
+            subprocess.run(["grim", "-o", name, str(state / f"lock-{name}.png")], capture_output=True, timeout=5, check=False)
+        except (OSError, subprocess.TimeoutExpired):
+            continue
+
+
 def lock() -> dict[str, bool]:
     """Запускает экран блокировки, ждёт подтверждения блокировки и очищает историю буфера.
 
-    Экран блокировки создаёт файл-метку `lock.secure`, когда Hyprland подтвердил, что все
+    Перед запуском снимает мониторы для размытого фона (`_capture_backdrops`). Экран
+    блокировки создаёт файл-метку `lock.secure`, когда Hyprland подтвердил, что все
     экраны закрыты. Без метки за `LOCK_WAIT` секунд процесс экрана блокировки завершается,
     ответ — ошибка.
     """
@@ -209,10 +232,12 @@ def lock() -> dict[str, bool]:
         raise RuntimeError(f"lock screen not found: {screen}")
     state.mkdir(parents=True, exist_ok=True, mode=0o700)
     marker.unlink(missing_ok=True)
+    _capture_backdrops(state)
     try:
         process = subprocess.Popen(
             ["qs", "-p", str(screen)], stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL,
-            stderr=subprocess.DEVNULL, start_new_session=True, env={**os.environ, "QUIETLINE_LOCK_MARKER": str(marker)},
+            stderr=subprocess.DEVNULL, start_new_session=True,
+            env={**os.environ, "QUIETLINE_LOCK_MARKER": str(marker), "QUIETLINE_LOCK_BACKDROPS": str(state)},
         )
     except FileNotFoundError as error:
         raise RuntimeError("qs (Quickshell) is not installed") from error

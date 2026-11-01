@@ -420,7 +420,8 @@ function clampVolume(value) { return Math.max(0, Math.min(1.5, value)); }
 var OSD_HIDE_MS = 1500;
 // Сколько после изменения ползунком оболочки индикатор не показывает изменения звука.
 var OSD_LOCAL_MS = 600;
-var OSD_ICONS = {volume: ["\uf028", "\uf026"], mic: ["\uf130", "\uf131"], brightness: ["\uf185", "\uf185"], layout: ["\uf11c", "\uf11c"]};
+// Значки индикатора — имена Material Symbols: обычный и выключенный звук.
+var OSD_ICONS = {volume: ["volume_up", "volume_off"], mic: ["mic", "mic_off"], brightness: ["light_mode", "light_mode"], layout: ["keyboard", "keyboard"]};
 function osdView(kind, value, muted) {
     var icons = OSD_ICONS[kind] || OSD_ICONS.volume;
     if (kind === "layout") return {icon: icons[0], fill: -1, text: String(value)};
