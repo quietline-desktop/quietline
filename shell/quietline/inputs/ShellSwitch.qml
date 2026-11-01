@@ -2,32 +2,35 @@ import QtQuick
 import QtQuick.Controls
 import ".."
 
-// Переключатель с подписью слева; ползунок переключается без анимации.
+// Переключатель 38×22 с подписью слева: включён — зелёная подложка, кружок справа.
 Switch {
     id: root
     font.family: Theme.sans
     font.pixelSize: Theme.fontSize
     focusPolicy: Qt.StrongFocus
+    hoverEnabled: true
     Accessible.name: text
     indicator: Rectangle {
-        implicitWidth: 36; implicitHeight: 20
+        implicitWidth: 38; implicitHeight: 22
         x: root.width - width - root.rightPadding
         y: (root.height - height) / 2
-        radius: 10
-        color: root.checked ? Theme.accent : Theme.raised
-        border.width: root.visualFocus ? 2 : 1
-        border.color: root.visualFocus ? Theme.accent : Theme.border
+        radius: 11
+        color: root.checked ? Theme.success : Theme.fillStrong
+        border.width: root.visualFocus ? 2 : 0
+        border.color: Theme.accent
         opacity: root.enabled ? 1 : 0.45
+        Behavior on color { ColorAnimation { duration: Theme.fastDuration } }
         Rectangle {
-            width: 14; height: 14; radius: 7
-            y: 3; x: root.checked ? parent.width - width - 3 : 3
-            color: root.checked ? Theme.accentText : Theme.text
+            width: 18; height: 18; radius: 9
+            y: 2; x: root.checked ? parent.width - width - 2 : 2
+            color: "#ffffff"
+            Behavior on x { NumberAnimation { duration: Theme.fastDuration; easing.type: Easing.OutCubic } }
         }
     }
     contentItem: Text {
         text: root.text
         rightPadding: root.indicator.width + 8
-        color: root.enabled ? Theme.text : Theme.muted
+        color: root.enabled ? Theme.text : Theme.text3
         font: root.font
         verticalAlignment: Text.AlignVCenter
         elide: Text.ElideRight

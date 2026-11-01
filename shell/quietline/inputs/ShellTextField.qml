@@ -2,22 +2,24 @@ import QtQuick
 import QtQuick.Controls
 import ".."
 
-// Текстовое поле формы: общие цвета, рамка фокуса и доступное имя `label`.
+// Текстовое поле формы на подложке `fill`: рамка акцента при фокусе, доступное имя `label`.
 TextField {
     id: root
     property string label: placeholderText
     font.family: Theme.sans
     font.pixelSize: Theme.fontSize
     color: Theme.text
-    placeholderTextColor: Theme.muted
+    placeholderTextColor: Theme.text3
+    selectionColor: Theme.accent
+    selectedTextColor: Theme.accentForeground
     selectByMouse: true
-    implicitHeight: 32
+    implicitHeight: 30
     leftPadding: 10; rightPadding: 10
     Accessible.name: label
     background: Rectangle {
-        color: Theme.background
-        radius: Theme.controlRadius
-        border.width: 1
-        border.color: root.activeFocus ? Theme.accent : Theme.border
+        color: Theme.fill
+        radius: Theme.radiusControl
+        border.width: root.activeFocus ? 2 : 1
+        border.color: root.activeFocus ? Qt.rgba(10 / 255, 132 / 255, 1, 0.7) : Theme.hairline
     }
 }

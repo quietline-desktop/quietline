@@ -5,6 +5,7 @@ import Quickshell.Wayland
 import Quickshell.Hyprland
 import ".."
 import "../controls"
+import "../surfaces"
 import "../logic/Models.js" as Models
 
 // Док экрана: закреплённые и запущенные на мониторе приложения; виден только в режиме «Окна» без полноэкранного окна.
@@ -100,8 +101,8 @@ PanelWindow {
                         // Положение читается при открытии меню: mapToItem не следит за прокруткой дока.
                         function openMenu() {
                             var point = mapToItem(root.contentItem, 0, 0);
-                            menu.popupX = Math.max(12, Math.min(root.width - menu.width - 12, point.x));
-                            menu.popupY = (root.screen ? root.screen.height : 1080) - root.height + point.y - menu.height - 10;
+                            menu.popupX = Math.max(12, Math.min(root.width - menu.panelWidth - 12, point.x));
+                            menu.popupY = (root.screen ? root.screen.height : 1080) - root.height + point.y - menu.panelHeight - 10;
                             menu.open(modelData);
                         }
                         TapHandler { acceptedButtons: Qt.RightButton; onTapped: dockButton.openMenu() }
@@ -164,8 +165,9 @@ PanelWindow {
         readonly property var app: root.appsById[currentName] || null
         readonly property int pinIndex: root.desktop.pinned.indexOf(currentName)
         parentPanel: root
-        implicitWidth: 260
-        implicitHeight: menuItems.implicitHeight + 24
+        panelWidth: 260
+        panelHeight: menuItems.implicitHeight + 20
+        fromBottom: true
         onPresented: newWindowItem.forceActiveFocus()
         onAppChanged: { if (opened && !app) close(); }
         Column {

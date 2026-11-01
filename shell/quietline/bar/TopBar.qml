@@ -5,6 +5,7 @@ import Quickshell
 import Quickshell.Services.SystemTray
 import ".."
 import "../controls"
+import "../surfaces"
 import "../panels"
 import "../session"
 import "../clipboard"
@@ -287,10 +288,10 @@ PanelWindow {
         // Сетевая панель держит формы, меню питания — ход и итог закрытия приложений: щелчок
         // в другом окне (например, в диалоге сохранения) их не закрывает.
         persistent: showingNetwork || (showingPower && (root.services.session.busy || root.services.session.remaining.length > 0))
-        popupX: showingApplications ? Theme.outerMargin : Math.max(12, root.width - width - 12)
+        popupX: showingApplications ? 6 : Math.max(6, root.width - panelWidth - 6)
         popupY: Theme.outerMargin + Theme.barHeight + 8
-        implicitWidth: showingApplications ? Math.min(360, root.width - Theme.outerMargin * 2) : Math.min(showingNetwork || showingClipboard || showingNotifications ? 400 : 330, root.width - 24)
-        implicitHeight: showingApplications ? Math.min(430, root.screen ? root.screen.height - 100 : 430)
+        panelWidth: showingApplications ? Math.min(360, root.width - Theme.outerMargin * 2) : Math.min(showingNetwork || showingClipboard || showingNotifications ? 400 : 330, root.width - 24)
+        panelHeight: showingApplications ? Math.min(430, root.screen ? root.screen.height - 100 : 430)
                                             : Math.min(content.implicitHeight + 24, root.screen ? root.screen.height - 100 : 500)
         onPresented: { if (showingApplications) searchPanel.reset(); else if (showingPower) powerMenu.reset(); else if (showingKill) killConfirm.focusCancel(); else if (showingClipboard) clipboardPanel.reset(); }
         onDismissed: { searchPanel.reset(); powerMenu.reset(); }

@@ -8,7 +8,8 @@ arch=('any')
 license=('GPL-3.0-only')
 depends=('python' 'hyprland' 'quickshell' 'networkmanager' 'brightnessctl' 'power-profiles-daemon'
          'bluez' 'pipewire' 'wireplumber' 'glib2' 'libnotify' 'wl-clipboard' 'cliphist' 'grim'
-         'slurp' 'satty' 'plocate' 'polkit' 'hypridle')
+         'slurp' 'satty' 'plocate' 'polkit' 'hypridle' 'inter-font' 'ttf-material-symbols-variable'
+         'ttf-jetbrains-mono')
 makedepends=('git' 'python-build' 'python-installer' 'python-hatchling')
 
 _repo="${QUIETLINE_REPO:-$(realpath "$startdir/../..")}"

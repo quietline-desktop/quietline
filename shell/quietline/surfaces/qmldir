@@ -1,0 +1,3 @@
+ShellPopup 1.0 ShellPopup.qml
+singleton PopupState 1.0 PopupState.qml
+HintPopup 1.0 HintPopup.qml

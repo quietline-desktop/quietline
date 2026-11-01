@@ -1,6 +1,5 @@
 ShellButton 1.0 ShellButton.qml
 ShellScrollBar 1.0 ShellScrollBar.qml
-ShellPopup 1.0 ShellPopup.qml
 ShellMenuItem 1.0 ShellMenuItem.qml
-singleton PopupState 1.0 PopupState.qml
-HintPopup 1.0 HintPopup.qml
+Icon 1.0 Icon.qml
+SegmentedControl 1.0 SegmentedControl.qml

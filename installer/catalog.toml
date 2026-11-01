@@ -9,7 +9,8 @@ packages = [
   "pipewire", "pipewire-pulse", "wireplumber", "networkmanager", "bluez", "bluez-utils",
   "power-profiles-daemon", "brightnessctl", "upower", "libnotify", "glib2",
   "xdg-user-dirs", "xdg-utils", "flatpak",
-  "ttf-ibm-plex", "ttf-jetbrains-mono-nerd", "noto-fonts", "noto-fonts-emoji",
+  "inter-font", "ttf-material-symbols-variable", "ttf-jetbrains-mono", "ttf-ibm-plex", "ttf-jetbrains-mono-nerd",
+  "noto-fonts", "noto-fonts-emoji",
   "grim", "slurp", "satty", "wl-clipboard", "cliphist", "plocate",
   "ghostty", "fish", "starship", "micro", "git", "openssh", "curl", "base-devel", "unzip",
 ]

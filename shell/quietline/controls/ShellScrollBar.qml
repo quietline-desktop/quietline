@@ -2,7 +2,7 @@ import QtQuick
 import QtQuick.Controls
 import ".."
 
-// Полоса прокрутки в цветах оболочки; видна, только когда есть что прокручивать.
+// Тонкая полоса прокрутки: видна, только когда есть что прокручивать, и ярче под указателем.
 // Вертикальная прижата к правому краю родителя, горизонтальная — к нижнему: `ScrollView`
 // не задаёт положение подставленной полосы. Чтобы полоса не закрывала содержимое,
 // `ScrollView` задаёт `rightPadding: ScrollBar.vertical.visible ? ScrollBar.vertical.width + 4 : 0`.
@@ -13,12 +13,14 @@ ScrollBar {
     y: orientation === Qt.Horizontal && parent ? parent.height - height : 0
     padding: 2
     implicitWidth: 8
+    implicitHeight: 8
     contentItem: Rectangle {
         implicitWidth: 4
-        implicitHeight: 36
-        radius: 3
-        color: root.pressed ? Theme.accent : root.hovered ? Theme.text : Theme.border
+        implicitHeight: 4
+        radius: 2
+        color: root.pressed || root.hovered ? Qt.rgba(1, 1, 1, 0.45) : Qt.rgba(1, 1, 1, 0.22)
         opacity: root.size < 1 ? 1 : 0
+        Behavior on color { ColorAnimation { duration: Theme.fastDuration } }
     }
-    background: Rectangle { color: Theme.background; radius: 3; opacity: root.size < 1 ? 0.5 : 0 }
+    background: Item {}
 }

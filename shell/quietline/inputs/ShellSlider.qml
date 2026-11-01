@@ -1,27 +1,46 @@
 import QtQuick
 import QtQuick.Controls
+import "../controls"
 import ".."
 
-// Ползунок с темой и клавишами со стрелками; доступное имя — `label` и значение в процентах.
+// Толстый ползунок 24 px: светлая заливка до значения с кружком на конце, значок `symbol`
+// внутри у левого края; клавиши со стрелками. Доступное имя — `label` и значение в процентах.
 Slider {
     id: root
     property string label: ""
+    property string symbol: ""
     focusPolicy: Qt.StrongFocus
     stepSize: 0.01
+    hoverEnabled: true
     Accessible.name: label + " " + Math.round(value / to * 100) + "%"
-    implicitHeight: 28
+    implicitHeight: 24
+    padding: 0
     background: Rectangle {
         x: root.leftPadding; y: root.topPadding + root.availableHeight / 2 - height / 2
-        width: root.availableWidth; height: 4; radius: 2
-        color: Theme.raised
-        Rectangle { width: root.visualPosition * parent.width; height: parent.height; radius: 2; color: Theme.accent }
-    }
-    handle: Rectangle {
-        x: root.leftPadding + root.visualPosition * (root.availableWidth - width)
-        y: root.topPadding + root.availableHeight / 2 - height / 2
-        width: 16; height: 16; radius: 8
-        color: root.pressed ? Theme.accent : Theme.text
+        width: root.availableWidth; height: 24; radius: 12
+        color: Qt.rgba(1, 1, 1, 0.12)
         border.width: root.visualFocus ? 2 : 0
         border.color: Theme.accent
+        Rectangle {
+            readonly property real knob: 24
+            width: Math.max(knob, knob + root.visualPosition * (parent.width - knob))
+            height: parent.height; radius: 12
+            color: "#eef0f4"
+        }
+        Icon {
+            visible: root.symbol.length > 0
+            x: 6; anchors.verticalCenter: parent.verticalCenter
+            name: root.symbol
+            filled: true
+            size: 16
+            color: "#3a3a40"
+        }
+    }
+    handle: Rectangle {
+        x: root.leftPadding + 2 + root.visualPosition * (root.availableWidth - 24)
+        y: root.topPadding + root.availableHeight / 2 - height / 2
+        width: 20; height: 20; radius: 10
+        color: "#ffffff"
+        border.width: 1; border.color: Qt.rgba(0, 0, 0, 0.12)
     }
 }

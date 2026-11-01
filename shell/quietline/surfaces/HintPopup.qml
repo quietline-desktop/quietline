@@ -38,21 +38,21 @@ PopupWindow {
     anchor.gravity: below ? Edges.Bottom : Edges.Top
     anchor.margins.top: below ? 0 : -6
     anchor.margins.bottom: below ? -6 : 0
-    implicitWidth: label.width + 16
+    implicitWidth: label.width + 20
     implicitHeight: label.implicitHeight + 10
     color: "transparent"
     Rectangle {
         anchors.fill: parent
-        radius: Theme.controlRadius
-        color: Theme.raised
+        radius: 7
+        color: Qt.rgba(30 / 255, 30 / 255, 34 / 255, 0.94)
         border.width: 1; border.color: Theme.border
         Text {
             id: label
-            x: 8; y: 5
+            x: 10; y: 5
             width: Math.min(implicitWidth, 320)
             text: root.hint
             color: Theme.text
-            font.family: Theme.sans; font.pixelSize: Theme.smallFontSize
+            font.family: Theme.sans; font.pixelSize: Theme.smallFontSize; font.weight: Font.Medium
             wrapMode: Text.Wrap
         }
     }
