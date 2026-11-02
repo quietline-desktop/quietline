@@ -1,0 +1,82 @@
+#!/bin/sh
+# Предпросмотр темы меню GRUB Quietline без настоящего загрузчика: тема собирается
+# `config/grub/make-theme.py` во временный каталог, `grub-mkstandalone` кладёт её и пробный
+# grub.cfg во встроенный диск EFI-образа, QEMU с OVMF загружает его с виртуального FAT-диска
+# на экране 1920×1200. Снимки монитора QEMU — меню (`menu.png`) и консоль после `c`
+# (`console.png`) — сохраняются в OUTDIR. Диски, EFI и GRUB машины не затрагиваются.
+#
+# Запуск: scripts/preview-grub-theme [ru|en] [OUTDIR]
+# Нужны grub, qemu-system-x86_64 (qemu-base или qemu-full), edk2-ovmf, socat, шрифты Inter и
+# JetBrains Mono.
+set -eu
+
+lang="${1:-ru}"
+case "$lang" in
+    ru|en) ;;
+    *) echo "usage: $0 [ru|en] [OUTDIR]" >&2; exit 2 ;;
+esac
+repo="$(cd "$(dirname "$0")/.." && pwd)"
+out="$(realpath -m "${2:-${XDG_CACHE_HOME:-$HOME/.cache}/quietline/preview-grub}")"
+code=/usr/share/edk2/x64/OVMF_CODE.4m.fd
+vars=/usr/share/edk2/x64/OVMF_VARS.4m.fd
+for tool in grub-mkstandalone grub-mkfont qemu-system-x86_64 socat fc-query python3; do
+    command -v "$tool" >/dev/null || { echo "error: $tool not found" >&2; exit 1; }
+done
+[ -r "$code" ] || { echo "error: OVMF firmware not found at $code (package edk2-ovmf)" >&2; exit 1; }
+
+work="$(mktemp -d)"
+qemu_pid=""
+cleanup() {
+    [ -n "$qemu_pid" ] && kill "$qemu_pid" 2>/dev/null || true
+    rm -rf "$work"
+}
+trap cleanup EXIT INT TERM
+
+theme="$work/theme"
+python3 "$repo/config/grub/make-theme.py" "$theme" >/dev/null
+
+# Пробное меню: пункты как на ноутбуке, ни один ничего не загружает.
+{
+    echo 'insmod all_video'
+    echo 'insmod gfxterm'
+    echo 'insmod png'
+    for font in "$theme"/*.pf2; do
+        echo "loadfont /usr/share/quietline/grub/$(basename "$font")"
+    done
+    echo 'set gfxmode=1920x1200,auto'
+    echo 'terminal_output gfxterm'
+    echo "set theme=/usr/share/quietline/grub/theme-$lang.txt"
+    echo 'set timeout_style=menu'
+    echo 'set timeout=60'
+    echo "menuentry 'Arch Linux' { true }"
+    echo "submenu 'Advanced options for Arch Linux' { menuentry 'Arch Linux, with Linux linux' { true } }"
+    echo "submenu 'Arch Linux snapshots' { menuentry 'Arch Linux snapshot 2026-11-02' { true } }"
+    echo "menuentry 'Windows Boot Manager (on /dev/nvme0n1p1)' { true }"
+    echo "menuentry 'UEFI Firmware Settings' { true }"
+} > "$work/grub.cfg"
+
+mkdir -p "$work/esp/EFI/BOOT"
+grub-mkstandalone -O x86_64-efi -o "$work/esp/EFI/BOOT/BOOTX64.EFI" \
+    "boot/grub/grub.cfg=$work/grub.cfg" "usr/share/quietline/grub=$theme"
+cp "$vars" "$work/vars.fd"
+
+accel=tcg
+[ -w /dev/kvm ] && accel=kvm
+monitor="$work/monitor.sock"
+qemu-system-x86_64 -machine q35 -accel "$accel" -m 512 -nodefaults -display none \
+    -drive if=pflash,format=raw,readonly=on,file="$code" \
+    -drive if=pflash,format=raw,file="$work/vars.fd" \
+    -drive format=raw,file=fat:rw:"$work/esp" \
+    -device VGA,edid=on,xres=1920,yres=1200 \
+    -monitor unix:"$monitor",server,nowait &
+qemu_pid=$!
+
+qemu() { echo "$1" | socat - UNIX-CONNECT:"$monitor" >/dev/null; }
+mkdir -p "$out"
+# Firmware и GRUB успевают загрузиться; отсчёт меню — 60 с.
+sleep "${PREVIEW_BOOT_SECONDS:-15}"
+qemu "screendump $out/menu.png -f png"
+qemu "sendkey c"
+sleep 2
+qemu "screendump $out/console.png -f png"
+echo "Screenshots: $out/menu.png $out/console.png"
