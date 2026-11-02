@@ -162,41 +162,41 @@ PanelWindow {
                     }
                 }
             }
-            Item { Layout.fillWidth: true; Layout.minimumWidth: 0 }
-            // Правая часть — группы: режим окон | запущенные программы (трей) | системное (приватность,
-            // раскладка, сеть, VPN, Bluetooth, звук, батарея, режимы) | пункт управления и часы. Каждая группа,
-            // кроме первой, начинается разделителем и прячется вместе с ним.
+            // Режим активного пространства рядом с его номерами; меняется только после подтверждения движком.
             RowLayout {
+                Layout.leftMargin: 8
                 spacing: 0
-                // Режим активного пространства; меняется только после подтверждения движком.
-                RowLayout {
-                    spacing: 0
-                    SegmentedControl {
-                        id: modeControl
-                        visible: root.engine.ready && !!root.workspace
-                        model: [{symbol: "filter_none", hint: Lang.f(Lang.s.barModeHint, Lang.s.modeWindows)},
-                                {symbol: "view_week", hint: Lang.f(Lang.s.barModeHint, Lang.s.modeTiles)}]
-                        currentIndex: root.workspace && root.workspace.mode === "tiles" ? 1 : 0
-                        reducedMotion: root.reducedMotion
-                        enabled: root.engine.ready && !!root.monitor && !root.engine.busy
-                        busy: root.engine.busy && root.engine.pendingMonitor === (root.monitor ? root.monitor.key : "")
-                        Accessible.name: Lang.f(Lang.s.barModeHint, root.modeLabel)
-                        onActivated: index => {
-                            if (index !== currentIndex) root.engine.toggle(root.monitor.key);
-                        }
-                    }
-                    ShellButton {
-                        visible: !root.engine.ready
-                        implicitHeight: Theme.barItemHeight
-                        text: Lang.s.barNoConnection
-                        hint: Lang.s.barEngineUnavailable
-                        foreground: Theme.text2
-                        onClicked: root.engine.retry()
+                SegmentedControl {
+                    id: modeControl
+                    visible: root.engine.ready && !!root.workspace
+                    model: [{symbol: "filter_none", hint: Lang.f(Lang.s.barModeHint, Lang.s.modeWindows)},
+                            {symbol: "view_week", hint: Lang.f(Lang.s.barModeHint, Lang.s.modeTiles)}]
+                    currentIndex: root.workspace && root.workspace.mode === "tiles" ? 1 : 0
+                    reducedMotion: root.reducedMotion
+                    enabled: root.engine.ready && !!root.monitor && !root.engine.busy
+                    busy: root.engine.busy && root.engine.pendingMonitor === (root.monitor ? root.monitor.key : "")
+                    Accessible.name: Lang.f(Lang.s.barModeHint, root.modeLabel)
+                    onActivated: index => {
+                        if (index !== currentIndex) root.engine.toggle(root.monitor.key);
                     }
                 }
+                ShellButton {
+                    visible: !root.engine.ready
+                    implicitHeight: Theme.barItemHeight
+                    text: Lang.s.barNoConnection
+                    hint: Lang.s.barEngineUnavailable
+                    foreground: Theme.text2
+                    onClicked: root.engine.retry()
+                }
+            }
+            Item { Layout.fillWidth: true; Layout.minimumWidth: 0 }
+            // Правая часть, как в macOS, — три группы с отступом 16 px: запущенные программы (трей);
+            // системное — приватность, «Не беспокоить», «Не засыпать», раскладка, звук, Bluetooth, VPN,
+            // Wi‑Fi, батарея; пункт управления и часы. Внутри групп кнопки стоят вплотную.
+            RowLayout {
+                spacing: 16
                 RowLayout {
                     spacing: 0
-                    GroupDivider {}
                     visible: !root.compact && SystemTray.items.values.length > 0
                     Repeater {
                         model: SystemTray.items
@@ -234,7 +234,6 @@ PanelWindow {
                 }
                 RowLayout {
                     spacing: 0
-                    GroupDivider {}
                     // Приватность: оранжевая капсула, пока приложение пишет микрофон или идёт запись экрана.
                     Rectangle {
                         id: privacy
@@ -263,6 +262,20 @@ PanelWindow {
                         Accessible.role: Accessible.StaticText
                         Accessible.name: Lang.s.barPrivacyScreen
                     }
+                    // «Не беспокоить» включено: нажатие выключает режим.
+                    BarIcon {
+                        visible: root.services.notifications.dnd
+                        symbol: "do_not_disturb_on"
+                        hint: Lang.s.barDndOn
+                        onClicked: root.services.notifications.setDnd(false)
+                    }
+                    // «Не засыпать» включено: нажатие выключает режим.
+                    BarIcon {
+                        visible: root.services.keepAwake.active
+                        symbol: "coffee"
+                        hint: Lang.s.barKeepAwakeOn
+                        onClicked: root.services.keepAwake.active = false
+                    }
                     ShellButton {
                         implicitHeight: Theme.barItemHeight
                         hint: (root.desktop.keyboardLayoutName ? root.desktop.keyboardLayoutName + " · " : "") + Lang.f(Lang.s.barLayoutHint, Models.toggleLabel(Lang.toggle, Lang.s))
@@ -290,28 +303,6 @@ PanelWindow {
                             }
                         }
                     }
-                    BarIcon {
-                        id: networkButton
-                        symbol: root.network.wifiConnected ? Models.barWifiSymbol(root.network.wifiSignal) : root.network.connected ? "lan" : "wifi_off"
-                        hint: Lang.f(Lang.s.barNetworkHint, root.network.summary)
-                        selected: popout.opened && popout.showingNetwork
-                        onClicked: popout.toggle("network")
-                    }
-                    BarIcon {
-                        visible: root.network.vpn && !root.narrow
-                        symbol: "vpn_key"
-                        hint: Lang.s.barVpnOn
-                        onClicked: popout.toggle("network")
-                    }
-                    BarIcon {
-                        visible: root.services.bluetooth.available && root.services.bluetooth.enabled && !root.narrow
-                        symbol: root.services.bluetooth.connected.length > 0 ? "bluetooth_connected" : "bluetooth"
-                        hint: root.services.bluetooth.connected.length > 0
-                            ? Lang.f(Lang.s.barBluetoothConnected, root.services.bluetooth.connected.map(device => root.services.bluetooth.label(device)).join(", "))
-                            : Lang.s.barBluetoothOn
-                        selected: popout.opened && popout.showingBluetooth
-                        onClicked: popout.toggle("bluetooth")
-                    }
                     // Звук: колесо — громкость по 5 %, средняя кнопка — без звука, щелчок — окно звука.
                     BarIcon {
                         visible: root.audio.available && !root.narrow
@@ -322,6 +313,28 @@ PanelWindow {
                         onClicked: popout.toggle("sound")
                         TapHandler { acceptedButtons: Qt.MiddleButton; onTapped: root.audio.toggleMute() }
                         WheelSteps { onStep: direction => root.audio.stepVolume(-direction * 0.05) }
+                    }
+                    BarIcon {
+                        visible: root.services.bluetooth.available && root.services.bluetooth.enabled && !root.narrow
+                        symbol: root.services.bluetooth.connected.length > 0 ? "bluetooth_connected" : "bluetooth"
+                        hint: root.services.bluetooth.connected.length > 0
+                            ? Lang.f(Lang.s.barBluetoothConnected, root.services.bluetooth.connected.map(device => root.services.bluetooth.label(device)).join(", "))
+                            : Lang.s.barBluetoothOn
+                        selected: popout.opened && popout.showingBluetooth
+                        onClicked: popout.toggle("bluetooth")
+                    }
+                    BarIcon {
+                        visible: root.network.vpn && !root.narrow
+                        symbol: "vpn_key"
+                        hint: Lang.s.barVpnOn
+                        onClicked: popout.toggle("network")
+                    }
+                    BarIcon {
+                        id: networkButton
+                        symbol: root.network.wifiConnected ? Models.barWifiSymbol(root.network.wifiSignal) : root.network.connected ? "lan" : "wifi_off"
+                        hint: Lang.f(Lang.s.barNetworkHint, root.network.summary)
+                        selected: popout.opened && popout.showingNetwork
+                        onClicked: popout.toggle("network")
                     }
                     // Батарея: ячейка с заливкой по проценту (оранжевая при 20 % и ниже, красная при 10 %),
                     // молния — при зарядке, процент рядом — по настройке «Оформления».
@@ -376,24 +389,9 @@ PanelWindow {
                             }
                         }
                     }
-                    // «Не засыпать» включено: нажатие выключает режим.
-                    BarIcon {
-                        visible: root.services.keepAwake.active
-                        symbol: "coffee"
-                        hint: Lang.s.barKeepAwakeOn
-                        onClicked: root.services.keepAwake.active = false
-                    }
-                    // «Не беспокоить» включено: нажатие выключает режим.
-                    BarIcon {
-                        visible: root.services.notifications.dnd
-                        symbol: "do_not_disturb_on"
-                        hint: Lang.s.barDndOn
-                        onClicked: root.services.notifications.setDnd(false)
-                    }
                 }
                 RowLayout {
                     spacing: 0
-                    GroupDivider {}
                     BarIcon {
                         id: details
                         symbol: "tune"
