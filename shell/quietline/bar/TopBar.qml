@@ -94,6 +94,46 @@ PanelWindow {
         width: parent.width; height: Theme.barHeight
         color: Theme.barSurface
         Rectangle { anchors.bottom: parent.bottom; width: parent.width; height: 1; color: Theme.hairline }
+        // По центру — дата и время: открывают окно уведомлений с календарём; точка — есть непрочитанные,
+        // перечёркнутый колокольчик — включено «Не беспокоить».
+        ShellButton {
+            id: clockButton
+            anchors.centerIn: parent
+            implicitHeight: Theme.barItemHeight
+            hint: Lang.longDate(clock.date) + (root.services.notifications.dnd ? " · " + Lang.s.barDndOn
+                  : root.services.notifications.unread > 0 ? " · " + Lang.f(Lang.s.barNotificationsUnread, root.services.notifications.unread) : "")
+            Accessible.name: Lang.longDate(clock.date) + ", " + Lang.time(clock.date)
+            selected: popout.opened && popout.showingNotifications
+            onClicked: popout.toggle("notifications")
+            contentItem: Item {
+                implicitWidth: clockRow.implicitWidth + 16; implicitHeight: clockRow.implicitHeight
+                Row {
+                    id: clockRow
+                    anchors.centerIn: parent
+                    spacing: 6
+                    Icon {
+                        visible: root.services.notifications.dnd
+                        anchors.verticalCenter: parent.verticalCenter
+                        name: "notifications_off"; filled: true; size: 14
+                        color: Theme.text2
+                    }
+                    Text {
+                        renderType: Text.CurveRendering
+                        anchors.verticalCenter: parent.verticalCenter
+                        text: root.tiny ? Lang.time(clock.date) : Lang.barClock(clock.date)
+                        color: Theme.text
+                        font.family: Theme.sans; font.pixelSize: Theme.fontSize; font.weight: Font.Medium
+                        font.features: { "tnum": 1 }
+                    }
+                    Rectangle {
+                        visible: root.services.notifications.unread > 0 && !root.services.notifications.dnd
+                        anchors.verticalCenter: parent.verticalCenter
+                        width: 6; height: 6; radius: 3
+                        color: Theme.accent
+                    }
+                }
+            }
+        }
         RowLayout {
             anchors.fill: parent
             anchors.leftMargin: 6; anchors.rightMargin: 6
@@ -190,9 +230,9 @@ PanelWindow {
                 }
             }
             Item { Layout.fillWidth: true; Layout.minimumWidth: 0 }
-            // Правая часть, как в macOS, — три группы с отступом 16 px: запущенные программы (трей);
-            // системное — приватность, «Не засыпать», раскладка, Bluetooth, звук, батарея, Wi‑Fi (у края
-            // группы); уведомления, пункт управления и часы. Внутри групп кнопки стоят вплотную.
+            // Правая часть — группы с отступом 16 px, от редкого к частому: запущенные программы (трей);
+            // состояния (приватность, «Не засыпать») и раскладка; устройства — Bluetooth, звук, Wi‑Fi,
+            // батарея; пункт управления у края. Внутри групп кнопки стоят вплотную.
             RowLayout {
                 spacing: 16
                 RowLayout {
@@ -296,6 +336,9 @@ PanelWindow {
                             }
                         }
                     }
+                }
+                RowLayout {
+                    spacing: 0
                     BarIcon {
                         visible: root.services.bluetooth.available && root.services.bluetooth.enabled && !root.narrow
                         symbol: root.services.bluetooth.connected.length > 0 ? "bluetooth_connected" : "bluetooth"
@@ -315,6 +358,13 @@ PanelWindow {
                         onClicked: popout.toggle("sound")
                         TapHandler { acceptedButtons: Qt.MiddleButton; onTapped: root.audio.toggleMute() }
                         WheelSteps { onStep: direction => root.audio.stepVolume(-direction * 0.05) }
+                    }
+                    BarIcon {
+                        id: networkButton
+                        symbol: root.network.wifiConnected ? Models.barWifiSymbol(root.network.wifiSignal) : root.network.connected ? "lan" : "wifi_off"
+                        hint: Lang.f(Lang.s.barNetworkHint, root.network.summary)
+                        selected: popout.opened && popout.showingNetwork
+                        onClicked: popout.toggle("network")
                     }
                     // Батарея: ячейка с заливкой по проценту (оранжевая при 20 % и ниже, красная при 10 %),
                     // молния — при зарядке, процент рядом — по настройке «Оформления».
@@ -405,48 +455,15 @@ PanelWindow {
                             }
                         }
                     }
-                    BarIcon {
-                        id: networkButton
-                        symbol: root.network.wifiConnected ? Models.barWifiSymbol(root.network.wifiSignal) : root.network.connected ? "lan" : "wifi_off"
-                        hint: Lang.f(Lang.s.barNetworkHint, root.network.summary)
-                        selected: popout.opened && popout.showingNetwork
-                        onClicked: popout.toggle("network")
-                    }
                 }
                 RowLayout {
                     spacing: 0
-                    // Уведомления: точка — есть непрочитанные; при «Не беспокоить» колокольчик перечёркнут.
-                    BarIcon {
-                        id: bellButton
-                        readonly property int unread: root.services.notifications.unread
-                        symbol: root.services.notifications.dnd ? "notifications_off" : "notifications"
-                        hint: root.services.notifications.dnd ? Lang.s.barDndOn
-                            : unread > 0 ? Lang.f(Lang.s.barNotificationsUnread, unread) : Lang.s.notificationsTitle
-                        selected: popout.opened && popout.showingNotifications
-                        onClicked: popout.toggle("notifications")
-                        Rectangle {
-                            visible: bellButton.unread > 0 && !root.services.notifications.dnd
-                            width: 6; height: 6; radius: 3
-                            color: Theme.accent
-                            anchors { top: parent.top; right: parent.right; topMargin: 3; rightMargin: 5 }
-                        }
-                    }
                     BarIcon {
                         id: details
                         symbol: "tune"
                         hint: Lang.s.quickSettingsTitle
                         selected: popout.opened && popout.showingQuick
                         onClicked: popout.toggle("quick")
-                    }
-                    // Дата и время открывают календарь.
-                    ShellButton {
-                        id: clockButton
-                        implicitHeight: Theme.barItemHeight
-                        text: root.tiny ? Lang.time(clock.date) : Lang.barClock(clock.date)
-                        hint: Lang.longDate(clock.date)
-                        Accessible.name: Lang.longDate(clock.date) + ", " + Lang.time(clock.date)
-                        selected: popout.opened && popout.showingCalendar
-                        onClicked: popout.toggle("calendar")
                     }
                 }
             }
@@ -463,7 +480,6 @@ PanelWindow {
         readonly property bool showingQuick: currentName === "quick"
         readonly property bool showingClipboard: currentName === "clipboard"
         readonly property bool showingNotifications: currentName === "notifications"
-        readonly property bool showingCalendar: currentName === "calendar"
         readonly property bool showingBattery: currentName === "battery"
         readonly property bool showingBluetooth: currentName === "bluetooth"
         readonly property bool showingSound: currentName === "sound"
@@ -480,19 +496,19 @@ PanelWindow {
         padding: showingMenu || showingWindow ? 5 : centered ? 0 : 10
         radius: centered ? Theme.radiusLarge : Theme.radiusPopup
         surfaceColor: centered ? Theme.solidSurface : Theme.popupSurface
-        popupX: centered ? Math.round((root.width - panelWidth) / 2)
+        popupX: centered || showingNotifications ? Math.round((root.width - panelWidth) / 2)
               : showingMenu ? Theme.screenMargin
               : showingWindow ? Math.max(Theme.screenMargin, Math.min(windowX, root.width - panelWidth - Theme.screenMargin))
               : Math.max(Theme.screenMargin, root.width - panelWidth - Theme.screenMargin)
         popupY: centered ? Math.round((root.screen ? root.screen.height : 800) * 0.19) : Theme.barHeight + Theme.popupGap
         panelWidth: showingMenu || showingWindow ? 248 : showingApplications ? Math.min(640, root.width - 24) : showingClipboard ? Math.min(600, root.width - 24)
-                  : Math.min(showingNetwork || showingNotifications ? 376 : showingCalendar ? 300 : 336, root.width - 12)
+                  : Math.min(showingNotifications ? 660 : showingNetwork ? 376 : 336, root.width - 12)
         panelHeight: showingMenu ? quietlineMenu.implicitHeight + 10
                    : showingWindow ? windowMenu.implicitHeight + 10
                    : showingApplications ? searchPanel.contentHeight
                    : showingClipboard ? clipboardPanel.contentHeight
                    : Math.min(content.implicitHeight + 20, root.screen ? root.screen.height - 80 : 500)
-        onPresented: { if (showingApplications) searchPanel.reset(); else if (showingClipboard) clipboardPanel.reset(); else if (showingMenu) quietlineMenu.takeFocus(); else if (showingWindow) windowMenu.takeFocus(); else if (showingNotifications || showingCalendar) notificationCenter.reset(); }
+        onPresented: { if (showingApplications) searchPanel.reset(); else if (showingClipboard) clipboardPanel.reset(); else if (showingMenu) quietlineMenu.takeFocus(); else if (showingWindow) windowMenu.takeFocus(); else if (showingNotifications) notificationCenter.reset(); }
         onDismissed: searchPanel.reset()
         QuietlineMenu {
             id: quietlineMenu
@@ -540,9 +556,7 @@ PanelWindow {
                 width: summaryScroll.availableWidth; spacing: 12
                 NotificationCenter {
                     id: notificationCenter
-                    visible: popout.showingNotifications || popout.showingCalendar
-                    showCalendar: popout.showingCalendar
-                    showNotifications: popout.showingNotifications
+                    visible: popout.showingNotifications
                     Layout.fillWidth: true
                     service: root.services.notifications
                 }

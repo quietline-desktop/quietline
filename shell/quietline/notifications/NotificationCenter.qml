@@ -5,20 +5,17 @@ import ".."
 import "../controls"
 import "../logic/Models.js" as Models
 
-// Центр уведомлений: календарь месяца (часы на панели) и уведомления — «Не беспокоить», история
-// сеанса новыми сверху (колокольчик на панели, `Super+N`); `showCalendar` и `showNotifications`
-// выбирают показанные части. Уведомления одного приложения собраны в стопку: видна самая новая
-// карточка, «ещё N» раскрывает остальные. Нажатие на карточку выполняет действие по
+// Центр уведомлений (часы по центру панели, `Super+N`): слева уведомления — «Не беспокоить»,
+// история сеанса новыми сверху, справа календарь месяца. Уведомления одного приложения собраны
+// в стопку: видна самая новая карточка, «ещё N» раскрывает остальные. Нажатие на карточку выполняет действие по
 // умолчанию; не-`resident` уведомление после действия закрывает сам сервер.
-ColumnLayout {
+RowLayout {
     id: root
     required property var service
     // Раскрытые стопки: имя приложения → true.
     property var expanded: ({})
-    property bool showCalendar: true
-    property bool showNotifications: true
     readonly property var groups: Models.notificationGroups(service.history, entry => entry.notification.appName || "")
-    spacing: 10
+    spacing: 14
 
     function reset() { expanded = ({}); calendar.reset(); }
     SystemClock { id: clock; precision: SystemClock.Minutes }
@@ -36,11 +33,10 @@ ColumnLayout {
         expanded = next;
     }
 
-    MonthCalendar { id: calendar; visible: root.showCalendar; Layout.fillWidth: true }
     // Уведомления: заголовок с «Не беспокоить», история, «Очистить всё».
     ColumnLayout {
-        visible: root.showNotifications
         Layout.fillWidth: true
+        Layout.alignment: Qt.AlignTop
         spacing: 10
         RowLayout {
             Layout.fillWidth: true
@@ -128,5 +124,10 @@ ColumnLayout {
             foreground: Theme.text2
             onClicked: root.service.clearAll()
         }
+    }
+    MonthCalendar {
+        id: calendar
+        Layout.preferredWidth: 264
+        Layout.alignment: Qt.AlignTop
     }
 }
