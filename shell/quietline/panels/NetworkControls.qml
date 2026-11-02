@@ -21,6 +21,9 @@ ColumnLayout {
     property string connectingTo: ""
     property string deleting: ""
     property bool formOpen: false
+    // Идёт ввод или решение, которое нельзя терять щелчком мимо панели: пароль сети, форма
+    // профиля, подключение или полоса «Оставить / Вернуть».
+    readonly property bool holding: passwordFor !== "" || formOpen || network.busy || !!network.pending
     property string lastAttempt: ""
     readonly property bool wifiOn: network.wifi.enabled && !!network.wifiDevice
     readonly property var knownNetworks: network.networks.filter(item => item.known || item.active)

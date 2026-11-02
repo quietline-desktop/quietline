@@ -436,8 +436,9 @@ PanelWindow {
         property real windowX: Theme.screenMargin
         parentPanel: root
         reducedMotion: root.reducedMotion
-        // Сетевая панель держит формы: щелчок в другом окне её не закрывает.
-        persistent: showingNetwork
+        // Сетевая панель не закрывается щелчком мимо, только пока в ней вводят пароль, заполняют
+        // форму профиля, подключаются или решают «Оставить / Вернуть»; иначе — как остальные окна.
+        persistent: showingNetwork && !!networkLoader.item && networkLoader.item.holding
         // Поиск и буфер — окна по центру экрана; остальное выпадает из панели.
         readonly property bool centered: showingApplications || showingClipboard
         padding: showingMenu || showingWindow ? 5 : centered ? 0 : 10
@@ -509,6 +510,7 @@ PanelWindow {
                 }
                 Text { renderType: Text.CurveRendering; visible: popout.showingNetwork; text: Lang.s.settingsNetwork; color: Theme.text; font.family: Theme.sans; font.pixelSize: Theme.titleFontSize; font.weight: Font.Bold }
                 Loader {
+                    id: networkLoader
                     active: popout.showingNetwork && popout.opened
                     visible: active
                     Layout.fillWidth: true
