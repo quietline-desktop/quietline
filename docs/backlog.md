@@ -140,7 +140,6 @@
 - **archinstall в режиме Pre-mount** — без загрузчика, `fstab` с подтомами и `/efi`; предположение по исходному коду, что встроенный GRUB archinstall при `/efi` использовал бы `--boot-directory=/efi` и `--removable`, не проверено (гайд, раздел 4).
 - **Консольный шрифт** — `setfont cyr-sun16` из `kbd` в TTY показывает кириллицу, тире и кавычки «»; экраны помещаются в 80×24 и не ломаются при изменении размера (I1).
 - **Язык для программ** — greetd с `source_profile` читает `/etc/profile.d/locale.sh`, тот подхватывает `~/.config/locale.conf` (если `LANG` уже не задан systemd) (I12).
-- **Хранилище паролей** — `pam_gnome_keyring.so` в `/etc/pam.d/greetd` открывает gnome-keyring паролем входа через tuigreet, служба `org.freedesktop.secrets` появляется в сеансе Hyprland без отдельного запуска; 1Password сохраняет двухфакторный токен (I17).
 - **fnm** — `fnm install --lts` создаёт алиас `lts-latest`, `fnm default lts-latest` работает, `fnm list` показывает алиас; хук `fnm env --use-on-cd --shell fish | source` в `conf.d/quietline.fish` (I5).
 - **Неподтверждённые desktop ID** — `code` (VS Code из AUR), `docker-desktop`, `AmneziaVPN` (из `.run`); у 1Password из AUR, вероятно, `1password.desktop`, а не `com.onepassword.OnePassword` (I13).
 - **Brave из Flathub и 1Password** — расширение 1Password в Brave в песочнице Flatpak связывается с приложением 1Password; если нет — вариант `brave-bin` из AUR.
