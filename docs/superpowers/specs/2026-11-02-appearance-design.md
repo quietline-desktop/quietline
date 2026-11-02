@@ -1,6 +1,6 @@
 # Оформление: светлая тема и выбор указателя
 
-**Статус:** утверждена пользователем 2026-11-02 вместе с макетом `docs/design/quiet-line-b-light.html`; реализация — план `2026-11-02-appearance`.
+**Статус:** утверждена пользователем 2026-11-02 вместе с макетом `docs/design/quiet-line-b-light.html`; реализована и слита в `main` 2026-11-02 (план `2026-11-02-appearance`); непроверенное вживую — `docs/backlog.md`.
 
 **Основа:** вариант B (`2026-11-01-shell-redesign-design.md`, макет `docs/design/quiet-line-b.html`, `DESIGN.md`). Указатель Capitaine добавлен 2026-11-02 коммитом `feat(hyprland): указатель мыши — тема Capitaine`.
 
