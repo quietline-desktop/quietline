@@ -278,6 +278,21 @@ test('volume is clamped to the safe range',()=>{
  assert.equal(M.clampVolume(-1),0);
  assert.equal(M.clampVolume(0.42),0.42);
 });
+
+test('displayOutput prefers the monitor description and falls back to the connector',()=>{
+ assert.equal(M.displayOutput({name:'eDP-1',description:'BOE 0x0B76'}),'desc:BOE 0x0B76');
+ assert.equal(M.displayOutput({name:'DP-2',description:''}),'DP-2');
+ assert.equal(M.displayOutput({name:'DP-2',description:'Odd "name"'}),'DP-2');
+ assert.equal(M.displayOutput({name:'DP-2',description:'back\\slash'}),'DP-2');
+ assert.equal(M.displayOutput(null),'');
+});
+
+test('scaleChoices keeps scales with a whole logical size',()=>{
+ assert.deepEqual(plain(M.scaleChoices(1920,1200)),[1,1.25,1.5,2]);
+ assert.deepEqual(plain(M.scaleChoices(2560,1440)),[1,1.25,2]);
+ assert.deepEqual(plain(M.scaleChoices(3840,2160)),[1,1.25,1.5,2]);
+ assert.deepEqual(plain(M.scaleChoices(0,0)),[]);
+});
 test('battery time reads in hours and minutes',()=>{
  assert.equal(M.formatDuration(4800,ru),'1 ч 20 мин');
  assert.equal(M.formatDuration(600,ru),'10 мин');

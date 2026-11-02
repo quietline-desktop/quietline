@@ -48,6 +48,10 @@ Scope {
     readonly property var shortcuts: Models.describeBinds(binds, Lang.s, desktop.entries)
     property var info: null
     readonly property bool opened: windowLoader.active
+    // Масштабы мониторов из `quietline-shell display`: правило монитора → масштаб; монитора нет — «Авто».
+    property var scales: ({})
+    property string displayError: ""
+    property bool scaleApplied: true
 
     function open(name) {
         var id = Models.resolveSection(name);
@@ -71,7 +75,36 @@ Scope {
         if (section === "shortcuts" && !bindsProcess.running) bindsProcess.running = true;
         if (section === "about" && !aboutProcess.running) aboutProcess.running = true;
         if (section === "network") services.network.refresh();
-        if (section === "display") Hyprland.refreshMonitors();
+        if (section === "display") {
+            Hyprland.refreshMonitors();
+            if (!displayReader.running) displayReader.running = true;
+        }
+    }
+    // Масштаб монитора: число или `"auto"`. Выбор виден сразу, ответ записи его подтверждает.
+    function setScale(monitor, scale) {
+        var output = Models.displayOutput(monitor);
+        if (!output || displayWriter.running) return;
+        var next = Object.assign({}, scales);
+        if (scale === "auto") delete next[output];
+        else next[output] = scale;
+        scales = next;
+        displayError = "";
+        displayWriter.command = ["quietline-shell", "display", "--set", JSON.stringify({output: output, scale: scale})];
+        displayWriter.running = true;
+    }
+    function receiveDisplay(text, writing) {
+        var data;
+        try { data = JSON.parse(text); } catch (_) { data = {error: "quietline-shell returned no JSON"}; }
+        if (data.error) {
+            displayError = Lang.s.displayScaleFailed + ": " + data.error;
+            if (writing) displayReader.running = true;
+            return;
+        }
+        scales = data.scales || {};
+        if (writing) {
+            scaleApplied = data.applied !== false;
+            Hyprland.refreshMonitors();
+        }
     }
 
     Process {
@@ -83,6 +116,15 @@ Scope {
                 catch (_) { root.binds = []; }
             }
         }
+    }
+    Process {
+        id: displayReader
+        command: ["quietline-shell", "display"]
+        stdout: StdioCollector { onStreamFinished: root.receiveDisplay(text, false) }
+    }
+    Process {
+        id: displayWriter
+        stdout: StdioCollector { onStreamFinished: root.receiveDisplay(text, true) }
     }
     Process {
         id: aboutProcess
@@ -289,6 +331,37 @@ Scope {
                                     }
                                 }
                             }
+                            SettingsGroup {
+                                title: Lang.s.settingsScale
+                                // Монитор — строка с выбором масштаба из тех, что Hyprland применяет без подгонки.
+                                Repeater {
+                                    model: Hyprland.monitors.values
+                                    delegate: SettingsRow {
+                                        id: scaleRow
+                                        required property var modelData
+                                        readonly property var choices: Models.scaleChoices(modelData.width, modelData.height)
+                                        readonly property var saved: root.scales[Models.displayOutput(modelData)]
+                                        // «Авто» — 0; сохранённый масштаб вне списка — ни один сегмент.
+                                        readonly property int savedIndex: {
+                                            if (saved === undefined) return 0;
+                                            var index = choices.findIndex(scale => Math.abs(scale - saved) < 0.001);
+                                            return index < 0 ? -1 : index + 1;
+                                        }
+                                        label: Models.isBuiltinOutput(modelData.name) ? Lang.s.displayBuiltin : (modelData.description || modelData.name)
+                                        note: Lang.s.displayScaleNote
+                                        fill: true
+                                        SegmentedControl {
+                                            showLabels: true; segmentHeight: 24
+                                            model: [{label: Lang.s.displayScaleAuto}].concat(scaleRow.choices.map(scale => ({label: Lang.f(Lang.s.displayScalePercent, Math.round(scale * 100))})))
+                                            currentIndex: scaleRow.savedIndex
+                                            busy: displayWriter.running
+                                            onActivated: index => root.setScale(scaleRow.modelData, index === 0 ? "auto" : scaleRow.choices[index - 1])
+                                        }
+                                    }
+                                }
+                            }
+                            Note { visible: root.displayError !== ""; color: Theme.danger; text: root.displayError }
+                            Note { visible: !root.scaleApplied; text: Lang.s.displayScalePending }
                             Note { text: Lang.s.settingsDisplayNote }
                         }
                         Page {

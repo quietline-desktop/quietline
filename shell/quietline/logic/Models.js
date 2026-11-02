@@ -420,6 +420,23 @@ function brightnessArgs(device, percent) {
 // Подсветка принадлежит встроенному экрану; панели внешних выходов ползунка не получают.
 function isBuiltinOutput(name) { return /^(eDP|LVDS|DSI)-/.test(name || ""); }
 
+// Монитор в правиле Hyprland для `quietline-shell display`: `desc:<описание>`, чтобы масштаб
+// следовал за монитором при смене разъёма; без описания или с кавычкой, обратной косой чертой
+// или управляющим символом в нём — имя разъёма.
+function displayOutput(monitor) {
+    var description = String((monitor && monitor.description) || "");
+    if (description && description.length <= 200 && !/["\\\x00-\x1f\x7f]/.test(description)) return "desc:" + description;
+    return String((monitor && monitor.name) || "");
+}
+
+// Масштабы для режима `width`×`height`, которые Hyprland применяет без подгонки: логический
+// размер в каждом измерении — целое число пикселей.
+var SCALE_STEPS = [1, 1.25, 1.5, 1.75, 2];
+function scaleChoices(width, height) {
+    if (!(width > 0) || !(height > 0)) return [];
+    return SCALE_STEPS.filter(function(scale) { return Number.isInteger(width / scale) && Number.isInteger(height / scale); });
+}
+
 // Громкость PipeWire в пределах 0…150 %.
 function clampVolume(value) { return Math.max(0, Math.min(1.5, value)); }
 

@@ -33,6 +33,19 @@ if loaded and type(chosen) == "table"
 end
 hl.config({ input = { kb_layout = keyboard.kb_layout, kb_options = keyboard.kb_options } })
 
+-- Масштаб мониторов, выбранный в «Настройках» → «Экран»: оболочка пишет quietline/display.lua
+-- каталога настроек — таблицу «монитор → масштаб», где монитор — `desc:<описание>` или имя
+-- разъёма. У монитора без записи масштаб выбирает Hyprland. Правило монитора из hyprland.lua
+-- после подключения этого файла главнее.
+local scales_loaded, scales = pcall(dofile, config_home .. "/quietline/display.lua")
+if scales_loaded and type(scales) == "table" then
+    for output, scale in pairs(scales) do
+        if type(output) == "string" and type(scale) == "number" then
+            hl.monitor({ output = output, mode = "preferred", position = "auto", scale = scale })
+        end
+    end
+end
+
 -- Оформление окон варианта B: скругление 10, рамка 2 px — у активного окна синяя (акцент),
 -- у остальных едва заметная светлая; отступы 4/8. Тень мягкая и почти равномерная со всех
 -- сторон (сдвиг вниз 3 px), у неактивного окна — вдвое слабее.

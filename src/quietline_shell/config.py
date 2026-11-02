@@ -7,7 +7,11 @@
 Язык и регион — `region.json` вида `{"version": 1, "language", "clock", "date", "layouts",
 "toggle"}`. Сохранение region также обновляет `locale.conf` (строка `LANG`, остальные строки
 файла сохраняются) и `quietline/keyboard.lua` с раскладками для Hyprland. Тексты уведомлений
-`quietline-shell` — `NOTIFICATION_TEXTS` на языке из region. Только стандартная библиотека.
+`quietline-shell` — `NOTIFICATION_TEXTS` на языке из region.
+
+Масштаб мониторов — `display.json` вида `{"version": 1, "scales": {"<монитор>": <масштаб>}}`, где
+монитор — правило вывода Hyprland (`desc:<описание>` или имя разъёма). Рядом пишется `display.lua`,
+который читает конфигурация Hyprland Quietline. Только стандартная библиотека.
 """
 
 import json
@@ -225,6 +229,90 @@ def save_region(path: Path, region: dict[str, Any], config_home: Path) -> None:
         _atomic_write_text(locale_path, locale_text)
     _atomic_write_text(config_home / "quietline" / "keyboard.lua", keyboard_lua(checked))
     atomic_write_json(path, {"version": 1, **checked})
+
+
+# Монитор в правиле Hyprland: `desc:<описание>` без кавычек, обратной косой черты и управляющих
+# символов (строка попадает в Lua-литерал) или имя разъёма вида `eDP-1`.
+_DISPLAY_OUTPUT = re.compile(r'desc:[^"\\\x00-\x1f\x7f]{1,200}|[A-Za-z0-9_.-]{1,64}')
+SCALE_MIN = 0.5
+SCALE_MAX = 4.0
+
+
+def default_display_path() -> Path:
+    """`$XDG_CONFIG_HOME/quietline/display.json`, без переменной — `~/.config/quietline/display.json`."""
+    directory = os.environ.get("XDG_CONFIG_HOME") or Path.home() / ".config"
+    return Path(directory) / "quietline" / "display.json"
+
+
+def _checked_output(output: object) -> str:
+    if not isinstance(output, str) or not _DISPLAY_OUTPUT.fullmatch(output):
+        raise ValueError(f"invalid monitor: {output!r}")
+    return output
+
+
+def _checked_scale(scale: object) -> float:
+    if isinstance(scale, bool) or not isinstance(scale, (int, float)) or not SCALE_MIN <= scale <= SCALE_MAX:
+        raise ValueError(f"scale must be a number from {SCALE_MIN} to {SCALE_MAX} or \"auto\": {scale!r}")
+    return float(scale)
+
+
+def load_display(path: Path) -> dict[str, float]:
+    """Масштабы мониторов из файла; без файла — пусто. Повреждённый файл — `ValueError`, файл не меняется."""
+    if not path.exists():
+        return {}
+    try:
+        data = json.loads(path.read_text(encoding="utf-8"))
+    except (json.JSONDecodeError, UnicodeError) as error:
+        raise ValueError(f"cannot read display settings from {path}") from error
+    if not isinstance(data, dict) or data.get("version") != 1 or not isinstance(data.get("scales"), dict):
+        raise ValueError(f"unknown display file format in {path}")
+    try:
+        return {_checked_output(output): _checked_scale(scale) for output, scale in data["scales"].items()}
+    except ValueError as error:
+        raise ValueError(f"invalid display settings in {path}: {error}") from error
+
+
+def updated_display(change: object, scales: dict[str, float]) -> tuple[str, float | None, dict[str, float]]:
+    """Применяет `{"output", "scale"}` к `scales`: `(монитор, масштаб или None для "auto", новые масштабы)`."""
+    if not isinstance(change, dict) or set(change) != {"output", "scale"}:
+        raise ValueError('display change must be {"output": ..., "scale": ...}')
+    output = _checked_output(change["output"])
+    result = dict(scales)
+    if change["scale"] == "auto":
+        result.pop(output, None)
+        return output, None, result
+    scale = _checked_scale(change["scale"])
+    result[output] = scale
+    return output, scale, result
+
+
+def display_lua(scales: dict[str, float]) -> str:
+    """Содержимое `display.lua`: таблица «монитор → масштаб» для конфигурации Hyprland."""
+    lines = [f'    ["{output}"] = {scale!r},' for output, scale in sorted(scales.items())]
+    return "return {\n" + "".join(line + "\n" for line in lines) + "}\n"
+
+
+def save_display(path: Path, scales: dict[str, float]) -> None:
+    """Пишет `display.lua` рядом с `path` и последним атомарно `display.json`."""
+    checked = {_checked_output(output): _checked_scale(scale) for output, scale in scales.items()}
+    _atomic_write_text(path.with_name("display.lua"), display_lua(checked))
+    atomic_write_json(path, {"version": 1, "scales": checked})
+
+
+def apply_display(output: str, scale: float | None) -> bool:
+    """Применяет масштаб монитора `output` в работающем Hyprland (`None` — масштаб по умолчанию);
+    `True` только при коде 0 `hyprctl`. Вне сеанса Hyprland, без `hyprctl` и по таймауту — `False`."""
+    if not os.environ.get("HYPRLAND_INSTANCE_SIGNATURE"):
+        return False
+    value = '"auto"' if scale is None else repr(_checked_scale(scale))
+    expression = (f'hl.monitor({{ output = "{_checked_output(output)}", mode = "preferred", '
+                  f'position = "auto", scale = {value} }})')
+    try:
+        result = subprocess.run(["hyprctl", "eval", expression], capture_output=True, text=True,
+                                timeout=_HYPRCTL_TIMEOUT, check=False)
+    except (OSError, subprocess.TimeoutExpired):
+        return False
+    return result.returncode == 0
 
 
 def _atomic_write_text(path: Path, text: str) -> None:

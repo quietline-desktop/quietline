@@ -7,6 +7,11 @@
   обновление проверяется и пишется в `region.json`, а `locale.conf` и `quietline/keyboard.lua`
   — в каталог на два уровня выше `PATH` (`PATH/../../`; по умолчанию `$XDG_CONFIG_HOME`), раскладки применяются в Hyprland,
   в ответ добавляется `"applied": true | false`;
+- `display [--set JSON] [--path PATH]` — `{"scales": {"<монитор>": <масштаб>}}`: масштабы
+  мониторов, выбранные в «Настройках» (монитор — `desc:<описание>` или имя разъёма); с `--set
+  {"output", "scale"}` масштаб (число от 0.5 до 4 или `"auto"` — убрать запись) пишется в
+  `display.json` и `display.lua` рядом с ним и применяется в Hyprland, в ответ добавляется
+  `"applied": true | false`;
 - `motion` — `{"reducedMotion": true | false}`;
 - `about` — `{os, kernel, hostname, cpu, memoryGb, hyprland, quickshell}` для страницы
   «О системе» (`hyprland` и `quickshell` — номера версий вида `0.55.1`), недоступное значение — `null`;
@@ -44,8 +49,9 @@ from typing import Any
 
 from quietline_shell import capture, clipboard, network, search, session
 from quietline_shell.config import (
-    about, apply_keyboard, default_pins_path, default_region_path, load_pins, load_region, reduced_motion,
-    notification_text, save_pins, save_region, validated_region,
+    about, apply_display, apply_keyboard, default_display_path, default_pins_path, default_region_path, load_display,
+    load_pins, load_region, reduced_motion, notification_text, save_display, save_pins, save_region, updated_display,
+    validated_region,
 )
 
 
@@ -58,6 +64,9 @@ def _parser() -> argparse.ArgumentParser:
     region = commands.add_parser("region", help="print the language and region settings as JSON")
     region.add_argument("--set", dest="new_region", metavar="JSON", help="apply this JSON object of fields first")
     region.add_argument("--path", type=Path, help="region file (default: $XDG_CONFIG_HOME/quietline/region.json); locale.conf and quietline/keyboard.lua are written two directories above it")
+    display = commands.add_parser("display", help="print the monitor scales chosen in the settings as JSON")
+    display.add_argument("--set", dest="change", metavar="JSON", help='apply {"output": ..., "scale": NUMBER | "auto"} first')
+    display.add_argument("--path", type=Path, help="display file (default: $XDG_CONFIG_HOME/quietline/display.json); display.lua is written next to it")
     commands.add_parser("motion", help="print whether animations should be reduced")
     commands.add_parser("about", help="print system facts for the settings window")
     commands.add_parser("lock", help="start the lock screen unless it is already running")
@@ -107,6 +116,14 @@ def _run(args: argparse.Namespace) -> dict[str, Any]:
             updated = validated_region(json.loads(args.new_region), current)
             save_region(path, updated, path.parent.parent)
             return {**updated, "applied": apply_keyboard(updated)}
+        case "display":
+            path = args.path or default_display_path()
+            scales = load_display(path)
+            if args.change is None:
+                return {"scales": scales}
+            output, scale, scales = updated_display(json.loads(args.change), scales)
+            save_display(path, scales)
+            return {"scales": scales, "applied": apply_display(output, scale)}
         case "motion":
             return {"reducedMotion": reduced_motion()}
         case "lock":
