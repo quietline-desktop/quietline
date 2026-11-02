@@ -104,6 +104,9 @@ TEXTS = {
         'ask.suffix': '[д/Н]',
         'update.hint': 'Пакеты Arch и AUR, в том числе поставленные вами: yay. Flatpak: flatpak update --user. Docker Desktop и AmneziaVPN — по выпускам производителей. После обновления Hyprland заголовки окон пересобираются: hyprpm update.',
         'update.none': 'Пакеты AUR обновлять не нужно.',
+        'update.quietlineCurrent': 'Пакет Quietline собран из текущего коммита клона.',
+        'update.quietlineRebuild': 'Пакет Quietline отстал от клона — пересборка.',
+        'update.quietlineFailed': 'Пакет Quietline не пересобран: {error}',
 
         # Ошибки
         'error.stepFailed': 'Шаг «{step}» не выполнен: {reason}',
@@ -279,6 +282,9 @@ TEXTS = {
         'ask.suffix': '[y/N]',
         'update.hint': 'Arch and AUR packages, including ones you installed yourself: yay. Flatpak: flatpak update --user. Docker Desktop and AmneziaVPN: vendor releases. After a Hyprland update the window title bars are rebuilt: hyprpm update.',
         'update.none': 'No AUR packages need updating.',
+        'update.quietlineCurrent': 'The Quietline package matches the current commit of the clone.',
+        'update.quietlineRebuild': 'The Quietline package is older than the clone; rebuilding it.',
+        'update.quietlineFailed': 'The Quietline package was not rebuilt: {error}',
 
         'error.stepFailed': 'Step "{step}" failed: {reason}',
         'error.next': 'Progress is saved. Run ./install.sh again to continue or to roll back.',

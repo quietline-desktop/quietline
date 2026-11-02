@@ -9,6 +9,7 @@ import argparse
 import curses
 import os
 import shutil
+import subprocess
 import sys
 from pathlib import Path
 
@@ -20,6 +21,7 @@ from quietline_install.screens import CheckResult, Checklist, GoBack, Item, Quit
 from quietline_install.steps import build_steps
 from quietline_install.steps.aur import aur_install, aur_outdated
 from quietline_install.steps.checks import run_checks
+from quietline_install.steps.packages import quietline_package_step
 
 REPO = Path(__file__).resolve().parents[2]
 
@@ -267,6 +269,18 @@ def main(argv=None, screens=None, system=None, home: Path | None = None, root: P
         return 0 if ok else 1
     if args.command == 'update':
         out(ctx.t('update.hint'))
+        code = 0
+        # Пакет `quietline` из клона: пересобирается, если его версия отстала от коммита клона.
+        package = quietline_package_step()
+        try:
+            if package.check(ctx):
+                out(ctx.t('update.quietlineCurrent'))
+            else:
+                out(ctx.t('update.quietlineRebuild'))
+                package.run(ctx)
+        except (subprocess.CalledProcessError, OSError) as error:
+            out(ctx.t('update.quietlineFailed', error=str(error)))
+            code = 1
         outdated = aur_outdated(ctx, _plan(load_catalog(catalog_path), state).aur)
         for name in outdated:
             aur_install(ctx, name)
@@ -274,7 +288,7 @@ def main(argv=None, screens=None, system=None, home: Path | None = None, root: P
             out(ctx.t('update.none'))
         # Заголовки окон собраны под прежний Hyprland: hyprpm пересобирает их под установленный.
         ctx.system.run(['hyprpm', 'update'], interactive=True, check=False)
-        return 0
+        return code
 
     try:
         if state.selection and not state.finished and not state.rolled_back:

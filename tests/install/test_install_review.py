@@ -198,3 +198,43 @@ def test_rollback_command_asks_for_confirmation(tmp_path, system, monkeypatch):
     assert main_module.main(['rollback'], system=system, home=home, ask=lambda q: True,
                             out=lambda line: None) == 0
     assert done == ['quietline-pre-20261028-120000']
+
+
+def update_env(tmp_path, system, monkeypatch, installed):
+    home = tmp_path / 'home'
+    home.mkdir()
+    monkeypatch.setattr(main_module, 'aur_outdated', lambda ctx, names: [])
+    system.answer(['git', '-C'], '')
+    system.answer(['git', '-C', str(main_module.REPO), 'rev-list', '--count', 'HEAD'], '200\n')
+    system.answer(['git', '-C', str(main_module.REPO), 'rev-parse', '--short', 'HEAD'], 'abc1234\n')
+    system.answer(['pacman', '-Q', 'quietline'], f'quietline {installed}-1\n')
+    return home
+
+
+def test_update_rebuilds_quietline_when_clone_is_newer(tmp_path, system, monkeypatch):
+    home = update_env(tmp_path, system, monkeypatch, '0.1.0.r150.gdeadbee')
+    lines = []
+    assert main_module.main(['update'], system=system, home=home, out=lines.append) == 0
+    makepkg = [call for call in system.calls if call['args'][0] == 'makepkg']
+    assert makepkg and makepkg[0]['args'] == ['makepkg', '-si', '--cleanbuild'] and makepkg[0]['interactive']
+    assert makepkg[0]['env'] == {'QUIETLINE_REPO': str(main_module.REPO)}
+    assert system.commands()[-1] == ['hyprpm', 'update']
+    assert any('rebuilding' in line for line in lines)
+
+
+def test_update_skips_current_quietline(tmp_path, system, monkeypatch):
+    version = main_module.REPO.joinpath('pyproject.toml').read_text().split('version = "')[1].split('"')[0]
+    home = update_env(tmp_path, system, monkeypatch, f'{version}.r200.gabc1234')
+    lines = []
+    assert main_module.main(['update'], system=system, home=home, out=lines.append) == 0
+    assert not any(call['args'][0] == 'makepkg' for call in system.calls)
+    assert any('matches the current commit' in line for line in lines)
+
+
+def test_failed_quietline_build_is_reported_and_update_continues(tmp_path, system, monkeypatch):
+    home = update_env(tmp_path, system, monkeypatch, '0.1.0.r150.gdeadbee')
+    system.answer(['makepkg'], code=4)
+    lines = []
+    assert main_module.main(['update'], system=system, home=home, out=lines.append) == 1
+    assert any('was not rebuilt' in line for line in lines)
+    assert system.commands()[-1] == ['hyprpm', 'update']

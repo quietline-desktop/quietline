@@ -5,9 +5,9 @@
 | Что | Как |
 | --- | --- |
 | Пакеты Arch, включая Hyprland и Quickshell | `sudo pacman -Syu` |
-| Quietline | `git pull` в клоне, затем `./install.sh`: шаг «Пакет Quietline» пересобирает пакет при каждом новом коммите (версия — `<версия>.r<число коммитов>.g<хеш>`) |
+| Quietline | `git pull` в клоне, затем `./install.sh update`: пересобирает пакет `quietline`, если он собран не из текущего коммита клона (версия — `<версия>.r<число коммитов>.g<хеш>`); то же делает шаг «Пакет Quietline» полного `./install.sh` |
 | Пакеты Arch и все программы из AUR, в том числе поставленные вами | `yay` — обновляет всё сразу, перед сборкой пакета AUR показывает изменения его инструкций |
-| Программы из AUR каталога (Chrome, VS Code, 1Password, Slack, yay) | `./install.sh update` — показывает обновлённые инструкции сборки и собирает только после подтверждения |
+| Программы из AUR каталога (Chrome, VS Code, 1Password, Slack, yay) | тот же `./install.sh update` — показывает обновлённые инструкции сборки и собирает только после подтверждения |
 | Программы из Flathub (Brave, ONLYOFFICE) | `flatpak update --user` |
 | Версии Node.js | `fnm install <версия>`, `fnm default <версия>` |
 | Версии Python | `uv python install <версия>` |
