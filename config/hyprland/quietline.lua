@@ -46,8 +46,41 @@ if scales_loaded and type(scales) == "table" then
     end
 end
 
+-- Тема и указатель, выбранные в «Настройках» → «Оформление»: оболочка пишет quietline/appearance.lua
+-- каталога настроек — таблицу с theme ("dark" | "light"), cursor ("dark" | "light") и cursor_size
+-- (24, 36 или 48). Без файла или при ошибке в нём — тёмная тема и тёмный указатель 24 px.
+-- Тема задаёт цвета рамок, теней и заголовков окон; оболочка после записи вызывает `hyprctl reload`.
+local appearance = { theme = "dark", cursor = "dark", cursor_size = 24 }
+local appearance_loaded, chosen_appearance = pcall(dofile, config_home .. "/quietline/appearance.lua")
+if appearance_loaded and type(chosen_appearance) == "table" then
+    if chosen_appearance.theme == "dark" or chosen_appearance.theme == "light" then
+        appearance.theme = chosen_appearance.theme
+    end
+    if chosen_appearance.cursor == "dark" or chosen_appearance.cursor == "light" then
+        appearance.cursor = chosen_appearance.cursor
+    end
+    local size = chosen_appearance.cursor_size
+    if size == 24 or size == 36 or size == 48 then
+        appearance.cursor_size = size
+    end
+end
+local palette = ({
+    dark = {
+        active_border = "rgba(0a84ffd9)", inactive_border = "rgba(ffffff14)",
+        shadow = "rgba(0000004d)", shadow_inactive = "rgba(00000026)",
+        bar = "rgb(2b2b30)", title = "rgba(ffffffd1)",
+        button = "rgba(ffffffcc)", button_hover = "rgba(ffffff24)", button_hover_icon = "rgb(ffffff)",
+    },
+    light = {
+        active_border = "rgba(007affd9)", inactive_border = "rgba(0000001a)",
+        shadow = "rgba(0000002e)", shadow_inactive = "rgba(00000017)",
+        bar = "rgb(ececef)", title = "rgba(000000c7)",
+        button = "rgba(0000009e)", button_hover = "rgba(00000014)", button_hover_icon = "rgb(1d1d1f)",
+    },
+})[appearance.theme]
+
 -- Оформление окон варианта B: скругление 10, рамка 2 px — у активного окна синяя (акцент),
--- у остальных едва заметная светлая; отступы 4/8. Тень мягкая и почти равномерная со всех
+-- у остальных едва заметная (цвета — из палитры темы); отступы 4/8. Тень мягкая и почти равномерная со всех
 -- сторон (сдвиг вниз 3 px), у неактивного окна — вдвое слабее.
 -- Размытие включено для полупрозрачных поверхностей оболочки (правило слоёв ниже); у окон
 -- приложений фон непрозрачный, им размытие не мешает.
@@ -61,7 +94,7 @@ hl.config({
         resize_on_border = true,
         extend_border_grab_area = 15,
         hover_icon_on_border = true,
-        col = { active_border = "rgba(0a84ffd9)", inactive_border = "rgba(ffffff14)" },
+        col = { active_border = palette.active_border, inactive_border = palette.inactive_border },
     },
     decoration = {
         rounding = 10,
@@ -71,18 +104,20 @@ hl.config({
             range = 18,
             render_power = 3,
             offset = "0 3",
-            color = "rgba(0000004d)",
-            color_inactive = "rgba(00000026)",
+            color = palette.shadow,
+            color_inactive = palette.shadow_inactive,
         },
         blur = { enabled = true, size = 8, passes = 3, noise = 0.02, vibrancy = 0.17 },
     },
 })
 
--- Указатель — тема Capitaine (пакет capitaine-cursors), 24 px. Hyprland сам передаёт тему и размер
--- в gsettings (cursor.sync_gsettings_theme), их берут программы GTK; Qt и XWayland читают
--- XCURSOR_THEME. hl.env в hyprland.lua после подключения этого файла главнее.
-hl.env("XCURSOR_THEME", "capitaine-cursors")
-hl.env("XCURSOR_SIZE", "24")
+-- Указатель — тема Capitaine (пакет capitaine-cursors): тёмный или светлый, 24, 36 или 48 px из
+-- appearance.lua. Hyprland сам передаёт тему и размер в gsettings (cursor.sync_gsettings_theme),
+-- их берут программы GTK; Qt и XWayland читают XCURSOR_THEME. hl.env в hyprland.lua после
+-- подключения этого файла главнее.
+hl.env("XCURSOR_THEME", appearance.cursor == "light" and "capitaine-cursors-light" or "capitaine-cursors")
+hl.env("XCURSOR_SIZE", tostring(appearance.cursor_size))
+hl.env("HYPRCURSOR_SIZE", tostring(appearance.cursor_size))
 
 -- Окна появляются из 96 % масштаба, пространства сдвигаются; кривая — та же, что у оболочки.
 hl.curve("quietline", { type = "bezier", points = { { 0.2, 0.9 }, { 0.3, 1 } } })
@@ -118,8 +153,9 @@ hl.window_rule({
 -- Symbols (close, crop_square, horizontal_rule; в Inter точки нет). Шрифт «Quietline Titlebar» — правило fontconfig
 -- пакета (50-quietline-titlebar.conf): название окна — Inter, значки — Material Symbols
 -- Rounded раньше запасных шрифтов, где те же точки заняты другими глифами.
--- Под указателем кнопка получает кружок — «закрыть» красный, остальные светло-серый — и белый
--- значок (`hover_bg_color`, `hover_fg_color`); цвет появляется и гаснет за 120 мс (`hover_fade`).
+-- Под указателем кнопка получает кружок — «закрыть» красный с белым значком, остальные
+-- полупрозрачный серый со значком цвета текста темы (`hover_bg_color`, `hover_fg_color`);
+-- цвет появляется и гаснет за 120 мс (`hover_fade`).
 -- Крестик крупнее, квадрат мельче (`icon_size`), чтобы три значка выглядели соразмерно.
 -- hyprbars без этих возможностей поля кнопок пропускает, `hover_fade` задаётся, только если
 -- плагин его знает (`hl.get_config`), и кнопки остаются серыми без подсветки.
@@ -130,8 +166,8 @@ if hl.plugin and hl.plugin.hyprbars then
         plugin = {
             hyprbars = {
                 bar_height = 32,
-                bar_color = "rgb(2b2b30)",
-                ["col.text"] = "rgba(ffffffd1)",
+                bar_color = palette.bar,
+                ["col.text"] = palette.title,
                 bar_text_font = "Quietline Titlebar",
                 bar_text_size = 13,
                 bar_text_weight = "semibold",
@@ -147,7 +183,7 @@ if hl.plugin and hl.plugin.hyprbars then
     })
     hl.plugin.hyprbars.add_button({
         bg_color = "rgba(00000000)",
-        fg_color = "rgba(ffffffcc)",
+        fg_color = palette.button,
         hover_bg_color = "rgb(e5484d)",
         hover_fg_color = "rgb(ffffff)",
         size = 26,
@@ -157,9 +193,9 @@ if hl.plugin and hl.plugin.hyprbars then
     })
     hl.plugin.hyprbars.add_button({
         bg_color = "rgba(00000000)",
-        fg_color = "rgba(ffffffcc)",
-        hover_bg_color = "rgba(ffffff24)",
-        hover_fg_color = "rgb(ffffff)",
+        fg_color = palette.button,
+        hover_bg_color = palette.button_hover,
+        hover_fg_color = palette.button_hover_icon,
         size = 26,
         icon_size = 14,
         icon = "\u{E3C6}",
@@ -167,9 +203,9 @@ if hl.plugin and hl.plugin.hyprbars then
     })
     hl.plugin.hyprbars.add_button({
         bg_color = "rgba(00000000)",
-        fg_color = "rgba(ffffffcc)",
-        hover_bg_color = "rgba(ffffff24)",
-        hover_fg_color = "rgb(ffffff)",
+        fg_color = palette.button,
+        hover_bg_color = palette.button_hover,
+        hover_fg_color = palette.button_hover_icon,
         size = 26,
         icon = "\u{F108}",
         action = [[hyprctl dispatch 'hl.dsp.window.move({ workspace = "special:quietline-minimized", follow = false })']],
