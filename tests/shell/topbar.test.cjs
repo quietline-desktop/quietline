@@ -21,7 +21,7 @@ test('volume symbol shows mute, silence and level', () => {
   assert.equal(M.volumeSymbol(0.8, true), 'volume_off');
   assert.equal(M.volumeSymbol(0, false), 'volume_mute');
   assert.equal(M.volumeSymbol(0.3, false), 'volume_down');
-  assert.equal(M.volumeSymbol(0.5, false), 'volume_up');
+  assert.equal(M.volumeSymbol(0.4999, false), 'volume_up');
 });
 
 const items=[
