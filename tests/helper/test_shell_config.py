@@ -8,7 +8,7 @@ import pytest
 
 from quietline_shell import config
 from quietline_shell.__main__ import main
-from quietline_shell.config import DEFAULT_PINS, display_lua, load_display, load_pins, save_pins, updated_display
+from quietline_shell.config import DEFAULT_PINS, display_lua, load_appearance, load_display, load_pins, save_pins, updated_display
 
 
 def test_missing_config_has_the_five_approved_apps(tmp_path):
@@ -285,3 +285,122 @@ def test_apply_failure_still_saves(tmp_path, capsys, monkeypatch):
     code, response = run_display(capsys, "--path", str(path), "--set", json.dumps({"output": "eDP-1", "scale": 1.5}))
     assert (code, response["applied"]) == (0, False)
     assert load_display(path) == {"eDP-1": 1.5}
+
+
+# Оформление: `appearance.json`, `appearance.lua` и CLI `appearance`.
+
+def run_appearance(capsys, *argv):
+    code = main(["appearance", *argv])
+    return code, json.loads(capsys.readouterr().out)
+
+
+@pytest.fixture
+def commands(monkeypatch):
+    """Подменяет `subprocess.run`: команды записываются, код выхода — из `codes` по имени программы."""
+    calls = []
+    codes = {}
+
+    def run(args, **kwargs):
+        calls.append(args)
+        assert kwargs.get("timeout")
+        return subprocess.CompletedProcess(args, codes.get(args[0], 0), "", "")
+
+    monkeypatch.setattr(config.subprocess, "run", run)
+    return calls, codes
+
+
+def test_missing_appearance_file_means_dark_theme_and_dark_pointer(tmp_path, capsys, no_hyprland):
+    expected = {"theme": "dark", "cursor": "dark", "cursorSize": 24}
+    assert load_appearance(tmp_path / "appearance.json") == expected
+    assert run_appearance(capsys, "--path", str(tmp_path / "appearance.json")) == (0, expected)
+
+
+def test_partial_set_writes_json_and_lua_and_applies_in_hyprland(tmp_path, capsys, monkeypatch, commands):
+    calls, _ = commands
+    monkeypatch.setenv("HYPRLAND_INSTANCE_SIGNATURE", "test")
+    path = tmp_path / "quietline" / "appearance.json"
+    code, response = run_appearance(capsys, "--path", str(path), "--set", json.dumps({"theme": "light"}))
+    assert (code, response) == (0, {"theme": "light", "cursor": "dark", "cursorSize": 24, "applied": True})
+    assert json.loads(path.read_text(encoding="utf-8")) == {"version": 1, "theme": "light", "cursor": "dark", "cursorSize": 24}
+    assert path.with_name("appearance.lua").read_text(encoding="utf-8") == (
+        'return { theme = "light", cursor = "dark", cursor_size = 24 }\n')
+    assert calls == [
+        ["gsettings", "set", "org.gnome.desktop.interface", "color-scheme", "prefer-light"],
+        ["gsettings", "set", "org.gnome.desktop.interface", "gtk-theme", "Adwaita"],
+        ["hyprctl", "reload", "config-only"],
+        ["hyprctl", "setcursor", "capitaine-cursors", "24"],
+    ]
+
+    calls.clear()
+    code, response = run_appearance(capsys, "--path", str(path), "--set", json.dumps({"cursor": "light", "cursorSize": 48}))
+    assert response == {"theme": "light", "cursor": "light", "cursorSize": 48, "applied": True}
+    assert calls[-1] == ["hyprctl", "setcursor", "capitaine-cursors-light", "48"]
+
+
+def test_dark_theme_sets_dark_application_scheme(commands, no_hyprland):
+    calls, _ = commands
+    assert config.apply_appearance({"theme": "dark", "cursor": "dark", "cursorSize": 36}) is False
+    assert calls == [
+        ["gsettings", "set", "org.gnome.desktop.interface", "color-scheme", "prefer-dark"],
+        ["gsettings", "set", "org.gnome.desktop.interface", "gtk-theme", "Adwaita-dark"],
+    ]
+
+
+def test_failed_step_still_saves_and_runs_the_other_steps(tmp_path, capsys, monkeypatch, commands):
+    calls, codes = commands
+    codes["gsettings"] = 1
+    monkeypatch.setenv("HYPRLAND_INSTANCE_SIGNATURE", "test")
+    path = tmp_path / "appearance.json"
+    code, response = run_appearance(capsys, "--path", str(path), "--set", json.dumps({"theme": "light"}))
+    assert (code, response["applied"]) == (0, False)
+    assert load_appearance(path)["theme"] == "light"
+    assert [args[0] for args in calls] == ["gsettings", "gsettings", "hyprctl", "hyprctl"]
+
+
+def test_missing_programs_mean_not_applied(monkeypatch):
+    monkeypatch.setenv("HYPRLAND_INSTANCE_SIGNATURE", "test")
+
+    def missing(args, **kwargs):
+        raise FileNotFoundError(args[0])
+
+    monkeypatch.setattr(config.subprocess, "run", missing)
+    assert config.apply_appearance({"theme": "light", "cursor": "dark", "cursorSize": 24}) is False
+
+
+@pytest.mark.parametrize("change", [
+    {"theme": "sepia"},
+    {"cursor": "white"},
+    {"cursorSize": 30},
+    {"cursorSize": True},
+    {"cursorSize": "24"},
+    {"theme": 'light", os.exit() --'},
+    {"accent": "red"},
+    {},
+    ["light"],
+])
+def test_invalid_appearance_changes_are_rejected_without_writing(tmp_path, capsys, change, commands, no_hyprland):
+    calls, _ = commands
+    path = tmp_path / "appearance.json"
+    code, response = run_appearance(capsys, "--path", str(path), "--set", json.dumps(change))
+    assert code == 1 and "error" in response
+    assert not path.exists() and not path.with_name("appearance.lua").exists()
+    assert calls == []
+
+
+def test_corrupt_appearance_file_is_reported_without_overwriting(tmp_path, capsys, no_hyprland):
+    path = tmp_path / "appearance.json"
+    path.write_text('{"version": 1, "theme": "neon"}', encoding="utf-8")
+    code, response = run_appearance(capsys, "--path", str(path), "--set", json.dumps({"theme": "light"}))
+    assert code == 1 and str(path) in response["error"]
+    assert json.loads(path.read_text(encoding="utf-8"))["theme"] == "neon"
+
+
+def test_appearance_file_without_some_fields_keeps_defaults(tmp_path):
+    path = tmp_path / "appearance.json"
+    path.write_text('{"version": 1, "theme": "light"}', encoding="utf-8")
+    assert load_appearance(path) == {"theme": "light", "cursor": "dark", "cursorSize": 24}
+
+
+def test_default_appearance_path_follows_xdg_config_home(tmp_path, monkeypatch):
+    monkeypatch.setenv("XDG_CONFIG_HOME", str(tmp_path))
+    assert config.default_appearance_path() == tmp_path / "quietline" / "appearance.json"

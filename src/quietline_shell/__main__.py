@@ -12,6 +12,11 @@
   {"output", "scale"}` масштаб (число от 0.5 до 4 или `"auto"` — убрать запись) пишется в
   `display.json` и `display.lua` рядом с ним и применяется в Hyprland, в ответ добавляется
   `"applied": true | false`;
+- `appearance [--set JSON] [--path PATH]` — `{"theme", "cursor", "cursorSize"}`: тема окружения
+  и цвет указателя (`dark` | `light`), размер указателя (24, 36, 48); с `--set` часть полей
+  проверяется и пишется в `appearance.json` и `appearance.lua` рядом с ним, схема приложений
+  меняется в gsettings, в Hyprland перечитывается конфигурация и меняется указатель; в ответ
+  добавляется `"applied": true | false`;
 - `motion` — `{"reducedMotion": true | false}`;
 - `about` — `{os, kernel, hostname, cpu, memoryGb, hyprland, quickshell}` для страницы
   «О системе» (`hyprland` и `quickshell` — номера версий вида `0.55.1`), недоступное значение — `null`;
@@ -49,8 +54,9 @@ from typing import Any
 
 from quietline_shell import capture, clipboard, network, search, session
 from quietline_shell.config import (
-    about, apply_display, apply_keyboard, default_display_path, default_pins_path, default_region_path, load_display,
-    load_pins, load_region, reduced_motion, notification_text, save_display, save_pins, save_region, updated_display,
+    about, apply_appearance, apply_display, apply_keyboard, default_appearance_path, default_display_path,
+    default_pins_path, default_region_path, load_appearance, load_display, load_pins, load_region, reduced_motion,
+    notification_text, save_appearance, save_display, save_pins, save_region, updated_appearance, updated_display,
     validated_region,
 )
 
@@ -67,6 +73,9 @@ def _parser() -> argparse.ArgumentParser:
     display = commands.add_parser("display", help="print the monitor scales chosen in the settings as JSON")
     display.add_argument("--set", dest="change", metavar="JSON", help='apply {"output": ..., "scale": NUMBER | "auto"} first')
     display.add_argument("--path", type=Path, help="display file (default: $XDG_CONFIG_HOME/quietline/display.json); display.lua is written next to it")
+    appearance = commands.add_parser("appearance", help="print the theme and pointer settings as JSON")
+    appearance.add_argument("--set", dest="change", metavar="JSON", help='apply {"theme", "cursor", "cursorSize"} (any of them) first')
+    appearance.add_argument("--path", type=Path, help="appearance file (default: $XDG_CONFIG_HOME/quietline/appearance.json); appearance.lua is written next to it")
     commands.add_parser("motion", help="print whether animations should be reduced")
     commands.add_parser("about", help="print system facts for the settings window")
     commands.add_parser("lock", help="start the lock screen unless it is already running")
@@ -124,6 +133,14 @@ def _run(args: argparse.Namespace) -> dict[str, Any]:
             output, scale, scales = updated_display(json.loads(args.change), scales)
             save_display(path, scales)
             return {"scales": scales, "applied": apply_display(output, scale)}
+        case "appearance":
+            path = args.path or default_appearance_path()
+            current = load_appearance(path)
+            if args.change is None:
+                return current
+            updated = updated_appearance(json.loads(args.change), current)
+            save_appearance(path, updated)
+            return {**updated, "applied": apply_appearance(updated)}
         case "motion":
             return {"reducedMotion": reduced_motion()}
         case "lock":

@@ -11,7 +11,11 @@
 
 Масштаб мониторов — `display.json` вида `{"version": 1, "scales": {"<монитор>": <масштаб>}}`, где
 монитор — правило вывода Hyprland (`desc:<описание>` или имя разъёма). Рядом пишется `display.lua`,
-который читает конфигурация Hyprland Quietline. Только стандартная библиотека.
+который читает конфигурация Hyprland Quietline.
+
+Оформление — `appearance.json` вида `{"version": 1, "theme", "cursor", "cursorSize"}`: тема
+окружения и цвет указателя (`dark` | `light`), размер указателя (24, 36 или 48). Рядом пишется
+`appearance.lua` для конфигурации Hyprland. Только стандартная библиотека.
 """
 
 import json
@@ -313,6 +317,97 @@ def apply_display(output: str, scale: float | None) -> bool:
     except (OSError, subprocess.TimeoutExpired):
         return False
     return result.returncode == 0
+
+
+APPEARANCE_DEFAULTS = {"theme": "dark", "cursor": "dark", "cursorSize": 24}
+_APPEARANCE_CHOICES = {"theme": ("dark", "light"), "cursor": ("dark", "light"), "cursorSize": (24, 36, 48)}
+CURSOR_THEMES = {"dark": "capitaine-cursors", "light": "capitaine-cursors-light"}
+_GSETTINGS_TIMEOUT = 5
+
+
+def default_appearance_path() -> Path:
+    """`$XDG_CONFIG_HOME/quietline/appearance.json`, без переменной — `~/.config/quietline/appearance.json`."""
+    directory = os.environ.get("XDG_CONFIG_HOME") or Path.home() / ".config"
+    return Path(directory) / "quietline" / "appearance.json"
+
+
+def _checked_appearance(values: dict[str, Any]) -> dict[str, Any]:
+    """Все три поля с допустимыми значениями; иначе `ValueError` с именем поля."""
+    result = {}
+    for key, choices in _APPEARANCE_CHOICES.items():
+        value = values.get(key)
+        if isinstance(value, bool) or value not in choices:
+            raise ValueError(f"{key} must be one of {', '.join(map(str, choices))}: {value!r}")
+        result[key] = value
+    return result
+
+
+def load_appearance(path: Path) -> dict[str, Any]:
+    """Оформление из файла; без файла — значения по умолчанию. Повреждённый файл — `ValueError`."""
+    if not path.exists():
+        return dict(APPEARANCE_DEFAULTS)
+    try:
+        data = json.loads(path.read_text(encoding="utf-8"))
+    except (json.JSONDecodeError, UnicodeError) as error:
+        raise ValueError(f"cannot read appearance settings from {path}") from error
+    if not isinstance(data, dict) or data.get("version") != 1:
+        raise ValueError(f"unknown appearance file format in {path}")
+    try:
+        return _checked_appearance({**APPEARANCE_DEFAULTS, **{key: data[key] for key in APPEARANCE_DEFAULTS if key in data}})
+    except ValueError as error:
+        raise ValueError(f"invalid appearance settings in {path}: {error}") from error
+
+
+def updated_appearance(change: object, current: dict[str, Any]) -> dict[str, Any]:
+    """Применяет часть полей `change` к `current`; неизвестное поле или значение — `ValueError`."""
+    if not isinstance(change, dict) or not change:
+        raise ValueError("appearance change must be a non-empty JSON object")
+    unknown = set(change) - set(APPEARANCE_DEFAULTS)
+    if unknown:
+        raise ValueError(f"unknown appearance fields: {', '.join(sorted(unknown))}")
+    return _checked_appearance({**current, **change})
+
+
+def appearance_lua(values: dict[str, Any]) -> str:
+    """Содержимое `appearance.lua`: таблица оформления для конфигурации Hyprland."""
+    checked = _checked_appearance(values)
+    return (f'return {{ theme = "{checked["theme"]}", cursor = "{checked["cursor"]}", '
+            f'cursor_size = {checked["cursorSize"]} }}\n')
+
+
+def save_appearance(path: Path, values: dict[str, Any]) -> None:
+    """Пишет `appearance.lua` рядом с `path` и последним атомарно `appearance.json`."""
+    checked = _checked_appearance(values)
+    _atomic_write_text(path.with_name("appearance.lua"), appearance_lua(checked))
+    atomic_write_json(path, {"version": 1, **checked})
+
+
+def _succeeds(args: list[str], timeout: float) -> bool:
+    try:
+        result = subprocess.run(args, capture_output=True, text=True, timeout=timeout, check=False)
+    except (OSError, subprocess.TimeoutExpired):
+        return False
+    return result.returncode == 0
+
+
+def apply_appearance(values: dict[str, Any]) -> bool:
+    """Применяет оформление сразу: схему приложений в gsettings (`color-scheme`, `gtk-theme` для
+    GTK 3), затем в работающем Hyprland перечитывает конфигурацию (рамки, тени, заголовки) и меняет
+    указатель. `True` только если все шаги вернули код 0; вне сеанса Hyprland — `False` после gsettings."""
+    checked = _checked_appearance(values)
+    light = checked["theme"] == "light"
+    interface = "org.gnome.desktop.interface"
+    steps = [
+        ["gsettings", "set", interface, "color-scheme", "prefer-light" if light else "prefer-dark"],
+        ["gsettings", "set", interface, "gtk-theme", "Adwaita" if light else "Adwaita-dark"],
+    ]
+    applied = all([_succeeds(step, _GSETTINGS_TIMEOUT) for step in steps])
+    if not os.environ.get("HYPRLAND_INSTANCE_SIGNATURE"):
+        return False
+    for step in (["hyprctl", "reload", "config-only"],
+                 ["hyprctl", "setcursor", CURSOR_THEMES[checked["cursor"]], str(checked["cursorSize"])]):
+        applied = _succeeds(step, _HYPRCTL_TIMEOUT) and applied
+    return applied
 
 
 def _atomic_write_text(path: Path, text: str) -> None:
