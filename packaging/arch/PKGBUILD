@@ -38,7 +38,6 @@ package() {
     cp -r --no-preserve=ownership shell/quietline/. "$pkgdir/usr/share/quietline/shell/"
     install -Dm644 config/hyprland/quietline.lua "$pkgdir/usr/share/quietline/hyprland/quietline.lua"
     install -Dm644 config/hypridle/hypridle.conf "$pkgdir/usr/share/quietline/hypridle/hypridle.conf"
-    install -Dm644 config/ghostty/quietline-light "$pkgdir/usr/share/quietline/ghostty/quietline-light"
     install -Dm644 config/fish/quietline-locale.fish "$pkgdir/usr/share/quietline/fish/quietline-locale.fish"
     install -Dm644 config/polkit/50-quietline-network.rules "$pkgdir/usr/share/polkit-1/rules.d/50-quietline-network.rules"
     # Шрифт заголовков окон «Quietline Titlebar»: правило включается ссылкой в conf.default,

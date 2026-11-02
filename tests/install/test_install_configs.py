@@ -199,38 +199,3 @@ def test_existing_pins_are_not_overwritten(ctx, system):
     pins.write_text('{"version": 1, "pinned": ["code"]}')
     assert configs.pins_step(['firefox']).check(ctx) is True
     assert system.calls == []
-
-
-def test_ghostty_gets_theme_pair_appended_and_keeps_user_settings(ctx):
-    target = config(ctx, 'ghostty/config.ghostty')
-    target.parent.mkdir(parents=True)
-    target.write_text('# my settings\nfont-size = 13')
-    step = configs.ghostty_step()
-    assert step.check(ctx) is False
-    step.run(ctx)
-    assert target.read_text() == (
-        '# my settings\nfont-size = 13\ntheme = light:/usr/share/quietline/ghostty/quietline-light,dark:Apple System Colors\n')
-    assert step.check(ctx) is True
-
-
-def test_ghostty_own_theme_is_left_alone(ctx):
-    target = config(ctx, 'ghostty/config')
-    target.parent.mkdir(parents=True)
-    target.write_text('theme = Dracula\n')
-    assert configs.ghostty_step().check(ctx) is True
-
-
-def test_ghostty_config_is_created_when_missing(ctx):
-    step = configs.ghostty_step()
-    assert step.check(ctx) is False
-    step.run(ctx)
-    assert config(ctx, 'ghostty/config.ghostty').read_text() == (
-        'theme = light:/usr/share/quietline/ghostty/quietline-light,dark:Apple System Colors\n')
-    assert not config(ctx, 'ghostty/config').exists()
-
-
-def test_commented_theme_line_does_not_count(ctx):
-    target = config(ctx, 'ghostty/config.ghostty')
-    target.parent.mkdir(parents=True)
-    target.write_text('# theme = Dracula\n')
-    assert configs.ghostty_step().check(ctx) is False

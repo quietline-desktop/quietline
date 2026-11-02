@@ -23,7 +23,6 @@
 - `shell/quietline/Theme.qml` — токены по `Appearance.light`, новые токены вместо вписанных цветов.
 - QML с вписанными цветами: `controls/SettingsGroup.qml`, `ShellScrollBar.qml`, `inputs/ShellSlider.qml`, `ShellSwitch.qml`, `ShellTextField.qml`, `notifications/NotificationCard.qml`, `NotificationCenter.qml`, `MonthCalendar.qml`, `search/SearchPanel.qml`, `clipboard/ClipboardPanel.qml`, `bar/TopBar.qml`, `osd/Osd.qml`, `dock/Dock.qml`, `panels/QuickSettings.qml`, `surfaces/HintPopup.qml`, `CenterDialog.qml`, `settings/SettingsWindow.qml`, `controls/SegmentedControl.qml`.
 - `settings/SettingsWindow.qml` — раздел и страница «Оформление»; `panels/QuickSettings.qml` — кнопка «Тёмная тема».
-- `src/quietline_install/steps/configs.py` — шаг «Схема Ghostty» (решение 6 спеки), тесты `tests/install/test_install_configs.py`.
 - `controls/ShellMenuItem.qml`, `bar/QuietlineMenu.qml`, `dock/Dock.qml` — подсветка строки меню только под указателем и с клавиатуры (замечание живой проверки).
 - `logic/Strings.js` — строки `settingsAppearance*`, `appearance*` на двух языках.
 - Документы: `DESIGN.md`, `CHANGELOG.md`, `AGENTS.md` (CLI и файлы настроек), `scripts/smoke-shell-redesign.md`, `docs/backlog.md`, шапка спеки.
