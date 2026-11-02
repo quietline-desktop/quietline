@@ -235,7 +235,8 @@ sudo rm -r /efi/EFI/ubuntu
    ./install.sh
    ```
    Установщик спрашивает язык установщика и язык системы, проверяет систему, показывает каталог программ («Рекомендуемый набор» или свой выбор) и сводку. После согласия он делает снимок корня `@` в `@snapshots` и ставит выбранное; PKGBUILD пакетов AUR показываются до сборки, Docker Desktop и AmneziaVPN — ручные шаги. Если шаг упал, повторный `./install.sh` предложит «Продолжить» (готовое не повторяется) или «Откатить» (вернуть систему к снимку). Журнал — `~/.local/state/quietline/install.log`, проверка готовности — `./install.sh check`.
-4. Перезагрузиться: вход через greetd, сеанс Hyprland. Дальше — [smoke-installer.md](../../scripts/smoke-installer.md), [smoke-quickshell.md](../../scripts/smoke-quickshell.md) и [smoke-system-panels.md](../../scripts/smoke-system-panels.md).
+4. В Brave и Chrome включить системный заголовок: `brave://settings/appearance` и `chrome://settings/appearance` → «Use system title bar and borders» («Использовать системные заголовок и рамки»). Иначе браузер рисует под заголовком hyprbars свою кнопку закрытия.
+5. Перезагрузиться: вход через greetd, сеанс Hyprland. Дальше — [smoke-installer.md](../../scripts/smoke-installer.md), [smoke-quickshell.md](../../scripts/smoke-quickshell.md) и [smoke-system-panels.md](../../scripts/smoke-system-panels.md).
 
 ## Если что-то пошло не так
 
