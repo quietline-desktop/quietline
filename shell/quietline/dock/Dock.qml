@@ -225,7 +225,7 @@ PanelWindow {
         panelWidth: 240
         panelHeight: menuItems.implicitHeight + 10
         fromBottom: true
-        onPresented: newWindowItem.forceActiveFocus()
+        onPresented: newWindowItem.forceActiveFocus(root.keyboardNavigation ? Qt.TabFocusReason : Qt.MouseFocusReason)
         onAppChanged: { if (opened && !app) close(); }
         Column {
             id: menuItems

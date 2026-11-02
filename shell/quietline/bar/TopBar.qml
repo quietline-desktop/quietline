@@ -355,7 +355,7 @@ PanelWindow {
                    : showingApplications ? searchPanel.contentHeight
                    : showingClipboard ? clipboardPanel.contentHeight
                    : Math.min(content.implicitHeight + 20, root.screen ? root.screen.height - 80 : 500)
-        onPresented: { if (showingApplications) searchPanel.reset(); else if (showingClipboard) clipboardPanel.reset(); else if (showingMenu) quietlineMenu.focusFirst(); else if (showingNotifications) notificationCenter.reset(); }
+        onPresented: { if (showingApplications) searchPanel.reset(); else if (showingClipboard) clipboardPanel.reset(); else if (showingMenu) quietlineMenu.takeFocus(); else if (showingNotifications) notificationCenter.reset(); }
         onDismissed: searchPanel.reset()
         QuietlineMenu {
             id: quietlineMenu

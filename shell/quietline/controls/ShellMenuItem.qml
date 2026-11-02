@@ -3,12 +3,13 @@ import QtQuick.Controls
 import ".."
 
 // Строка меню 26 px: значок `symbol`, текст, сочетание клавиш `shortcut` справа;
-// под указателем или фокусом — заливка акцентом.
+// под указателем или фокусом с клавиатуры (Tab, стрелки) — заливка акцентом; фокус, выданный
+// при открытии меню мышью, строку не подсвечивает.
 MenuItem {
     id: root
     property string symbol: ""
     property string shortcut: ""
-    readonly property bool lit: enabled && (highlighted || hovered || activeFocus)
+    readonly property bool lit: enabled && (highlighted || hovered || visualFocus)
     implicitHeight: Theme.menuRowHeight
     focusPolicy: Qt.StrongFocus
     hoverEnabled: true
