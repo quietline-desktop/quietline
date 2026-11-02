@@ -1,3 +1,4 @@
 GreeterSurface 1.0 GreeterSurface.qml
 GreeterMenu 1.0 GreeterMenu.qml
 Wallpaper 1.0 Wallpaper.qml
+GreeterPowerDialog 1.0 GreeterPowerDialog.qml

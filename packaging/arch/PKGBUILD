@@ -50,6 +50,7 @@ package() {
     # Экран входа: сценарий для greetd, Hyprland экрана входа и каталог его состояния.
     install -Dm755 config/greeter/quietline-greeter "$pkgdir/usr/bin/quietline-greeter"
     install -Dm644 config/greeter/hyprland.lua "$pkgdir/usr/share/quietline/greeter/hyprland.lua"
+    install -Dm755 config/greeter/run-ui "$pkgdir/usr/share/quietline/greeter/run-ui"
     install -Dm644 config/greeter/quietline-greeter.conf "$pkgdir/usr/lib/tmpfiles.d/quietline-greeter.conf"
     install -dm755 "$pkgdir/usr/share/quietline/grub"
     install -m644 "$srcdir"/grub-theme/* "$pkgdir/usr/share/quietline/grub/"

@@ -6,7 +6,8 @@
 
 state=/var/lib/quietline-greeter
 failed="${XDG_RUNTIME_DIR:-/tmp}/quietline-greeter.failed"
-rm -f "$failed"
+ready="${XDG_RUNTIME_DIR:-/tmp}/quietline-greeter.ready"
+rm -f "$failed" "$ready"
 
 # Язык системы для текстов экрана входа.
 if [ -r /etc/locale.conf ]; then
@@ -20,6 +21,7 @@ fi
 export XDG_CONFIG_HOME="$state/config" XDG_CACHE_HOME="$state/cache" XDG_STATE_HOME="$state/state"
 export XCURSOR_THEME=capitaine-cursors XCURSOR_SIZE=24
 export QUIETLINE_GREETER_FAILED="$failed"
+export QUIETLINE_GREETER_READY="$ready"
 
 start-hyprland -- --config /usr/share/quietline/greeter/hyprland.lua
 code=$?

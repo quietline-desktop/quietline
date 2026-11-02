@@ -18,12 +18,12 @@ hl.config({
 -- Все мониторы — в родном разрешении, масштаб выбирает Hyprland.
 hl.monitor({ output = "", mode = "preferred", position = "auto", scale = "auto" })
 
-local greeter = "qs -p /usr/share/quietline/shell/Greeter.qml"
+local greeter = "/usr/share/quietline/greeter/run-ui"
 local fail = 'touch "$QUIETLINE_GREETER_FAILED"'
 local exit = [[hyprctl dispatch "hl.dsp.exit()"]]
 
 hl.on("hyprland.start", function ()
-    hl.exec_cmd("sh -c '" .. greeter .. " || " .. fail .. "; " .. exit .. "'")
+    hl.exec_cmd(greeter)
 end)
 
 hl.bind("CTRL + ALT + BackSpace", hl.dsp.exec_cmd("sh -c '" .. fail .. "; " .. exit .. "'"),

@@ -27,12 +27,16 @@ PanelWindow {
     WlrLayershell.namespace: "quietline-greeter"
     WlrLayershell.keyboardFocus: main ? WlrKeyboardFocus.Exclusive : WlrKeyboardFocus.None
     color: "#101014"
-    onMainChanged: if (!main) menu = ""
+    onMainChanged: {
+        if (!main) menu = "";
+        else if (backingWindowVisible) context.markReady();
+    }
+    onBackingWindowVisibleChanged: if (backingWindowVisible && main) context.markReady()
 
     Wallpaper { anchors.fill: parent }
     Rectangle { anchors.fill: parent; color: Qt.rgba(0, 0, 0, 0.28) }
 
-    LockStatus { anchors { top: parent.top; right: parent.right; topMargin: 10; rightMargin: 16 } }
+    LockStatus { id: keyboardStatus; anchors { top: parent.top; right: parent.right; topMargin: 10; rightMargin: 16 } }
 
     LockClock {
         anchors.horizontalCenter: parent.horizontalCenter
@@ -93,7 +97,7 @@ PanelWindow {
             id: password
             Layout.alignment: Qt.AlignHCenter
             Layout.preferredWidth: 220
-            busy: root.context.busy
+            busy: root.context.busy || root.context.dataLoading || root.context.dataFailed
             echo: root.context.echo
             focus: root.main && root.menu === ""
             placeholderText: root.context.busy ? Lang.s.lockChecking
@@ -107,6 +111,14 @@ PanelWindow {
                     event.accepted = true;
                 }
             }
+        }
+        Text {
+            renderType: Text.CurveRendering
+            Layout.alignment: Qt.AlignHCenter
+            Layout.preferredHeight: 16
+            text: keyboardStatus.capsLocked ? Lang.s.greeterCapsLock : ""
+            color: "#ffcc66"
+            font.family: Theme.sans; font.pixelSize: Theme.smallFontSize
         }
         Rectangle {
             id: sessionChip
@@ -151,6 +163,26 @@ PanelWindow {
             font.family: Theme.sans; font.pixelSize: Theme.smallFontSize
             horizontalAlignment: Text.AlignHCenter
             wrapMode: Text.Wrap
+        }
+        ShellButton {
+            visible: root.context.dataFailed
+            Layout.alignment: Qt.AlignHCenter
+            text: Lang.s.retry
+            foreground: "#ffffff"
+            onClicked: root.context.loadData()
+        }
+        ShellButton {
+            Layout.alignment: Qt.AlignHCenter
+            text: Lang.s.greeterTextLogin
+            foreground: "#ffffff"
+            onClicked: root.context.textLogin()
+        }
+        Text {
+            renderType: Text.CurveRendering
+            Layout.alignment: Qt.AlignHCenter
+            text: "Ctrl+Alt+Backspace"
+            color: Qt.rgba(1, 1, 1, 0.55)
+            font.family: Theme.sans; font.pixelSize: Theme.smallFontSize
         }
     }
 
@@ -202,5 +234,11 @@ PanelWindow {
                 Accessible.name: modelData.label
             }
         }
+    }
+    GreeterPowerDialog {
+        anchors.fill: parent
+        visible: root.main && root.context.powerAction !== ""
+        context: root.context
+        onVisibleChanged: if (!visible && root.main) password.forceActiveFocus()
     }
 }

@@ -23,6 +23,10 @@ ShellRoot {
     property string prompt: ""
     property bool echo: false
     property bool awaiting: false
+    property bool dataLoading: true
+    property bool dataFailed: false
+    property bool readySent: false
+    property string powerAction: ""
     // Пароль ждёт первого вопроса PAM и стирается сразу после ответа.
     property string pendingResponse: ""
     readonly property bool busy: Greetd.state !== GreetdState.Inactive && !awaiting
@@ -52,7 +56,32 @@ ShellRoot {
         pendingResponse = text;
         Greetd.createSession(userName);
     }
-    function power(action) { Quickshell.execDetached(["systemctl", action]); }
+    function power(action) { if (action === "reboot" || action === "poweroff") powerAction = action; }
+    function confirmPower() {
+        var action = powerAction;
+        powerAction = "";
+        if (action === "reboot" || action === "poweroff") Quickshell.execDetached(["systemctl", action]);
+    }
+    function markReady() {
+        if (readySent) return;
+        var path = Quickshell.env("QUIETLINE_GREETER_READY");
+        if (path) Quickshell.execDetached(["touch", path]);
+        readySent = true;
+    }
+    function textLogin() { textLoginProcess.running = true; }
+    function loadData() {
+        if (dataReader.running || busy) return;
+        dataFailed = false;
+        dataLoading = true;
+        message = "";
+        dataReader.answered = false;
+        dataReader.running = true;
+    }
+    function dataError() {
+        dataLoading = false;
+        dataFailed = true;
+        showError(Lang.s.greeterLoadFailed);
+    }
     function environment() {
         return ["XDG_SESSION_TYPE=wayland", "XDG_SESSION_DESKTOP=" + session.id,
                 "XDG_CURRENT_DESKTOP=" + (session.desktopNames.length ? session.desktopNames.join(":") : session.id)];
@@ -94,20 +123,37 @@ ShellRoot {
     }
 
     Process {
+        id: textLoginProcess
+        command: ["sh", "-c", "touch \"$QUIETLINE_GREETER_FAILED\"; hyprctl dispatch \"hl.dsp.exit()\""]
+    }
+    Process {
+        id: dataReader
+        property bool answered: false
         command: ["quietline-shell", "greeter"]
         running: true
         stdout: StdioCollector {
             onStreamFinished: {
+                dataReader.answered = true;
+                root.dataLoading = false;
                 try {
                     var data = JSON.parse(text);
-                    if (data.error) { root.showError(Lang.f(Lang.s.greeterFailed, data.error)); return; }
+                    if (data.error || !Array.isArray(data.users) || !Array.isArray(data.sessions)
+                        || !data.users.length || !data.sessions.length) { root.dataError(); return; }
                     root.users = data.users || [];
                     root.sessions = data.sessions || [];
                     root.userName = data.last && data.last.user ? data.last.user : "";
                     root.sessionId = data.last && data.last.session ? data.last.session : "";
-                } catch (_) { root.showError(Lang.f(Lang.s.greeterFailed, "quietline-shell greeter")); }
+                } catch (_) { root.dataError(); }
             }
         }
+        onRunningChanged: if (!running) Qt.callLater(function() {
+            if (!dataReader.answered) root.dataError();
+        })
+    }
+    Timer {
+        interval: 5000
+        running: root.dataLoading
+        onTriggered: { root.dataError(); dataReader.running = false; }
     }
 
     Variants {

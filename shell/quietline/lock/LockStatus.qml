@@ -12,6 +12,7 @@ import "../logic/Models.js" as Models
 RowLayout {
     id: root
     property string layout: ""
+    property bool capsLocked: false
     spacing: 14
 
     Process {
@@ -24,6 +25,7 @@ RowLayout {
                     var keyboards = JSON.parse(text).keyboards || [];
                     var main = keyboards.find(keyboard => keyboard.main) || keyboards[0] || null;
                     root.layout = main ? Models.layoutCode(main, {}, Lang.s) : "";
+                    root.capsLocked = !!main && main.capsLock === true;
                 } catch (_) { root.layout = ""; }
             }
         }
@@ -31,6 +33,10 @@ RowLayout {
     Connections {
         target: Hyprland
         function onRawEvent(event) { if (event.name === "activelayout" && !devices.running) devices.running = true; }
+    }
+    Timer {
+        interval: 1000; repeat: true; running: root.visible
+        onTriggered: if (!devices.running) devices.running = true
     }
 
     Rectangle {
