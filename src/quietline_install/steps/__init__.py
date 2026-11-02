@@ -3,7 +3,7 @@
 
 from quietline_install.catalog import Plan
 from quietline_install.runner import Step
-from quietline_install.steps import aur, configs, packages, session
+from quietline_install.steps import aur, boot, configs, packages, session
 
 
 def build_steps(plan: Plan) -> list[Step]:
@@ -11,7 +11,8 @@ def build_steps(plan: Plan) -> list[Step]:
              packages.locales_step(), packages.quietline_package_step(), packages.services_step(plan.services),
              configs.hyprland_step(), configs.fish_step(with_fnm=bool(plan.fnm)), configs.micro_step(),
              configs.quickshell_link_step(), configs.user_dirs_step(), configs.region_step(),
-             configs.pins_step(plan.pins), session.greetd_step(), session.keyring_step()]
+             configs.pins_step(plan.pins), session.greetd_step(), session.keyring_step(),
+             boot.boot_theme_step()]
     if plan.flatpak:
         steps.append(packages.flatpak_step(plan.flatpak))
     if plan.fnm:

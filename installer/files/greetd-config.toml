@@ -1,7 +1,8 @@
-# Quietline: минимальный экран входа greetd, запускает сеанс Wayland (Hyprland с Quietline).
+# Quietline: экран входа greetd. quietline-greeter открывает графический экран входа Quietline
+# (Hyprland и Quickshell), а если он не запустился — tuigreet в этом же терминале.
 [terminal]
 vt = 1
 
 [default_session]
-command = "tuigreet --time --remember --remember-session --sessions /usr/share/wayland-sessions"
+command = "quietline-greeter"
 user = "greeter"

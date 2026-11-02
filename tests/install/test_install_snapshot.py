@@ -467,6 +467,18 @@ def test_journal_rollback_keeps_preexisting_packages(ctx, system, tmp_path):
     assert config.read_text() == 'mine'
 
 
+def test_journal_rollback_rebuilds_grub_menu_after_restoring_its_file(ctx, system):
+    ctx.record({'kind': 'grub'})
+    ctx.record({'kind': 'file', 'path': '/etc/default/grub', 'backup': '/etc/default/grub.quietline-20261102-120000'})
+    snapshot.rollback_journal(ctx)
+    commands = system.commands()
+    restore = ['mv', '-fT', '/etc/default/grub.quietline-20261102-120000', '/etc/default/grub']
+    rebuild = ['grub-mkconfig', '-o', '/boot/grub/grub.cfg']
+    assert restore in commands and rebuild in commands
+    assert commands.index(restore) < commands.index(rebuild)
+    assert next(call for call in system.calls if call['args'] == rebuild)['sudo']
+
+
 def test_journal_rollback_without_new_packages_runs_no_pacman(ctx, system):
     ctx.record({'kind': 'service', 'unit': 'bluetooth.service'})
     snapshot.rollback_journal(ctx)

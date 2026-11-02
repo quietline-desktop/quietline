@@ -1,4 +1,4 @@
-"""Экран входа greetd, хранилище паролей, fish по умолчанию, доступ к Docker и программы, которые ставятся вручную.
+"""Экран входа Quietline через greetd, хранилище паролей, fish по умолчанию, доступ к Docker и программы, которые ставятся вручную.
 
 Необязательные вопросы (оболочка, группа docker) после отказа больше не задаются: отказ помечается
 файлом `~/.local/state/quietline/declined-<id>`. Ручные шаги показывают официальные инструкции,
@@ -17,6 +17,8 @@ from quietline_install.runner import (Ctx, Step, StepFailed, backup_system_file,
 FILES = Path(__file__).resolve().parents[3] / 'installer/files'
 GREETD_TEMPLATE = FILES / 'greetd-config.toml'
 GREETD_CONFIG = '/etc/greetd/config.toml'
+# Первая строка шаблонов Quietline для greetd: по ней свой файл пользователя отличается от шаблона.
+GREETD_MARK = '# Quietline:'
 PAM_GREETD = '/etc/pam.d/greetd'
 KEYRING_AUTH = 'auth       optional     pam_gnome_keyring.so'
 KEYRING_SESSION = 'session    optional     pam_gnome_keyring.so auto_start'
@@ -43,12 +45,19 @@ def _greetd_enabled(ctx: Ctx) -> bool:
 
 
 def greetd_step() -> Step:
-    """Конфигурация greetd с tuigreet (если в файле tuigreet нет) и служба на следующую загрузку."""
-    def has_tuigreet(ctx: Ctx) -> bool:
-        return 'tuigreet' in (read_system_file(ctx, GREETD_CONFIG) or '')
+    """greetd открывает экран входа Quietline (`quietline-greeter`); служба — на следующую загрузку.
+
+    Свой `config.toml` пользователя с tuigreet (без отметки шаблона Quietline в первой строке)
+    сохраняется. Прежний шаблон Quietline с tuigreet и любой другой файл заменяются шаблоном,
+    старый файл остаётся копией.
+    """
+    def configured(ctx: Ctx) -> bool:
+        config = read_system_file(ctx, GREETD_CONFIG) or ''
+        own = config.lstrip().startswith(GREETD_MARK)
+        return 'quietline-greeter' in config or ('tuigreet' in config and not own)
 
     def run(ctx: Ctx) -> None:
-        if not has_tuigreet(ctx):
+        if not configured(ctx):
             if system_path(ctx, GREETD_CONFIG).exists():
                 backup_system_file(ctx, GREETD_CONFIG)
             else:
@@ -60,8 +69,8 @@ def greetd_step() -> Step:
             ctx.record({'kind': 'service', 'unit': 'greetd.service'})
             ctx.out(ctx.t('session.greetdNextBoot'))
 
-    return Step('greetd', 'step.greetd', 'Arch repositories: greetd, tuigreet',
-                lambda ctx: has_tuigreet(ctx) and _greetd_enabled(ctx), run)
+    return Step('greetd', 'step.greetd', 'Quietline, Arch repositories: greetd, tuigreet',
+                lambda ctx: configured(ctx) and _greetd_enabled(ctx), run)
 
 
 def _has_keyring(pam: str, kind: str) -> bool:
