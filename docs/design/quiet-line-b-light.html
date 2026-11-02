@@ -1,0 +1,799 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Quietline — вариант B, светлая тема</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Material+Symbols+Rounded:opsz,wght,FILL,GRAD@20..48,300..500,0..1,-25..0&display=block" rel="stylesheet">
+<style>
+/* Токены варианта B: нейтральные полупрозрачные поверхности, один акцент. */
+:root {
+  --bar-bg: rgba(22, 22, 26, .50);
+  --pop-bg: rgba(32, 32, 36, .80);
+  --pop-border: rgba(255, 255, 255, .11);
+  --hairline: rgba(255, 255, 255, .08);
+  --fill: rgba(255, 255, 255, .07);
+  --fill-2: rgba(255, 255, 255, .11);
+  --fill-hover: rgba(255, 255, 255, .14);
+  --text: #f2f2f5;
+  --text-2: rgba(235, 235, 245, .62);
+  --text-3: rgba(235, 235, 245, .34);
+  --accent: #0a84ff;
+  --accent-soft: rgba(10, 132, 255, .22);
+  --red: #ff5f57;
+  --yellow: #febc2e;
+  --green: #28c840;
+  --win-bg: #1d1d21;
+  --win-title: #2b2b30;
+  --win-title-off: #232327;
+  --shadow-pop: 0 22px 56px rgba(0, 0, 0, .42), 0 2px 8px rgba(0, 0, 0, .22);
+  --shadow-win: 0 26px 70px rgba(0, 0, 0, .50), 0 3px 12px rgba(0, 0, 0, .28);
+  --blur: blur(34px) saturate(1.7);
+  --ui: "Inter", system-ui, sans-serif;
+  --mono: "JetBrains Mono", "IBM Plex Mono", ui-monospace, monospace;
+}
+* { box-sizing: border-box; margin: 0; padding: 0; }
+html, body { background: #0b0b0e; color: var(--text); font: 400 14px/1.4 var(--ui); -webkit-font-smoothing: antialiased; }
+.ms { font-family: "Material Symbols Rounded"; font-weight: 400; font-style: normal; font-size: 18px; line-height: 1; letter-spacing: 0; text-transform: none; white-space: nowrap; direction: ltr; font-variation-settings: "FILL" 1, "wght" 400, "GRAD" -25, "opsz" 20; display: inline-block; }
+.ms.o { font-variation-settings: "FILL" 0, "wght" 400, "GRAD" -25, "opsz" 20; }
+
+/* Страница макета */
+header.page { position: sticky; top: 0; z-index: 50; background: rgba(11, 11, 14, .92); backdrop-filter: blur(12px); border-bottom: 1px solid var(--hairline); padding: 14px 16px 0; }
+header.page h1 { font: 600 17px var(--ui); letter-spacing: -.01em; }
+header.page p { color: var(--text-2); font-size: 13px; margin-top: 2px; max-width: 900px; }
+nav.tabs { display: flex; gap: 4px; overflow-x: auto; padding: 12px 0 10px; scrollbar-width: none; }
+nav.tabs button { flex: none; font: 500 13px var(--ui); color: var(--text-2); background: none; border: 0; padding: 7px 12px; border-radius: 8px; cursor: pointer; }
+nav.tabs button:hover { background: var(--fill); color: var(--text); }
+nav.tabs button[aria-selected="true"] { background: var(--fill-2); color: var(--text); }
+main { padding: 20px 16px 48px; }
+.scene-wrap { width: 100%; max-width: 1280px; margin: 0 auto; }
+.scene-note { color: var(--text-2); font-size: 13px; margin: 0 auto 12px; max-width: 1280px; }
+.scene-note b { color: var(--text); font-weight: 600; }
+.stage { position: relative; width: 100%; aspect-ratio: 1280 / 800; overflow: hidden; border-radius: 12px; box-shadow: 0 0 0 1px var(--hairline); }
+.screen { position: absolute; left: 0; top: 0; width: 1280px; height: 800px; transform-origin: 0 0; overflow: hidden; font-size: 13px; }
+
+/* Обои: ночная сцена без картинки */
+.wall { position: absolute; inset: 0; background:
+  radial-gradient(ellipse 60% 50% at 70% 30%, rgba(80, 120, 255, .55), transparent 60%),
+  radial-gradient(ellipse 50% 60% at 20% 80%, rgba(40, 140, 255, .45), transparent 60%),
+  radial-gradient(ellipse 40% 35% at 88% 78%, rgba(200, 80, 160, .35), transparent 60%),
+  radial-gradient(ellipse 30% 25% at 35% 25%, rgba(255, 120, 120, .18), transparent 60%),
+  linear-gradient(160deg, #141a3c 0%, #1b1f52 40%, #0e1230 100%); }
+.wall::after { content: ""; position: absolute; inset: 0; background: repeating-linear-gradient(90deg, rgba(255,255,255,.025) 0 1px, transparent 1px 90px), repeating-linear-gradient(0deg, rgba(255,255,255,.02) 0 1px, transparent 1px 90px); }
+.wall.blurred { filter: blur(28px) brightness(.75); transform: scale(1.08); }
+
+/* Верхняя панель: 30 px вплотную к краю */
+.bar { position: absolute; left: 0; right: 0; top: 0; height: 30px; display: flex; align-items: center; gap: 2px; padding: 0 8px; background: var(--bar-bg); backdrop-filter: var(--blur); -webkit-backdrop-filter: var(--blur); box-shadow: inset 0 -1px 0 var(--hairline); z-index: 20; font-weight: 500; font-size: 13px; }
+.bar .item { height: 24px; display: flex; align-items: center; gap: 6px; padding: 0 8px; border-radius: 6px; color: var(--text); white-space: nowrap; }
+.bar .item:hover, .bar .item.on { background: var(--fill-hover); }
+.bar .ms { font-size: 17px; }
+.bar .logo { width: 16px; height: 16px; border-radius: 50%; border: 2px solid var(--text); position: relative; }
+.bar .logo::after { content: ""; position: absolute; left: 50%; top: 50%; width: 9px; height: 2px; background: var(--text); transform: translate(-2px, 3px) rotate(40deg); border-radius: 1px; }
+.bar .app { font-weight: 700; }
+.bar .spacer { flex: 1; }
+.bar .tray { gap: 10px; color: var(--text-2); }
+.bar .tray .ms { font-size: 16px; }
+.ws { display: flex; align-items: center; gap: 2px; margin-left: 4px; }
+.ws span { min-width: 20px; height: 20px; padding: 0 6px; border-radius: 5px; display: grid; place-items: center; font-size: 12px; font-weight: 600; color: var(--text-3); font-variant-numeric: tabular-nums; }
+.ws span.busy { color: var(--text-2); }
+.ws span.cur { background: var(--fill-hover); color: var(--text); }
+.seg { display: flex; height: 22px; padding: 2px; border-radius: 6px; background: var(--fill); margin-right: 6px; }
+.seg i { width: 26px; display: grid; place-items: center; border-radius: 4px; color: var(--text-2); }
+.seg i .ms { font-size: 15px; }
+.seg i.cur { background: rgba(255, 255, 255, .2); color: var(--text); box-shadow: 0 1px 2px rgba(0,0,0,.25); }
+.bar .kb { font-size: 11px; font-weight: 700; padding: 1px 4px; border: 1.5px solid var(--text); border-radius: 4px; line-height: 1.1; letter-spacing: .02em; }
+.batt { display: flex; align-items: center; gap: 5px; font-size: 12px; font-variant-numeric: tabular-nums; }
+.batt .cell { width: 24px; height: 12px; border: 1.5px solid rgba(255,255,255,.55); border-radius: 4px; padding: 1.5px; position: relative; }
+.batt .cell::after { content: ""; position: absolute; right: -4px; top: 3px; width: 2px; height: 4px; border-radius: 0 1px 1px 0; background: rgba(255,255,255,.55); }
+.batt .cell b { display: block; height: 100%; border-radius: 1.5px; background: var(--text); }
+.batt .ms { font-size: 13px; margin-left: -2px; }
+.clock { font-variant-numeric: tabular-nums; }
+.dot { width: 6px; height: 6px; border-radius: 50%; background: var(--accent); display: inline-block; }
+
+/* Всплывающие поверхности */
+.pop { position: absolute; background: var(--pop-bg); backdrop-filter: var(--blur); -webkit-backdrop-filter: var(--blur); border-radius: 14px; box-shadow: var(--shadow-pop), inset 0 0 0 1px var(--pop-border); z-index: 30; }
+.menu { padding: 5px; min-width: 240px; font-size: 13px; }
+.menu .row { height: 26px; display: flex; align-items: center; gap: 10px; padding: 0 10px; border-radius: 6px; }
+.menu .row .ms { font-size: 16px; color: var(--text-2); width: 16px; }
+.menu .row .k { margin-left: auto; color: var(--text-3); font-size: 12px; }
+.menu .row.sel { background: var(--accent); }
+.menu .row.sel .ms, .menu .row.sel .k { color: #fff; }
+.menu hr { border: 0; height: 1px; background: var(--hairline); margin: 5px 10px; }
+
+/* Пункт управления */
+.cc { width: 336px; padding: 10px; display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.mod { background: var(--fill); border-radius: 12px; box-shadow: inset 0 0 0 1px rgba(255,255,255,.04); }
+.tile { display: flex; align-items: center; gap: 10px; padding: 10px; min-height: 56px; }
+.tile .ic { width: 30px; height: 30px; border-radius: 50%; display: grid; place-items: center; background: var(--fill-2); flex: none; }
+.tile .ic .ms { font-size: 17px; }
+.tile.on .ic { background: var(--accent); }
+.tile b { display: block; font-weight: 600; font-size: 13px; }
+.tile small { display: block; font-size: 11.5px; color: var(--text-2); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 96px; }
+.tile .chev { margin-left: auto; color: var(--text-3); font-size: 18px; }
+.stack { display: grid; gap: 8px; }
+.mini { display: flex; align-items: center; gap: 8px; padding: 8px 10px; font-weight: 500; font-size: 12.5px; }
+.mini .ic { width: 26px; height: 26px; }
+.mini .ic .ms { font-size: 15px; }
+.slider-mod { grid-column: 1 / -1; padding: 10px 12px 12px; }
+.slider-mod h4 { font-size: 12.5px; font-weight: 600; margin-bottom: 8px; display: flex; justify-content: space-between; }
+.slider-mod h4 span { color: var(--text-2); font-weight: 500; }
+.slider { height: 24px; border-radius: 12px; background: rgba(255,255,255,.12); position: relative; overflow: hidden; }
+.slider b { position: absolute; left: 0; top: 0; bottom: 0; border-radius: 12px; background: #eef0f4; }
+.slider .ms { position: absolute; left: 6px; top: 3px; font-size: 17px; color: #3a3a40; z-index: 1; }
+.slider b::after { content: ""; position: absolute; right: 2px; top: 2px; width: 20px; height: 20px; border-radius: 50%; background: #fff; box-shadow: 0 1px 4px rgba(0,0,0,.3); }
+.segctl { grid-column: 1 / -1; display: grid; grid-template-columns: repeat(3, 1fr); padding: 3px; gap: 3px; }
+.segctl span { height: 30px; display: flex; align-items: center; justify-content: center; gap: 6px; border-radius: 9px; font-size: 12px; font-weight: 500; color: var(--text-2); }
+.segctl span .ms { font-size: 16px; }
+.segctl span.cur { background: rgba(255,255,255,.16); color: var(--text); }
+.cc-foot { grid-column: 1 / -1; display: flex; justify-content: space-between; align-items: center; padding: 2px 4px 0; font-size: 12.5px; color: var(--text-2); }
+.cc-foot a { color: var(--text); text-decoration: none; font-weight: 500; }
+.stats { grid-column: 1 / -1; display: flex; gap: 14px; padding: 9px 12px; font-size: 12px; color: var(--text-2); font-variant-numeric: tabular-nums; }
+.stats b { color: var(--text); font-weight: 600; }
+.meter { flex: 1; white-space: nowrap; display: flex; flex-direction: column; gap: 5px; }
+.meter i { height: 4px; border-radius: 2px; background: rgba(255,255,255,.12); display: block; overflow: hidden; }
+.meter i b { display: block; height: 100%; background: var(--text-2); border-radius: 2px; }
+
+/* Окна: заголовок hyprbars, скругление 10, тень */
+.win { position: absolute; background: var(--win-bg); border-radius: 10px; box-shadow: var(--shadow-win), 0 0 0 1px rgba(255,255,255,.10); overflow: hidden; display: flex; flex-direction: column; z-index: 5; }
+.win.off { box-shadow: 0 16px 40px rgba(0,0,0,.40), 0 0 0 1px rgba(255,255,255,.07); }
+.win.tiled { box-shadow: 0 10px 30px rgba(0,0,0,.35), 0 0 0 1px rgba(255,255,255,.07); }
+.win.tiled.cur { box-shadow: 0 10px 30px rgba(0,0,0,.35), 0 0 0 2px rgba(10,132,255,.85); }
+.tbar { height: 32px; flex: none; background: var(--win-title); display: flex; align-items: center; position: relative; box-shadow: inset 0 -1px 0 rgba(0,0,0,.35); }
+.win.off .tbar { background: var(--win-title-off); }
+.wbtns { position: absolute; right: 6px; top: 0; bottom: 0; display: flex; align-items: center; gap: 4px; z-index: 1; }
+.wbtns i { width: 26px; height: 26px; border-radius: 50%; display: grid; place-items: center; }
+.wbtns i .ms { font-size: 17px; color: rgba(255,255,255,.80); font-variation-settings: "FILL" 0, "wght" 300, "GRAD" 0, "opsz" 20; }
+.win.off .wbtns i .ms { color: rgba(255,255,255,.34); }
+.wbtns i.close { background: #e5484d; transform: scale(.78); }
+.wbtns i.close .ms { color: #fff; font-size: 19px; font-variation-settings: "FILL" 0, "wght" 500, "GRAD" 0, "opsz" 20; }
+.win.off .wbtns i.close { background: rgba(255,255,255,.12); }
+.win.off .wbtns i.close .ms { color: rgba(255,255,255,.4); }
+.tbar .title { position: absolute; left: 0; right: 0; text-align: center; font-size: 12.5px; font-weight: 600; color: rgba(255,255,255,.82); pointer-events: none; }
+.win.off .tbar .title { color: rgba(255,255,255,.42); }
+.term { flex: 1; padding: 10px 14px; font: 13px/1.6 var(--mono); color: #d8dae0; background: #1b1c20; }
+.term .p { color: #7aa2f7; } .term .g { color: #9ece6a; } .term .m { color: #6b6f7d; }
+.browser { flex: 1; background: #f4f4f6; color: #1d1d1f; display: flex; flex-direction: column; }
+.browser .chrome { height: 40px; background: #e6e6ea; display: flex; align-items: center; gap: 8px; padding: 0 12px; }
+.browser .url { flex: 1; height: 26px; border-radius: 13px; background: #fff; display: flex; align-items: center; padding: 0 12px; font-size: 12.5px; color: #555; }
+.browser .page { padding: 28px 36px; }
+.browser .page h2 { font: 700 26px var(--ui); letter-spacing: -.02em; margin-bottom: 10px; }
+.browser .page p { color: #555; font-size: 14px; max-width: 520px; line-height: 1.6; }
+.browser .ph { margin-top: 18px; display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; }
+.browser .ph i { height: 90px; border-radius: 10px; background: linear-gradient(135deg, #dfe3ff, #f3dcf0); display: block; }
+.files { flex: 1; display: flex; background: #222226; }
+.files aside { width: 150px; padding: 10px 8px; background: #1e1e22; font-size: 12.5px; color: var(--text-2); }
+.files aside div { padding: 5px 8px; border-radius: 6px; display: flex; gap: 8px; align-items: center; }
+.files aside div.cur { background: var(--fill-2); color: var(--text); }
+.files aside .ms { font-size: 16px; color: var(--accent); }
+.files .grid { flex: 1; padding: 16px; display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px; align-content: start; }
+.files .grid div { text-align: center; font-size: 12px; color: var(--text-2); }
+.files .grid .ms { font-size: 44px; color: #64a8ff; display: block; margin: 0 auto 4px; }
+
+/* Док: прячется, появляется у нижнего края */
+.dock-zone { position: absolute; left: 0; right: 0; bottom: 0; height: 90px; z-index: 25; }
+.dock { position: absolute; left: 50%; bottom: 6px; transform: translateX(-50%); display: flex; align-items: flex-end; gap: 6px; padding: 7px 8px; border-radius: 20px; background: rgba(40, 40, 46, .42); backdrop-filter: var(--blur); -webkit-backdrop-filter: var(--blur); box-shadow: 0 10px 30px rgba(0,0,0,.30), inset 0 0 0 1px rgba(255,255,255,.14); transition: transform .32s cubic-bezier(.2, .9, .3, 1), opacity .25s; }
+.dock.hidden { transform: translate(-50%, 90px); opacity: .0; }
+.dock-zone:hover .dock.hidden { transform: translateX(-50%); opacity: 1; }
+.app-i { width: 48px; height: 48px; border-radius: 12px; position: relative; display: grid; place-items: center; box-shadow: 0 2px 6px rgba(0,0,0,.28), inset 0 0 0 1px rgba(255,255,255,.12); transition: transform .18s; flex: none; }
+.app-i .ms { font-size: 28px; color: #fff; }
+.dock .slot { position: relative; display: flex; flex-direction: column; align-items: center; }
+.dock .slot:hover .app-i { transform: translateY(-4px) scale(1.06); }
+.dock .slot .run { width: 4px; height: 4px; border-radius: 50%; background: rgba(255,255,255,.8); margin-top: 3px; }
+.dock .slot .run.no { background: transparent; }
+.dock .sep { width: 1px; align-self: stretch; margin: 4px 3px 10px; background: rgba(255,255,255,.18); }
+.dock .tip { position: absolute; bottom: 68px; left: 50%; transform: translateX(-50%); padding: 4px 10px; border-radius: 7px; background: rgba(30,30,34,.9); box-shadow: inset 0 0 0 1px var(--pop-border), 0 4px 14px rgba(0,0,0,.35); font-size: 12.5px; font-weight: 500; white-space: nowrap; opacity: 0; pointer-events: none; transition: opacity .12s; }
+.dock .slot:hover .tip { opacity: 1; }
+.edge-hint { position: absolute; left: 50%; bottom: 3px; transform: translateX(-50%); width: 120px; height: 4px; border-radius: 2px; background: rgba(255,255,255,.22); z-index: 24; }
+.a-files { background: linear-gradient(180deg, #5ab0ff, #1e6ef0); }
+.a-brave { background: linear-gradient(180deg, #ff7a3d, #f0452a); }
+.a-term { background: linear-gradient(180deg, #3a3d46, #17181c); }
+.a-tg { background: linear-gradient(180deg, #4cc3ff, #1f8fe0); }
+.a-code { background: linear-gradient(180deg, #4aa8ff, #1662c4); }
+.a-music { background: linear-gradient(180deg, #ff6b8a, #e2335a); }
+.a-set { background: linear-gradient(180deg, #9a9aa3, #5d5d66); }
+.a-pass { background: linear-gradient(180deg, #2f7bf5, #1250c9); }
+.a-trash { background: linear-gradient(180deg, #74747d, #45454c); }
+
+/* Поиск в духе Spotlight */
+.spot { left: 50%; top: 150px; width: 640px; transform: translateX(-50%); border-radius: 18px; overflow: hidden; background: rgba(32, 32, 36, .88); }
+.qfield { height: 54px; display: flex; align-items: center; gap: 12px; padding: 0 18px; font-size: 21px; font-weight: 400; }
+.qfield .ms { font-size: 24px; color: var(--text-2); }
+.qfield .caret { width: 2px; height: 24px; background: var(--accent); margin-left: -10px; animation: blink 1s steps(1) infinite; }
+@keyframes blink { 50% { opacity: 0; } }
+.qfield .hint { margin-left: auto; font-size: 12px; color: var(--text-3); }
+.spot .res { border-top: 1px solid var(--hairline); padding: 6px 8px 8px; max-height: 420px; }
+.spot h5 { font-size: 11px; font-weight: 600; color: var(--text-3); padding: 8px 10px 4px; text-transform: uppercase; letter-spacing: .06em; }
+.spot .r { height: 40px; display: flex; align-items: center; gap: 12px; padding: 0 10px; border-radius: 9px; font-size: 13.5px; }
+.spot .r .app-i { width: 28px; height: 28px; border-radius: 7px; }
+.spot .r .app-i .ms { font-size: 17px; }
+.spot .r .sub { color: var(--text-2); font-size: 12.5px; }
+.spot .r .k { margin-left: auto; color: var(--text-3); font-size: 12px; }
+.spot .r.sel { background: var(--accent); }
+.spot .r.sel .sub, .spot .r.sel .k { color: rgba(255,255,255,.8); }
+.spot .r .fi { width: 28px; display: grid; place-items: center; color: var(--text-2); }
+.spot .calc { font-size: 22px; font-weight: 300; font-variant-numeric: tabular-nums; }
+
+/* Уведомления */
+.toast { width: 352px; border-radius: 16px; padding: 12px 14px; display: grid; grid-template-columns: 34px 1fr; gap: 0 11px; }
+.toast .app-i { width: 34px; height: 34px; border-radius: 8px; grid-row: span 3; }
+.toast .app-i .ms { font-size: 20px; }
+.toast .meta { display: flex; justify-content: space-between; font-size: 12px; color: var(--text-2); }
+.toast b { font-size: 13px; font-weight: 600; display: block; margin-top: 1px; }
+.toast p { font-size: 13px; color: rgba(235,235,245,.82); line-height: 1.35; }
+.toast .acts { grid-column: 2; display: flex; gap: 6px; margin-top: 9px; }
+.toast .acts span { flex: 1; text-align: center; padding: 5px 0; border-radius: 7px; background: var(--fill-2); font-size: 12.5px; font-weight: 500; }
+.toast .x { position: absolute; left: -7px; top: -7px; width: 20px; height: 20px; border-radius: 50%; background: rgba(60,60,66,.95); box-shadow: inset 0 0 0 1px var(--pop-border); display: grid; place-items: center; }
+.toast .x .ms { font-size: 13px; color: var(--text-2); }
+.nc { width: 376px; padding: 12px; display: flex; flex-direction: column; gap: 10px; }
+.nc-head { display: flex; align-items: center; justify-content: space-between; padding: 2px 4px; }
+.nc-head h3 { font-size: 15px; font-weight: 700; }
+.nc-head .pill { display: flex; align-items: center; gap: 6px; padding: 4px 10px; border-radius: 14px; background: var(--fill-2); font-size: 12px; font-weight: 500; }
+.nc-head .pill .ms { font-size: 15px; }
+.nc .group { position: relative; }
+.nc .group .toast { position: relative; width: 100%; background: var(--fill); box-shadow: inset 0 0 0 1px rgba(255,255,255,.05); }
+.nc .group.stacked::after { content: ""; position: absolute; left: 10px; right: 10px; bottom: -6px; height: 12px; border-radius: 0 0 14px 14px; background: rgba(255,255,255,.045); }
+.nc .clear { text-align: center; font-size: 12.5px; color: var(--text-2); padding: 4px 0 2px; }
+.cal { padding: 12px 14px; }
+.cal h4 { display: flex; justify-content: space-between; font-size: 13px; font-weight: 600; margin-bottom: 8px; }
+.cal h4 span { color: var(--text-2); font-weight: 500; }
+.cal .g { display: grid; grid-template-columns: repeat(7, 1fr); gap: 2px; font-size: 12px; text-align: center; font-variant-numeric: tabular-nums; }
+.cal .g i { font-style: normal; height: 26px; display: grid; place-items: center; border-radius: 50%; }
+.cal .g i.h { color: var(--text-3); font-size: 11px; font-weight: 600; height: 20px; }
+.cal .g i.x { color: var(--text-3); }
+.cal .g i.t { background: var(--accent); color: #fff; font-weight: 600; width: 26px; margin: 0 auto; }
+
+/* Окно «Настройки» */
+.settings { display: flex; flex: 1; background: #1f1f23; }
+.settings aside { width: 232px; background: rgba(40,40,46,.6); padding: 10px 10px; display: flex; flex-direction: column; gap: 1px; box-shadow: inset -1px 0 0 rgba(0,0,0,.35); }
+.settings .search { height: 28px; border-radius: 8px; background: var(--fill); display: flex; align-items: center; gap: 6px; padding: 0 8px; color: var(--text-3); font-size: 12.5px; margin-bottom: 10px; }
+.settings .search .ms { font-size: 16px; }
+.settings .nav { height: 30px; display: flex; align-items: center; gap: 9px; padding: 0 8px; border-radius: 7px; font-size: 13px; }
+.settings .nav.cur { background: var(--accent); }
+.settings .nav .sq { width: 22px; height: 22px; border-radius: 6px; display: grid; place-items: center; flex: none; }
+.settings .nav .sq .ms { font-size: 15px; color: #fff; }
+.settings .navgap { height: 10px; }
+.settings section { flex: 1; padding: 18px 28px; overflow: hidden; }
+.settings section h2 { font-size: 20px; font-weight: 700; letter-spacing: -.01em; margin-bottom: 16px; }
+.group-box { background: var(--fill); border-radius: 11px; box-shadow: inset 0 0 0 1px rgba(255,255,255,.05); margin-bottom: 18px; }
+.group-box .gr { min-height: 44px; display: flex; align-items: center; gap: 12px; padding: 8px 14px; font-size: 13px; }
+.group-box .gr + .gr { box-shadow: inset 0 1px 0 var(--hairline); }
+.group-box .gr .sub { color: var(--text-2); font-size: 12px; }
+.group-box .gr .end { margin-left: auto; display: flex; align-items: center; gap: 8px; color: var(--text-2); }
+.group-box .gr .ms.lk { font-size: 16px; color: var(--text-2); }
+.gtitle { font-size: 12.5px; font-weight: 600; color: var(--text-2); margin: 0 4px 7px; }
+.sw { width: 38px; height: 22px; border-radius: 11px; background: rgba(255,255,255,.18); position: relative; flex: none; }
+.sw::after { content: ""; position: absolute; left: 2px; top: 2px; width: 18px; height: 18px; border-radius: 50%; background: #fff; box-shadow: 0 1px 3px rgba(0,0,0,.35); }
+.sw.on { background: var(--green); }
+.sw.on::after { left: 18px; }
+.btn { height: 26px; padding: 0 12px; border-radius: 7px; background: var(--fill-2); display: inline-flex; align-items: center; font-size: 12.5px; font-weight: 500; color: var(--text); box-shadow: inset 0 0 0 1px rgba(255,255,255,.06); }
+.btn.pri { background: var(--accent); }
+.wifi-ic { width: 28px; height: 28px; border-radius: 50%; background: var(--fill-2); display: grid; place-items: center; }
+.wifi-ic .ms { font-size: 16px; }
+.wifi-ic.on { background: var(--accent); }
+
+/* Буфер, индикатор, меню питания, блокировка */
+.clip { left: 50%; top: 130px; width: 600px; transform: translateX(-50%); border-radius: 18px; overflow: hidden; display: flex; flex-direction: column; background: rgba(32, 32, 36, .88); }
+.clip .body { display: flex; height: 340px; border-top: 1px solid var(--hairline); }
+.clip .list { width: 280px; padding: 6px; border-right: 1px solid var(--hairline); }
+.clip .list .r { height: 44px; display: flex; gap: 10px; align-items: center; padding: 0 10px; border-radius: 9px; font-size: 13px; }
+.clip .list .r .ms { font-size: 17px; color: var(--text-2); flex: none; }
+.clip .list .r small { display: block; color: var(--text-3); font-size: 11.5px; }
+.clip .list .r.sel { background: var(--accent); }
+.clip .list .r.sel .ms, .clip .list .r.sel small { color: rgba(255,255,255,.85); }
+.clip .list .r div span { display: block; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; max-width: 200px; }
+.clip .prev { flex: 1; padding: 14px; font: 12.5px/1.6 var(--mono); color: #d8dae0; }
+.clip .prev .meta { font: 12px var(--ui); color: var(--text-3); margin-top: 14px; }
+.osd { left: 50%; bottom: 72px; transform: translateX(-50%); width: 280px; height: 52px; border-radius: 26px; display: flex; align-items: center; gap: 12px; padding: 0 18px; }
+.osd .ms { font-size: 22px; }
+.osd .bar2 { flex: 1; height: 6px; border-radius: 3px; background: rgba(255,255,255,.18); overflow: hidden; }
+.osd .bar2 b { display: block; height: 100%; width: 64%; background: #fff; border-radius: 3px; }
+.osd span { font-size: 12.5px; font-weight: 600; width: 32px; text-align: right; font-variant-numeric: tabular-nums; }
+.dialog { left: 50%; top: 50%; transform: translate(-50%, -50%); width: 300px; padding: 20px; border-radius: 16px; text-align: center; }
+.dialog .big { width: 54px; height: 54px; border-radius: 14px; margin: 0 auto 12px; display: grid; place-items: center; background: var(--fill-2); }
+.dialog .big .ms { font-size: 30px; }
+.dialog h3 { font-size: 15px; font-weight: 700; margin-bottom: 6px; }
+.dialog p { font-size: 12.5px; color: var(--text-2); margin-bottom: 16px; }
+.dialog .btns { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.dialog .btns .btn { justify-content: center; height: 30px; font-size: 13px; }
+.scrim { position: absolute; inset: 0; background: rgba(0,0,0,.28); z-index: 28; }
+.lock { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; z-index: 10; }
+.lock .date { margin-top: 82px; font-size: 20px; font-weight: 600; color: rgba(255,255,255,.88); }
+.lock .time { font-size: 112px; font-weight: 600; letter-spacing: -.03em; line-height: 1; margin-top: 2px; color: rgba(255,255,255,.92); font-variant-numeric: tabular-nums; }
+.lock .who { margin-top: auto; margin-bottom: 70px; display: flex; flex-direction: column; align-items: center; gap: 10px; }
+.lock .av { width: 56px; height: 56px; border-radius: 50%; background: linear-gradient(135deg, #6a8cff, #b06aff); display: grid; place-items: center; font-weight: 700; font-size: 20px; box-shadow: 0 6px 20px rgba(0,0,0,.3); }
+.lock .name { font-size: 14px; font-weight: 600; }
+.lock .pw { width: 210px; height: 32px; border-radius: 16px; background: rgba(255,255,255,.16); backdrop-filter: var(--blur); box-shadow: inset 0 0 0 1px rgba(255,255,255,.18); display: flex; align-items: center; padding: 0 6px 0 14px; color: rgba(255,255,255,.55); font-size: 13px; }
+.lock .pw .go { margin-left: auto; width: 22px; height: 22px; border-radius: 50%; background: rgba(255,255,255,.22); display: grid; place-items: center; }
+.lock .pw .go .ms { font-size: 15px; color: #fff; }
+.lock .status { position: absolute; right: 16px; top: 10px; display: flex; gap: 14px; align-items: center; font-size: 13px; font-weight: 500; }
+.lock .status .ms { font-size: 17px; }
+
+/* Аннотации */
+.ann { position: absolute; z-index: 40; font-size: 11.5px; font-weight: 500; color: #111; background: #ffd60a; padding: 3px 8px; border-radius: 6px; white-space: nowrap; box-shadow: 0 2px 8px rgba(0,0,0,.3); pointer-events: none; }
+body.no-ann .ann { display: none; }
+.toolbar { display: flex; gap: 14px; align-items: center; max-width: 1280px; margin: 0 auto 10px; font-size: 13px; color: var(--text-2); }
+.toolbar label { display: flex; gap: 6px; align-items: center; cursor: pointer; }
+section.scene { display: none; }
+section.scene.cur { display: block; }
+
+@media (max-width: 720px) { header.page p { display: none; } }
+</style>
+<style id="light">
+/* Светлая тема варианта B: те же размеры и формы, светлые полупрозрачные поверхности,
+   тёмный текст, акцент #007aff. Экран блокировки — общий для обеих тем. */
+:root {
+  --bar-bg: rgba(246, 246, 248, .62);
+  --pop-bg: rgba(246, 246, 248, .82);
+  --pop-border: rgba(0, 0, 0, .10);
+  --hairline: rgba(0, 0, 0, .08);
+  --fill: rgba(0, 0, 0, .045);
+  --fill-2: rgba(0, 0, 0, .07);
+  --fill-hover: rgba(0, 0, 0, .09);
+  --text: #1d1d1f;
+  --text-2: rgba(60, 60, 67, .68);
+  --text-3: rgba(60, 60, 67, .38);
+  --accent: #007aff;
+  --accent-soft: rgba(0, 122, 255, .16);
+  --green: #34c759;
+  --win-bg: #ffffff;
+  --win-title: #ececef;
+  --win-title-off: #f5f5f7;
+  --shadow-pop: 0 22px 56px rgba(0, 0, 0, .18), 0 2px 8px rgba(0, 0, 0, .10);
+  --shadow-win: 0 26px 70px rgba(0, 0, 0, .22), 0 3px 12px rgba(0, 0, 0, .12);
+}
+html, body { background: #e9e9ee; }
+header.page { background: rgba(240, 240, 244, .92); }
+.wall { background:
+  radial-gradient(ellipse 60% 50% at 72% 28%, rgba(255, 196, 150, .75), transparent 62%),
+  radial-gradient(ellipse 55% 60% at 18% 82%, rgba(120, 180, 255, .70), transparent 62%),
+  radial-gradient(ellipse 40% 35% at 88% 80%, rgba(255, 150, 200, .45), transparent 60%),
+  radial-gradient(ellipse 35% 30% at 35% 22%, rgba(170, 220, 255, .55), transparent 60%),
+  linear-gradient(160deg, #8fb6ec 0%, #a9c4ef 45%, #c9b8e6 100%); }
+.wall::after { background: repeating-linear-gradient(90deg, rgba(255,255,255,.06) 0 1px, transparent 1px 90px), repeating-linear-gradient(0deg, rgba(255,255,255,.05) 0 1px, transparent 1px 90px); }
+/* Панель */
+.seg i.cur { background: #ffffff; box-shadow: 0 1px 2px rgba(0,0,0,.18); }
+.batt .cell { border-color: rgba(0,0,0,.5); }
+.batt .cell::after { background: rgba(0,0,0,.5); }
+/* Пункт управления */
+.mod { box-shadow: inset 0 0 0 1px rgba(0,0,0,.04); }
+.tile.on .ic .ms { color: #fff; }
+.slider { background: rgba(0,0,0,.09); }
+.slider b { background: #ffffff; }
+.slider b::after { box-shadow: 0 1px 4px rgba(0,0,0,.25), inset 0 0 0 1px rgba(0,0,0,.06); }
+.segctl span.cur { background: #ffffff; box-shadow: 0 1px 2px rgba(0,0,0,.14); }
+.meter i { background: rgba(0,0,0,.09); }
+.menu .row.sel { color: #fff; }
+/* Окна: светлые заголовки hyprbars, приложения в светлой схеме */
+.win { box-shadow: var(--shadow-win), 0 0 0 1px rgba(0,0,0,.10); }
+.win.off { box-shadow: 0 16px 40px rgba(0,0,0,.16), 0 0 0 1px rgba(0,0,0,.08); }
+.win.tiled { box-shadow: 0 0 0 1px rgba(0,0,0,.10); }
+.win.tiled.cur { box-shadow: 0 0 0 2px rgba(0,122,255,.85); }
+.tbar { box-shadow: inset 0 -1px 0 rgba(0,0,0,.08); }
+.wbtns i .ms { color: rgba(0,0,0,.62); }
+.win.off .wbtns i .ms { color: rgba(0,0,0,.28); }
+.win.off .wbtns i.close { background: rgba(0,0,0,.08); }
+.win.off .wbtns i.close .ms { color: rgba(0,0,0,.32); }
+.tbar .title { color: rgba(0,0,0,.78); }
+.win.off .tbar .title { color: rgba(0,0,0,.38); }
+.term { color: #2b2d33; background: #fbfbfc; }
+.term .p { color: #2e5cd6; } .term .g { color: #3f8f22; } .term .m { color: #8a8e99; }
+.browser .chrome { background: #ececef; }
+.files { background: #ffffff; }
+.files aside { background: #f3f3f6; }
+.files .grid .ms { color: #3b8cf5; }
+/* Док */
+.dock { background: rgba(250, 250, 252, .50) !important; box-shadow: 0 10px 30px rgba(0,0,0,.14), inset 0 0 0 1px rgba(255,255,255,.55) !important; }
+.app-i { box-shadow: 0 2px 6px rgba(0,0,0,.18), inset 0 0 0 1px rgba(255,255,255,.18); }
+.dock .slot .run { background: rgba(0,0,0,.55); }
+.dock .sep { background: rgba(0,0,0,.14); }
+.dock .tip { background: rgba(246,246,248,.95); box-shadow: inset 0 0 0 1px var(--pop-border), 0 4px 14px rgba(0,0,0,.15); }
+.edge-hint { background: rgba(0,0,0,.18); }
+/* Поиск, уведомления, буфер */
+.spot, .clip { background: rgba(246, 246, 248, .90); }
+.spot .r.sel { color: #fff; }
+.spot .r.sel .fi { color: rgba(255,255,255,.85); }
+.toast p { color: rgba(29,29,31,.82); }
+.toast .x { background: rgba(236,236,240,.97); }
+.nc .group .toast { box-shadow: inset 0 0 0 1px rgba(0,0,0,.05); }
+.nc .group.stacked::after { background: rgba(0,0,0,.04); }
+.clip .list .r.sel { color: #fff; }
+.clip .prev { color: #2b2d33; }
+/* «Настройки» */
+.settings { background: #ffffff; }
+.settings aside { background: #f3f3f6; box-shadow: inset -1px 0 0 rgba(0,0,0,.08); }
+.settings .nav.cur { color: #fff; }
+.group-box { background: #f5f5f7; box-shadow: inset 0 0 0 1px rgba(0,0,0,.05); }
+.tbar[style*="#28282d"] { background: #ececef !important; }
+.sw { background: rgba(0,0,0,.14); }
+.sw::after { box-shadow: 0 1px 3px rgba(0,0,0,.25); }
+.btn { box-shadow: inset 0 0 0 1px rgba(0,0,0,.06); }
+.btn.pri, .wifi-ic.on { color: #fff; }
+/* Индикатор и диалог */
+.osd .bar2 { background: rgba(0,0,0,.12); }
+.osd .bar2 b { background: #1d1d1f; }
+.scrim { background: rgba(0,0,0,.18); }
+/* Блокировка: белый текст поверх размытого снимка с затемнением — как в тёмной теме */
+.lock { color: #fff; }
+.lock .status .kb { border-color: #fff !important; }
+.wall.blurred { filter: blur(28px) brightness(.62); }
+/* Переключатели оформления: кнопка темы в модуле «Экран», страница «Оформление» */
+.slider-mod h4 .pill { margin-left: auto; display: inline-flex; align-items: center; gap: 4px; height: 22px; padding: 0 9px 0 7px; border-radius: 11px; background: var(--fill-2); color: var(--text); font-size: 11.5px; font-weight: 500; }
+.slider-mod h4 .pill .ms { font-size: 14px; }
+.slider-mod h4 .pill.on { background: var(--accent); color: #fff; }
+.themes { display: flex; gap: 18px; padding: 14px; }
+.theme-card { display: flex; flex-direction: column; align-items: center; gap: 7px; font-size: 12.5px; }
+.theme-card .pv { width: 150px; height: 96px; border-radius: 9px; position: relative; overflow: hidden; box-shadow: 0 0 0 1px rgba(0,0,0,.12); }
+.theme-card.cur .pv { box-shadow: 0 0 0 3px var(--accent); }
+.theme-card.cur { font-weight: 600; }
+.pv .w { position: absolute; inset: 0; }
+.pv .b { position: absolute; left: 0; right: 0; top: 0; height: 8px; }
+.pv .p { position: absolute; left: 18px; top: 20px; width: 84px; height: 56px; border-radius: 5px; }
+.pv .p i { position: absolute; left: 0; right: 0; top: 0; height: 9px; border-radius: 5px 5px 0 0; }
+.pv .d { position: absolute; left: 50%; bottom: 4px; width: 56px; height: 10px; border-radius: 4px; transform: translateX(-50%); }
+.pv.light .w { background: linear-gradient(160deg, #8fb6ec, #c9b8e6); } .pv.light .b { background: rgba(246,246,248,.75); }
+.pv.light .p { background: #fff; } .pv.light .p i { background: #ececef; } .pv.light .d { background: rgba(250,250,252,.6); }
+.pv.dark .w { background: linear-gradient(160deg, #141a3c, #1b1f52 40%, #0e1230); } .pv.dark .b { background: rgba(22,22,26,.7); }
+.pv.dark .p { background: #1d1d21; } .pv.dark .p i { background: #2b2b30; } .pv.dark .d { background: rgba(40,40,46,.6); }
+.segs { display: inline-flex; padding: 2px; border-radius: 8px; background: var(--fill-2); gap: 2px; }
+.segs span { height: 24px; min-width: 64px; padding: 0 10px; border-radius: 6px; display: inline-flex; align-items: center; justify-content: center; gap: 5px; font-size: 12.5px; color: var(--text-2); }
+.segs span.cur { background: #fff; color: var(--text); box-shadow: 0 1px 2px rgba(0,0,0,.14); }
+.cur-glyph { font-size: 16px !important; }
+.cur-glyph.dk { color: #1d1d1f !important; text-shadow: 0 0 1px #fff, 0 0 1px #fff; }
+.cur-glyph.lt { color: #fff !important; text-shadow: 0 0 1px #000, 0 0 1px #000; }
+</style>
+</head>
+<body>
+<header class="page">
+  <h1>Quietline — вариант B, светлая тема</h1>
+  <p>Макет в натуральную величину экрана ноутбука: 1280×800 логических пикселей (eDP-1 1920×1200 при масштабе 1.5). Жёлтые подписи — размеры и поведение; их можно скрыть. В первой сцене наведите курсор на нижний край, чтобы появился док.</p>
+  <nav class="tabs" id="tabs"></nav>
+</header>
+<main>
+  <div class="toolbar"><label><input type="checkbox" id="ann" checked> Подписи</label></div>
+
+  <!-- 1. Режим «Окна» -->
+  <section class="scene" data-title="Окна и док">
+    <p class="scene-note"><b>Режим «Окна».</b> Панель 30 px вплотную к краю, полупрозрачная с размытием. У плавающих окон заголовок hyprbars 32 px: название по центру, справа тонкие значки «свернуть» и «развернуть» без подложки и «закрыть» на красном кружке; у неактивного окна значки приглушены, а кружок серый. Док скрыт и не занимает места: окна получают весь экран до нижнего края. Док выезжает, когда курсор касается нижнего края, и прячется через 0,4 с после ухода.</p>
+    <div class="scene-wrap"><div class="stage"><div class="screen">
+      <div class="wall"></div>
+      <div data-bar='{"app":"Ghostty","mode":"windows","ws":[1,"2",3,5],"cur":2}'></div>
+      <div class="win off" style="left:470px;top:60px;width:740px;height:520px">
+        <div class="tbar"><div class="title">Brave — Quietline</div><div class="wbtns"><i class="min"><span class="ms">remove</span></i><i class="max"><span class="ms">crop_square</span></i><i class="close"><span class="ms">close</span></i></div></div>
+        <div class="browser"><div class="chrome"><span class="ms o" style="color:#777">arrow_back</span><span class="ms o" style="color:#777">arrow_forward</span><div class="url">github.com/lunasy26/quietline</div></div>
+          <div class="page"><h2>Quietline</h2><p>Личное рабочее окружение поверх Hyprland: режимы «Окна» и «Тайлы» для каждого пространства, собственная оболочка на Quickshell и установщик.</p><div class="ph"><i></i><i></i><i></i></div></div></div>
+      </div>
+      <div class="win" style="left:150px;top:190px;width:600px;height:400px;z-index:6">
+        <div class="tbar"><div class="title">~/Work/Personal/quietline</div><div class="wbtns"><i class="min"><span class="ms">remove</span></i><i class="max"><span class="ms">crop_square</span></i><i class="close"><span class="ms">close</span></i></div></div>
+        <div class="term"><span class="p">kiryl@lenovo</span> <span class="m">~/W/P/quietline</span> <span class="g">main</span><br>❯ uv run --python 3.14 pytest -q<br><span class="m">........................................ [ 61%]</span><br><span class="m">.........................                [100%]</span><br><span class="g">412 passed</span> in 3.81s<br>❯ <span style="background:#d8dae0;color:#1b1c20">&nbsp;</span></div>
+      </div>
+      <div class="edge-hint"></div>
+      <div class="dock-zone"><div class="dock hidden" data-dock></div></div>
+      <div class="ann" style="left:10px;top:36px">панель 30 px · без отступов · размытие</div>
+      <div class="ann" style="left:470px;top:160px">заголовок 32 px · кнопки справа</div>
+      <div class="ann" style="left:520px;top:745px">док скрыт · наведите на нижний край</div>
+      <div class="ann" style="left:770px;top:600px">скругление 10 · тень · рамка 1 px 10 %</div>
+    </div></div></div>
+  </section>
+
+  <!-- 2. Меню Quietline и пункт управления -->
+  <section class="scene" data-title="Пункт управления">
+    <p class="scene-note"><b>Пункт управления</b> открывается значком переключателей справа на панели. Сеть, Bluetooth, «Не беспокоить», «Не засыпать» — плитки; стрелка у плитки разворачивает список сетей или устройств прямо в панели. Звук, микрофон и яркость — толстые ползунки со значком внутри. Нагрузка CPU и RAM переехала сюда с панели. Слева — <b>меню Quietline</b> по значку: «О системе», «Настройки», сон, перезагрузка, выключение, блокировка, выход. Отдельная кнопка питания на панели больше не нужна.</p>
+    <div class="scene-wrap"><div class="stage"><div class="screen">
+      <div class="wall"></div>
+      <div data-bar='{"app":"Ghostty","mode":"tiles","ws":[1,2],"cur":1,"logoOn":true,"ccOn":true}'></div>
+      <div class="pop menu" style="left:6px;top:34px">
+        <div class="row"><span class="ms o">info</span>О системе</div>
+        <div class="row sel"><span class="ms o">settings</span>Настройки…<span class="k">Super+I</span></div>
+        <hr>
+        <div class="row"><span class="ms o">bedtime</span>Сон</div>
+        <div class="row"><span class="ms o">restart_alt</span>Перезагрузить…</div>
+        <div class="row"><span class="ms o">power_settings_new</span>Выключить…</div>
+        <hr>
+        <div class="row"><span class="ms o">lock</span>Заблокировать экран<span class="k">Super+L</span></div>
+        <div class="row"><span class="ms o">logout</span>Выйти из сеанса…</div>
+      </div>
+      <div class="pop cc" style="right:6px;top:34px">
+        <div class="mod stack" style="padding:4px 0">
+          <div class="tile on" style="min-height:48px"><div class="ic"><span class="ms">wifi</span></div><div><b>Wi‑Fi</b><small>LNAK</small></div><span class="ms chev">chevron_right</span></div>
+          <div class="tile" style="min-height:48px"><div class="ic"><span class="ms">bluetooth</span></div><div><b>Bluetooth</b><small>Выключен</small></div><span class="ms chev">chevron_right</span></div>
+          <div class="tile on" style="min-height:48px"><div class="ic"><span class="ms">vpn_key</span></div><div><b>VPN</b><small>AmneziaVPN</small></div></div>
+        </div>
+        <div class="stack">
+          <div class="mod mini tile"><div class="ic"><span class="ms">do_not_disturb_on</span></div>Не беспокоить</div>
+          <div class="mod mini tile on"><div class="ic"><span class="ms">coffee</span></div>Не засыпать</div>
+          <div class="mod mini tile"><div class="ic"><span class="ms">screenshot_region</span></div>Снимок экрана</div>
+        </div>
+        <div class="mod slider-mod"><h4>Экран<span class="pill"><span class="ms">dark_mode</span>Тёмная тема</span></h4><div class="slider"><b style="width:72%"></b><span class="ms">light_mode</span></div></div>
+        <div class="mod slider-mod"><h4>Звук <span>Динамики ноутбука</span></h4><div class="slider"><b style="width:46%"></b><span class="ms">volume_up</span></div>
+          <div class="slider" style="margin-top:8px"><b style="width:88%"></b><span class="ms">mic</span></div></div>
+        <div class="mod segctl"><span><span class="ms o">eco</span>Экономия</span><span class="cur"><span class="ms o">balance</span>Баланс</span><span><span class="ms o">bolt</span>Мощность</span></div>
+        <div class="mod stats"><div class="meter"><span>CPU <b>4 %</b></span><i><b style="width:4%"></b></i></div><div class="meter"><span>RAM <b>2,3 ГБ</b></span><i><b style="width:15%"></b></i></div></div>
+        <div class="cc-foot"><span>Заряжено · от сети</span><a href="#">Настройки…</a></div>
+      </div>
+      <div class="ann" style="left:270px;top:120px">меню Quietline · строки 26 px · акцент при наведении</div>
+      <div class="ann" style="left:660px;top:420px">ширина 336 · модули 12 px · ползунки 24 px</div>
+    </div></div></div>
+  </section>
+
+  <!-- 3. Поиск -->
+  <section class="scene" data-title="Поиск">
+    <p class="scene-note"><b>Поиск <kbd>Super+Space</kbd></b> — как Spotlight: в центре экрана, без заголовка, крупное поле. Результаты сгруппированы: «Лучшее совпадение», «Приложения», «Файлы», «Действия»; у приложений настоящие значки. Вычисления — прямо в первой строке. Меню приложений слева на панели убрано: приложения ищутся здесь и запускаются из дока.</p>
+    <div class="scene-wrap"><div class="stage"><div class="screen">
+      <div class="wall"></div>
+      <div data-bar='{"app":"Ghostty","mode":"windows","ws":[1,2,3],"cur":1}'></div>
+      <div class="win off" style="left:200px;top:80px;width:880px;height:560px"><div class="tbar"><div class="title">Файлы — Загрузки</div><div class="wbtns"><i class="min"><span class="ms">remove</span></i><i class="max"><span class="ms">crop_square</span></i><i class="close"><span class="ms">close</span></i></div></div>
+        <div class="files"><aside><div class="cur"><span class="ms">download</span>Загрузки</div><div><span class="ms">description</span>Документы</div><div><span class="ms">image</span>Изображения</div><div><span class="ms">home</span>Домашняя</div></aside><div class="grid"><div><span class="ms">folder</span>Arch</div><div><span class="ms">folder</span>Фото</div><div><span class="ms" style="color:#c9c9d1">draft</span>notes.md</div><div><span class="ms" style="color:#ff8a65">picture_as_pdf</span>quietline.pdf</div></div></div></div>
+      <div class="pop spot">
+        <div class="qfield"><span class="ms o">search</span>тел<span class="caret"></span><span class="hint">↵ открыть · Tab следующий раздел</span></div>
+        <div class="res">
+          <h5>Лучшее совпадение</h5>
+          <div class="r sel"><div class="app-i a-tg"><span class="ms">send</span></div><div>Telegram<div class="sub">Приложение · запущено</div></div><span class="k">↵</span></div>
+          <h5>Файлы</h5>
+          <div class="r"><div class="fi"><span class="ms o">description</span></div><div>телефоны-офис.txt<div class="sub">~/Документы</div></div><span class="k">Ctrl+↵ папка</span></div>
+          <div class="r"><div class="fi"><span class="ms o">image</span></div><div>телескоп.jpg<div class="sub">~/Изображения/Фото</div></div></div>
+          <h5>Действия</h5>
+          <div class="r"><div class="fi"><span class="ms o">settings</span></div><div>Настройки: Язык и регион</div></div>
+          <div class="r"><div class="fi"><span class="ms o">calculate</span></div><div class="calc">128 × 3 = 384</div><span class="k">↵ копировать</span></div>
+        </div>
+      </div>
+      <div class="ann" style="left:960px;top:156px">ширина 640 · поле 54 px · 21 px шрифт</div>
+    </div></div></div>
+  </section>
+
+  <!-- 4. Уведомления -->
+  <section class="scene" data-title="Уведомления">
+    <p class="scene-note"><b>Уведомления.</b> Карточка всплывает под панелью справа: значок приложения, название и время, заголовок, текст, кнопки действий. Крестик появляется при наведении в левом верхнем углу. Щелчок по дате на панели открывает <b>центр уведомлений</b> с календарём: уведомления одного приложения собраны в стопку, наверху переключатель «Не беспокоить».</p>
+    <div class="scene-wrap"><div class="stage"><div class="screen">
+      <div class="wall"></div>
+      <div data-bar='{"app":"Brave","mode":"windows","ws":[1,2],"cur":1,"clockOn":true}'></div>
+      <div class="pop toast" style="left:24px;top:46px"><div class="x"><span class="ms">close</span></div><div class="app-i a-tg"><span class="ms">send</span></div><div class="meta"><span>Telegram</span><span>сейчас</span></div><b>Аня</b><p>Скинула макеты, посмотри, когда будет минута</p><div class="acts"><span>Ответить</span><span>Прочитано</span></div></div>
+      <div class="ann" style="left:24px;top:200px">карточка 352 px · в жизни — справа под панелью</div>
+      <div class="pop nc" style="right:6px;top:34px">
+        <div class="mod cal"><h4>Ноябрь 2026 <span>‹ ›</span></h4><div class="g">
+          <i class="h">Пн</i><i class="h">Вт</i><i class="h">Ср</i><i class="h">Чт</i><i class="h">Пт</i><i class="h">Сб</i><i class="h">Вс</i>
+          <i class="x">26</i><i class="x">27</i><i class="x">28</i><i class="x">29</i><i class="x">30</i><i class="x">31</i><i class="t">1</i>
+          <i>2</i><i>3</i><i>4</i><i>5</i><i>6</i><i>7</i><i>8</i>
+          <i>9</i><i>10</i><i>11</i><i>12</i><i>13</i><i>14</i><i>15</i>
+        </div></div>
+        <div class="nc-head"><h3>Уведомления</h3><span class="pill"><span class="ms o">do_not_disturb_on</span>Не беспокоить</span></div>
+        <div class="group stacked"><div class="toast"><div class="app-i a-pass"><span class="ms">vpn_key</span></div><div class="meta"><span>AmneziaVPN</span><span>13 мин</span></div><b>VPN подключён</b><p>Сервер: Нидерланды</p></div></div>
+        <div class="group"><div class="toast"><div class="app-i" style="background:linear-gradient(180deg,#4b4b52,#2a2a30)"><span class="ms">desktop_windows</span></div><div class="meta"><span>Quietline</span><span>14 мин</span></div><b>«Claude» работает в фоне</b><p>Super+Shift+Q завершит его принудительно.</p></div></div>
+        <div class="clear">Очистить всё</div>
+      </div>
+    </div></div></div>
+  </section>
+
+  <!-- 5. Режим «Тайлы» -->
+  <section class="scene" data-title="Тайлы">
+    <p class="scene-note"><b>Режим «Тайлы».</b> Те же панель и окна, но без заголовков: колонки занимают всё место под панелью с отступами 8 px. Активное окно выделено акцентной рамкой 2 px. Дока в этом режиме нет. Переключатель режима на панели — маленький сегмент из двух значков вместо крупной зелёной плашки.</p>
+    <div class="scene-wrap"><div class="stage"><div class="screen">
+      <div class="wall"></div>
+      <div data-bar='{"app":"Ghostty","mode":"tiles","ws":[1,2,4],"cur":1}'></div>
+      <div class="win tiled" style="left:8px;top:38px;width:620px;height:754px">
+        <div class="browser"><div class="chrome"><span class="ms o" style="color:#777">arrow_back</span><div class="url">quickshell.org/docs/v0.3.2</div></div><div class="page"><h2>Quickshell</h2><p>Flexible toolkit for making desktop shells with QtQuick, for Wayland and X11.</p><div class="ph"><i></i><i></i><i></i></div></div></div>
+      </div>
+      <div class="win tiled cur" style="left:636px;top:38px;width:636px;height:373px"><div class="term"><span class="p">kiryl@lenovo</span> <span class="m">~/W/P/quietline</span> <span class="g">main</span><br>❯ git log --oneline -3<br><span class="m">e697297</span> fix(shell): предупреждение о заряде…<br><span class="m">a55f4e9</span> docs(shell): в backlog отмечена…<br>❯ <span style="background:#d8dae0;color:#1b1c20">&nbsp;</span></div></div>
+      <div class="win tiled" style="left:636px;top:419px;width:636px;height:373px"><div class="term"><span class="m">quietline-engine serve</span><br>event workspace 1 → tiles<br>event openwindow ghostty<br><span class="g">ok</span></div></div>
+      <div class="ann" style="left:900px;top:44px">активное: рамка акцента 2 px</div>
+      <div class="ann" style="left:1040px;top:6px">режим: сегмент 2 значка</div>
+    </div></div></div>
+  </section>
+
+  <!-- 6. Настройки -->
+  <section class="scene" data-title="Настройки">
+    <p class="scene-note"><b>Окно «Настройки»</b> — обычное окно с заголовком. Слева поиск и разделы с цветными квадратными значками. Справа сгруппированные списки: строки 44 px в скруглённых блоках с тонкими разделителями, переключатели справа. Сети — списком со значком силы сигнала и замком.</p>
+    <div class="scene-wrap"><div class="stage"><div class="screen">
+      <div class="wall"></div>
+      <div data-bar='{"app":"Настройки","mode":"windows","ws":[1,2],"cur":1}'></div>
+      <div class="win" style="left:170px;top:70px;width:940px;height:650px">
+        <div class="tbar" style="background:#28282d"><div class="title">Настройки</div><div class="wbtns"><i class="min"><span class="ms">remove</span></i><i class="max"><span class="ms">crop_square</span></i><i class="close"><span class="ms">close</span></i></div></div>
+        <div class="settings">
+          <aside>
+            <div class="search"><span class="ms o">search</span>Поиск</div>
+            <div class="nav cur"><span class="sq" style="background:#0a84ff"><span class="ms">wifi</span></span>Сеть</div>
+            <div class="nav"><span class="sq" style="background:#0a84ff"><span class="ms">bluetooth</span></span>Bluetooth</div>
+            <div class="nav"><span class="sq" style="background:#5e5ce6"><span class="ms">vpn_key</span></span>VPN</div>
+            <div class="navgap"></div>
+            <div class="nav"><span class="sq" style="background:#ff375f"><span class="ms">volume_up</span></span>Звук</div>
+            <div class="nav"><span class="sq" style="background:#0a84ff"><span class="ms">light_mode</span></span>Экран и яркость</div>
+            <div class="nav"><span class="sq" style="background:#30d158"><span class="ms">battery_full</span></span>Питание</div>
+            <div class="nav"><span class="sq" style="background:#5e5ce6"><span class="ms">notifications</span></span>Уведомления</div>
+            <div class="navgap"></div>
+            <div class="nav"><span class="sq" style="background:#8e8e93"><span class="ms">language</span></span>Язык и регион</div>
+            <div class="nav"><span class="sq" style="background:#8e8e93"><span class="ms">keyboard</span></span>Сочетания клавиш</div>
+            <div class="nav"><span class="sq" style="background:#8e8e93"><span class="ms">dock_to_bottom</span></span>Панель и док</div>
+            <div class="nav"><span class="sq" style="background:#8e8e93"><span class="ms">info</span></span>О системе</div>
+          </aside>
+          <section>
+            <h2>Сеть</h2>
+            <div class="group-box">
+              <div class="gr"><div class="wifi-ic on"><span class="ms">wifi</span></div><div>Wi‑Fi<div class="sub">Подключено · LNAK · wlp0s20f3</div></div><div class="end"><span class="sw on"></span></div></div>
+            </div>
+            <div class="gtitle">Известные сети</div>
+            <div class="group-box">
+              <div class="gr">LNAK<div class="end"><span class="ms lk">lock</span><span class="ms lk">wifi</span><span class="ms" style="color:var(--accent);font-size:17px">check</span></div></div>
+              <div class="gr">LNAK_5G<div class="end"><span class="ms lk">lock</span><span class="ms lk">network_wifi_3_bar</span></div></div>
+            </div>
+            <div class="gtitle">Другие сети</div>
+            <div class="group-box">
+              <div class="gr">Keenetic-2041<div class="end"><span class="ms lk">lock</span><span class="ms lk">network_wifi_2_bar</span></div></div>
+              <div class="gr">MTS_GPON_3A<div class="end"><span class="ms lk">lock</span><span class="ms lk">network_wifi_1_bar</span></div></div>
+              <div class="gr"><span class="sub">Другая сеть…</span></div>
+            </div>
+            <div class="gtitle">Проводная сеть</div>
+            <div class="group-box"><div class="gr"><span class="sub">Адаптер Ethernet не найден. Подключите кабель или USB-адаптер.</span><div class="end"><span class="btn">Новый профиль…</span></div></div></div>
+          </section>
+        </div>
+      </div>
+      <div class="ann" style="left:410px;top:52px">боковая панель 232 · значки-квадраты 22 px</div>
+      <div class="ann" style="left:760px;top:740px">группы: скругление 11 · строки 44 px</div>
+    </div></div></div>
+  </section>
+
+  <!-- 6a. «Оформление» -->
+  <section class="scene" data-title="Оформление">
+    <p class="scene-note"><b>«Настройки» → «Оформление»</b>: тема окружения карточками-превью (Светлая / Тёмная) — меняет оболочку, рамки и заголовки окон и схему приложений GTK, Qt и браузеров сразу, без перезапуска. Ниже указатель: цвет и размер отдельно от темы. Быстрый переключатель темы — кнопка «Тёмная тема» в модуле «Экран» пункта управления.</p>
+    <div class="scene-wrap"><div class="stage"><div class="screen">
+      <div class="wall"></div>
+      <div data-bar='{"app":"Настройки","mode":"windows","ws":[1,2],"cur":1}'></div>
+      <div class="win" style="left:170px;top:70px;width:940px;height:650px">
+        <div class="tbar" style="background:#28282d"><div class="title">Настройки</div><div class="wbtns"><i class="min"><span class="ms">remove</span></i><i class="max"><span class="ms">crop_square</span></i><i class="close"><span class="ms">close</span></i></div></div>
+        <div class="settings">
+          <aside>
+            <div class="search"><span class="ms o">search</span>Поиск</div>
+            <div class="nav"><span class="sq" style="background:#0a84ff"><span class="ms">wifi</span></span>Сеть</div>
+            <div class="nav"><span class="sq" style="background:#0a84ff"><span class="ms">bluetooth</span></span>Bluetooth</div>
+            <div class="navgap"></div>
+            <div class="nav"><span class="sq" style="background:#ff375f"><span class="ms">volume_up</span></span>Звук</div>
+            <div class="nav"><span class="sq" style="background:#0a84ff"><span class="ms">light_mode</span></span>Экран и яркость</div>
+            <div class="nav cur"><span class="sq" style="background:#5e5ce6"><span class="ms">palette</span></span>Оформление</div>
+            <div class="nav"><span class="sq" style="background:#30d158"><span class="ms">battery_full</span></span>Питание</div>
+            <div class="nav"><span class="sq" style="background:#ff453a"><span class="ms">notifications</span></span>Уведомления</div>
+            <div class="navgap"></div>
+            <div class="nav"><span class="sq" style="background:#8e8e93"><span class="ms">language</span></span>Язык и регион</div>
+            <div class="nav"><span class="sq" style="background:#8e8e93"><span class="ms">keyboard</span></span>Сочетания клавиш</div>
+            <div class="nav"><span class="sq" style="background:#8e8e93"><span class="ms">info</span></span>О системе</div>
+          </aside>
+          <section>
+            <h2>Оформление</h2>
+            <div class="gtitle">Тема</div>
+            <div class="group-box">
+              <div class="themes">
+                <div class="theme-card cur"><div class="pv light"><div class="w"></div><div class="b"></div><div class="p"><i></i></div><div class="d"></div></div>Светлая</div>
+                <div class="theme-card"><div class="pv dark"><div class="w"></div><div class="b"></div><div class="p"><i></i></div><div class="d"></div></div>Тёмная</div>
+              </div>
+              <div class="gr"><div>Приложения<div class="sub">GTK, Qt и браузеры получают ту же схему; уже открытые окна некоторых программ меняются после перезапуска</div></div></div>
+            </div>
+            <div class="gtitle">Указатель</div>
+            <div class="group-box">
+              <div class="gr">Цвет<div class="end"><span class="segs"><span class="cur"><span class="ms cur-glyph dk">arrow_selector_tool</span>Тёмный</span><span><span class="ms cur-glyph lt">arrow_selector_tool</span>Светлый</span></span></div></div>
+              <div class="gr">Размер<div class="end"><span class="segs"><span class="cur">Обычный</span><span>Крупный</span><span>Очень крупный</span></span></div></div>
+            </div>
+          </section>
+        </div>
+      </div>
+      <div class="ann" style="left:800px;top:250px">превью 150×96 · выбранная — рамка акцентом 3 px</div>
+      <div class="ann" style="left:640px;top:560px">указатель — Capitaine: тёмный / светлый, 24 · 36 · 48 px</div>
+    </div></div></div>
+  </section>
+
+  <!-- 7. Буфер и индикатор -->
+  <section class="scene" data-title="Буфер и индикатор">
+    <p class="scene-note"><b>История буфера <kbd>Super+V</kbd></b> — в центре, тем же стилем, что и поиск: слева список с типом записи, справа предпросмотр. <b>Индикатор</b> громкости, яркости и раскладки — капсула внизу по центру, над местом дока.</p>
+    <div class="scene-wrap"><div class="stage"><div class="screen">
+      <div class="wall"></div>
+      <div data-bar='{"app":"Ghostty","mode":"windows","ws":[1,2],"cur":1}'></div>
+      <div class="pop clip">
+        <div class="qfield"><span class="ms o">content_paste</span><span style="color:var(--text-3)">Поиск в буфере</span></div>
+        <div class="body">
+          <div class="list">
+            <div class="r sel"><span class="ms o">terminal</span><div><span>uv run --python 3.14 pytest</span><small>Ghostty · 2 мин</small></div></div>
+            <div class="r"><span class="ms o">link</span><div><span>https://quickshell.org/docs/v0.3.2/</span><small>Brave · 10 мин</small></div></div>
+            <div class="r"><span class="ms o">image</span><div><span>Снимок экрана 1280×800</span><small>Quietline · 12 мин</small></div></div>
+            <div class="r"><span class="ms o">notes</span><div><span>Подключите зарядку: скоро компьютер…</span><small>Telegram · 1 ч</small></div></div>
+          </div>
+          <div class="prev">uv run --python 3.14 pytest<div class="meta">Текст · 27 символов · ↵ вставить · Del удалить</div></div>
+        </div>
+      </div>
+      <div class="pop osd"><span class="ms">volume_up</span><div class="bar2"><b></b></div><span>64</span></div>
+      <div class="ann" style="left:820px;top:735px">индикатор 280×52 · над местом дока</div>
+    </div></div></div>
+  </section>
+
+  <!-- 8. Блокировка и питание -->
+  <section class="scene" data-title="Блокировка">
+    <p class="scene-note"><b>Экран блокировки</b>: размытые обои, дата и крупное время сверху, внизу аватар, имя и поле пароля-капсула. <b>Подтверждение выключения</b> — небольшой диалог по центру с затемнением.</p>
+    <div class="scene-wrap"><div class="stage"><div class="screen">
+      <div class="wall blurred"></div>
+      <div class="lock">
+        <div class="status"><span class="kb" style="font-size:11px;font-weight:700;padding:1px 4px;border:1.5px solid #fff;border-radius:4px">RU</span><span class="ms">wifi</span><span class="ms">battery_full</span></div>
+        <div class="date">воскресенье, 1 ноября</div>
+        <div class="time">22:48</div>
+        <div class="who"><div class="av">K</div><div class="name">Kiryl</div><div class="pw">Введите пароль<span class="go"><span class="ms">arrow_forward</span></span></div></div>
+      </div>
+    </div></div></div>
+    <div style="height:20px"></div>
+    <div class="scene-wrap"><div class="stage"><div class="screen">
+      <div class="wall"></div>
+      <div data-bar='{"app":"Ghostty","mode":"windows","ws":[1],"cur":1,"logoOn":true}'></div>
+      <div class="scrim"></div>
+      <div class="pop dialog"><div class="big"><span class="ms o">power_settings_new</span></div><h3>Выключить компьютер?</h3><p>Открытые приложения закроются. Если ничего не выбрать, компьютер выключится через 60 секунд.</p><div class="btns"><span class="btn">Отменить</span><span class="btn pri">Выключить</span></div></div>
+    </div></div></div>
+  </section>
+</main>
+
+<script>
+// Общие куски: панель и док собираются из одного шаблона.
+const ms = (n, o) => `<span class="ms${o ? " o" : ""}">${n}</span>`;
+function bar(o) {
+  const ws = o.ws.map(n => {
+    const num = String(n);
+    const cls = Number(num) === o.cur ? "cur" : "busy";
+    return `<span class="${cls}">${num}</span>`;
+  }).join("");
+  const mode = o.mode === "tiles";
+  return `<div class="bar">
+    <div class="item${o.logoOn ? " on" : ""}"><span class="logo"></span></div>
+    <div class="item app">${o.app}</div>
+    <div class="ws">${ws}</div>
+    <div class="spacer"></div>
+    <div class="seg" title="Окна / Тайлы"><i class="${mode ? "" : "cur"}">${ms("filter_none")}</i><i class="${mode ? "cur" : ""}">${ms("view_week")}</i></div>
+    <div class="item tray">${ms("key")}${ms("shield")}</div>
+    <div class="item"><span class="kb">RU</span></div>
+    <div class="item">${ms("wifi")}</div>
+    <div class="item batt"><span class="cell"><b style="width:100%"></b></span>${ms("bolt")}</div>
+    <div class="item${o.ccOn ? " on" : ""}">${ms("toggle_on")}</div>
+    <div class="item clock${o.clockOn ? " on" : ""}">Вс 1 нояб. 22:48</div>
+  </div>`;
+}
+const DOCK = [
+  ["a-files", "folder", "Файлы", true],
+  ["a-brave", "public", "Brave", true],
+  ["a-term", "terminal", "Ghostty", true],
+  ["a-tg", "send", "Telegram", true],
+  ["a-code", "code", "VS Code", false],
+  ["a-pass", "key", "1Password", true],
+  ["a-set", "settings", "Настройки", false],
+];
+function dock() {
+  const slots = DOCK.map(([c, i, t, r]) => `<div class="slot"><div class="tip">${t}</div><div class="app-i ${c}">${ms(i)}</div><i class="run${r ? "" : " no"}"></i></div>`);
+  slots.splice(5, 0, `<div class="sep"></div>`);
+  slots.push(`<div class="sep"></div><div class="slot"><div class="tip">Корзина</div><div class="app-i a-trash">${ms("delete")}</div><i class="run no"></i></div>`);
+  return slots.join("");
+}
+document.querySelectorAll("[data-bar]").forEach(el => { el.outerHTML = bar(JSON.parse(el.dataset.bar)); });
+document.querySelectorAll("[data-dock]").forEach(el => { el.innerHTML = dock(); });
+
+// Сцены — вкладки; масштаб экрана подгоняется под ширину страницы.
+const scenes = [...document.querySelectorAll("section.scene")];
+const tabs = document.getElementById("tabs");
+function show(i) {
+  scenes.forEach((s, j) => s.classList.toggle("cur", i === j));
+  [...tabs.children].forEach((b, j) => b.setAttribute("aria-selected", String(i === j)));
+  try { localStorage.setItem("ql-b-scene", String(i)); } catch (e) {}
+  fit();
+}
+scenes.forEach((s, i) => {
+  const b = document.createElement("button");
+  b.textContent = s.dataset.title;
+  b.onclick = () => show(i);
+  tabs.appendChild(b);
+});
+function fit() {
+  document.querySelectorAll(".stage").forEach(st => {
+    const k = st.clientWidth / 1280;
+    st.querySelector(".screen").style.transform = `scale(${k})`;
+  });
+}
+addEventListener("resize", fit);
+document.getElementById("ann").onchange = e => document.body.classList.toggle("no-ann", !e.target.checked);
+let start = 0;
+try { start = Number(localStorage.getItem("ql-b-scene")) || 0; } catch (e) {}
+if (/^#\d+$/.test(location.hash)) start = Number(location.hash.slice(1));
+show(Math.min(start, scenes.length - 1));
+document.fonts && document.fonts.ready.then(fit);
+</script>
+</body>
+</html>
