@@ -210,6 +210,7 @@ ColumnLayout {
             color: "transparent"
             showLabels: true
             segmentHeight: 30
+            equalWidths: true
             segmentWidth: (width - 4) / model.length
             reducedMotion: root.indicators.reducedMotion
             readonly property var values: [PowerProfile.PowerSaver, PowerProfile.Balanced, PowerProfile.Performance]

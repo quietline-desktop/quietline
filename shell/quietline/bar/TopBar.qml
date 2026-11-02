@@ -16,10 +16,10 @@ import "../notifications"
 import "../logic/Models.js" as Models
 
 // Верхняя панель экрана, 30 px вплотную к краю: слева меню Quietline, активное приложение (меню
-// окна) и пространства (колесо мыши листает их); справа группами — режим «Окна / Тайлы»; трей;
-// приватность (микрофон, запись экрана), раскладка, сеть и VPN, Bluetooth, звук (колесо —
-// громкость), батарея, «Не засыпать», «Не беспокоить»; пункт управления и дата со временем.
-// Значки состояния открывают свои окна: сеть, Bluetooth, звук, батарея.
+// окна), пространства (колесо мыши листает их) и режим «Окна / Тайлы»; справа группами — трей;
+// приватность (микрофон, запись экрана), «Не засыпать», раскладка, Bluetooth, звук (колесо —
+// громкость), батарея, Wi‑Fi; уведомления, пункт управления и часы (календарь).
+// Значки состояния открывают свои окна: сеть, Bluetooth, звук, батарея, уведомления.
 PanelWindow {
     id: root
     required property var engine
@@ -191,8 +191,8 @@ PanelWindow {
             }
             Item { Layout.fillWidth: true; Layout.minimumWidth: 0 }
             // Правая часть, как в macOS, — три группы с отступом 16 px: запущенные программы (трей);
-            // системное — приватность, «Не беспокоить», «Не засыпать», раскладка, Bluetooth, звук,
-            // батарея, Wi‑Fi (у края группы); пункт управления и часы. Внутри групп кнопки стоят вплотную.
+            // системное — приватность, «Не засыпать», раскладка, Bluetooth, звук, батарея, Wi‑Fi (у края
+            // группы); уведомления, пункт управления и часы. Внутри групп кнопки стоят вплотную.
             RowLayout {
                 spacing: 16
                 RowLayout {
@@ -261,13 +261,6 @@ PanelWindow {
                         }
                         Accessible.role: Accessible.StaticText
                         Accessible.name: Lang.s.barPrivacyScreen
-                    }
-                    // «Не беспокоить» включено: нажатие выключает режим.
-                    BarIcon {
-                        visible: root.services.notifications.dnd
-                        symbol: "do_not_disturb_on"
-                        hint: Lang.s.barDndOn
-                        onClicked: root.services.notifications.setDnd(false)
                     }
                     // «Не засыпать» включено: нажатие выключает режим.
                     BarIcon {
@@ -422,6 +415,22 @@ PanelWindow {
                 }
                 RowLayout {
                     spacing: 0
+                    // Уведомления: точка — есть непрочитанные; при «Не беспокоить» колокольчик перечёркнут.
+                    BarIcon {
+                        id: bellButton
+                        readonly property int unread: root.services.notifications.unread
+                        symbol: root.services.notifications.dnd ? "notifications_off" : "notifications"
+                        hint: root.services.notifications.dnd ? Lang.s.barDndOn
+                            : unread > 0 ? Lang.f(Lang.s.barNotificationsUnread, unread) : Lang.s.notificationsTitle
+                        selected: popout.opened && popout.showingNotifications
+                        onClicked: popout.toggle("notifications")
+                        Rectangle {
+                            visible: bellButton.unread > 0 && !root.services.notifications.dnd
+                            width: 6; height: 6; radius: 3
+                            color: Theme.accent
+                            anchors { top: parent.top; right: parent.right; topMargin: 3; rightMargin: 5 }
+                        }
+                    }
                     BarIcon {
                         id: details
                         symbol: "tune"
@@ -429,22 +438,15 @@ PanelWindow {
                         selected: popout.opened && popout.showingQuick
                         onClicked: popout.toggle("quick")
                     }
-                    // Дата и время открывают центр уведомлений; точка — есть непрочитанные.
+                    // Дата и время открывают календарь.
                     ShellButton {
                         id: clockButton
                         implicitHeight: Theme.barItemHeight
                         text: root.tiny ? Lang.time(clock.date) : Lang.barClock(clock.date)
-                        hint: Lang.longDate(clock.date) + (root.services.notifications.unread > 0
-                              ? " · " + Lang.f(Lang.s.barNotificationsUnread, root.services.notifications.unread) : "")
+                        hint: Lang.longDate(clock.date)
                         Accessible.name: Lang.longDate(clock.date) + ", " + Lang.time(clock.date)
-                        selected: popout.opened && popout.showingNotifications
-                        onClicked: popout.toggle("notifications")
-                        Rectangle {
-                            visible: root.services.notifications.unread > 0
-                            width: 6; height: 6; radius: 3
-                            color: Theme.accent
-                            anchors { top: parent.top; right: parent.right; topMargin: 2; rightMargin: 1 }
-                        }
+                        selected: popout.opened && popout.showingCalendar
+                        onClicked: popout.toggle("calendar")
                     }
                 }
             }
@@ -461,6 +463,7 @@ PanelWindow {
         readonly property bool showingQuick: currentName === "quick"
         readonly property bool showingClipboard: currentName === "clipboard"
         readonly property bool showingNotifications: currentName === "notifications"
+        readonly property bool showingCalendar: currentName === "calendar"
         readonly property bool showingBattery: currentName === "battery"
         readonly property bool showingBluetooth: currentName === "bluetooth"
         readonly property bool showingSound: currentName === "sound"
@@ -483,13 +486,13 @@ PanelWindow {
               : Math.max(Theme.screenMargin, root.width - panelWidth - Theme.screenMargin)
         popupY: centered ? Math.round((root.screen ? root.screen.height : 800) * 0.19) : Theme.barHeight + Theme.popupGap
         panelWidth: showingMenu || showingWindow ? 248 : showingApplications ? Math.min(640, root.width - 24) : showingClipboard ? Math.min(600, root.width - 24)
-                  : Math.min(showingNetwork || showingNotifications ? 376 : 336, root.width - 12)
+                  : Math.min(showingNetwork || showingNotifications ? 376 : showingCalendar ? 300 : 336, root.width - 12)
         panelHeight: showingMenu ? quietlineMenu.implicitHeight + 10
                    : showingWindow ? windowMenu.implicitHeight + 10
                    : showingApplications ? searchPanel.contentHeight
                    : showingClipboard ? clipboardPanel.contentHeight
                    : Math.min(content.implicitHeight + 20, root.screen ? root.screen.height - 80 : 500)
-        onPresented: { if (showingApplications) searchPanel.reset(); else if (showingClipboard) clipboardPanel.reset(); else if (showingMenu) quietlineMenu.takeFocus(); else if (showingWindow) windowMenu.takeFocus(); else if (showingNotifications) notificationCenter.reset(); }
+        onPresented: { if (showingApplications) searchPanel.reset(); else if (showingClipboard) clipboardPanel.reset(); else if (showingMenu) quietlineMenu.takeFocus(); else if (showingWindow) windowMenu.takeFocus(); else if (showingNotifications || showingCalendar) notificationCenter.reset(); }
         onDismissed: searchPanel.reset()
         QuietlineMenu {
             id: quietlineMenu
@@ -537,7 +540,9 @@ PanelWindow {
                 width: summaryScroll.availableWidth; spacing: 12
                 NotificationCenter {
                     id: notificationCenter
-                    visible: popout.showingNotifications
+                    visible: popout.showingNotifications || popout.showingCalendar
+                    showCalendar: popout.showingCalendar
+                    showNotifications: popout.showingNotifications
                     Layout.fillWidth: true
                     service: root.services.notifications
                 }

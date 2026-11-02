@@ -12,6 +12,8 @@ Rectangle {
     property real segmentWidth: 26
     property real segmentHeight: 18
     property bool showLabels: false
+    // Все сегменты ровно `segmentWidth`, даже с подписями: для сегментов во всю ширину модуля.
+    property bool equalWidths: false
     property bool reducedMotion: false
     property bool busy: false
     signal activated(int index)
@@ -43,7 +45,7 @@ Rectangle {
                 required property var modelData
                 required property int index
                 readonly property bool current: index === root.currentIndex
-                width: root.showLabels ? Math.max(root.segmentWidth, segmentContent.implicitWidth + 16) : root.segmentWidth
+                width: root.showLabels && !root.equalWidths ? Math.max(root.segmentWidth, segmentContent.implicitWidth + 16) : root.segmentWidth
                 height: root.segmentHeight
                 Accessible.role: Accessible.RadioButton
                 Accessible.name: modelData.hint || modelData.label || ""
