@@ -15,7 +15,7 @@
 
 Оформление — `appearance.json` вида `{"version": 1, "theme", "cursor", "cursorSize", "batteryPercent"}`:
 тема окружения и цвет указателя (`dark` | `light`), размер указателя (24, 36 или 48), процент
-заряда рядом с батареей на панели (`true` | `false`). Рядом пишется
+заряда на панели (`off` | `beside` — рядом с батареей | `inside` — внутри значка). Рядом пишется
 `appearance.lua` для конфигурации Hyprland. Только стандартная библиотека.
 """
 
@@ -320,9 +320,9 @@ def apply_display(output: str, scale: float | None) -> bool:
     return result.returncode == 0
 
 
-APPEARANCE_DEFAULTS = {"theme": "dark", "cursor": "dark", "cursorSize": 24, "batteryPercent": False}
+APPEARANCE_DEFAULTS = {"theme": "dark", "cursor": "dark", "cursorSize": 24, "batteryPercent": "off"}
 _APPEARANCE_CHOICES = {"theme": ("dark", "light"), "cursor": ("dark", "light"), "cursorSize": (24, 36, 48),
-                       "batteryPercent": (False, True)}
+                       "batteryPercent": ("off", "beside", "inside")}
 CURSOR_THEMES = {"dark": "capitaine-cursors", "light": "capitaine-cursors-light"}
 _GSETTINGS_TIMEOUT = 5
 
@@ -334,12 +334,11 @@ def default_appearance_path() -> Path:
 
 
 def _checked_appearance(values: dict[str, Any]) -> dict[str, Any]:
-    """Все поля с допустимыми значениями (флаги — только `bool`, числа — не `bool`); иначе `ValueError`."""
+    """Все поля с допустимыми значениями (`True` не считается числом 1); иначе `ValueError` с именем поля."""
     result = {}
     for key, choices in _APPEARANCE_CHOICES.items():
         value = values.get(key)
-        flag = isinstance(choices[0], bool)
-        if isinstance(value, bool) != flag or value not in choices:
+        if isinstance(value, bool) or value not in choices:
             raise ValueError(f"{key} must be one of {', '.join(map(str, choices))}: {value!r}")
         result[key] = value
     return result

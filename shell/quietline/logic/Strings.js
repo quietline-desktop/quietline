@@ -498,6 +498,9 @@ var STRINGS = {
         barPrivacyScreen: "Идёт запись экрана",
         appearancePanel: "Панель",
         appearanceBatteryPercent: "Процент заряда на панели",
+        batteryPercentOff: "Нет",
+        batteryPercentBeside: "Рядом",
+        batteryPercentInside: "Внутри",
         netOtherFound: "Найдено: {0}",
         netExpand: "Показать",
         netCollapse: "Скрыть"
@@ -968,6 +971,9 @@ var STRINGS = {
         barPrivacyScreen: "Screen is being recorded",
         appearancePanel: "Top bar",
         appearanceBatteryPercent: "Battery percentage in the top bar",
+        batteryPercentOff: "Off",
+        batteryPercentBeside: "Beside",
+        batteryPercentInside: "Inside",
         netOtherFound: "Found: {0}",
         netExpand: "Show",
         netCollapse: "Hide"

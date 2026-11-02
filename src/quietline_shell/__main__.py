@@ -14,7 +14,7 @@
   `"applied": true | false`;
 - `appearance [--set JSON] [--path PATH]` — `{"theme", "cursor", "cursorSize", "batteryPercent"}`:
   тема окружения и цвет указателя (`dark` | `light`), размер указателя (24, 36, 48), процент
-  заряда на панели (`true` | `false`); с `--set` часть полей
+  заряда на панели (`off` | `beside` | `inside`); с `--set` часть полей
   проверяется и пишется в `appearance.json` и `appearance.lua` рядом с ним, схема приложений
   меняется в gsettings, в Hyprland перечитывается конфигурация и меняется указатель; в ответ
   добавляется `"applied": true | false`;

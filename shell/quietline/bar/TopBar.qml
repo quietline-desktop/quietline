@@ -353,7 +353,7 @@ PanelWindow {
                                 spacing: 1
                                 Text {
                                     renderType: Text.CurveRendering
-                                    visible: Appearance.batteryPercent
+                                    visible: Appearance.batteryPercent === "beside"
                                     anchors.verticalCenter: parent.verticalCenter
                                     rightPadding: 4
                                     text: root.power.percent + "%"
@@ -361,21 +361,51 @@ PanelWindow {
                                     font.family: Theme.sans; font.pixelSize: Theme.smallFontSize; font.weight: Font.Medium
                                     font.features: { "tnum": 1 }
                                 }
+                                // Ячейка; в режиме «внутри» она шире и выше, число стоит в ней и меняет
+                                // цвет на границе заливки: на заливке — `textInverse`, на пустой части — `text`.
                                 Rectangle {
+                                    id: batteryCell
+                                    readonly property bool inside: Appearance.batteryPercent === "inside"
+                                    readonly property color fillColor: root.batteryLevel === "critical" ? Theme.danger : root.batteryLevel === "low" ? Theme.warning : Theme.text
                                     anchors.verticalCenter: parent.verticalCenter
-                                    width: 25; height: 12; radius: 3.5
+                                    width: inside ? 29 : 25; height: inside ? 14 : 12; radius: inside ? 4 : 3.5
                                     color: "transparent"
                                     border.width: 1.2; border.color: Theme.batteryOutline
                                     Rectangle {
+                                        id: batteryFill
                                         x: 2; y: 2
                                         height: parent.height - 4
                                         width: Math.max(2, (parent.width - 4) * root.power.percent / 100)
-                                        radius: 1.5
-                                        color: root.batteryLevel === "critical" ? Theme.danger : root.batteryLevel === "low" ? Theme.warning : Theme.text
+                                        radius: batteryCell.inside ? 2 : 1.5
+                                        color: batteryCell.fillColor
                                     }
-                                    // При зарядке молния — внутри ячейки, контрастная заливке.
+                                    Text {
+                                        id: insidePercent
+                                        renderType: Text.CurveRendering
+                                        visible: batteryCell.inside
+                                        anchors.centerIn: parent
+                                        anchors.verticalCenterOffset: 0.5
+                                        text: root.power.percent
+                                        color: Theme.text
+                                        font.family: Theme.sans; font.pixelSize: 9; font.weight: Font.Bold
+                                        font.features: { "tnum": 1 }
+                                    }
+                                    Item {
+                                        visible: batteryCell.inside
+                                        x: batteryFill.x; y: 0
+                                        width: batteryFill.width; height: parent.height
+                                        clip: true
+                                        Text {
+                                            renderType: Text.CurveRendering
+                                            x: insidePercent.x - parent.x; y: insidePercent.y
+                                            text: insidePercent.text
+                                            color: batteryCell.fillColor === Theme.text ? Theme.textInverse : Theme.accentForeground
+                                            font: insidePercent.font
+                                        }
+                                    }
+                                    // При зарядке молния — внутри ячейки, контрастная заливке; в режиме «внутри» — за ячейкой.
                                     Icon {
-                                        visible: root.power.charging
+                                        visible: root.power.charging && !batteryCell.inside
                                         anchors.centerIn: parent
                                         name: "bolt"; filled: true; weight: 600; size: 12
                                         color: root.power.percent > 45 ? Theme.textInverse : Theme.text
@@ -385,6 +415,12 @@ PanelWindow {
                                     anchors.verticalCenter: parent.verticalCenter
                                     width: 1.5; height: 4; radius: 1
                                     color: Theme.batteryOutline
+                                }
+                                Icon {
+                                    visible: root.power.charging && batteryCell.inside
+                                    anchors.verticalCenter: parent.verticalCenter
+                                    name: "bolt"; filled: true; weight: 600; size: 11
+                                    color: Theme.text
                                 }
                             }
                         }

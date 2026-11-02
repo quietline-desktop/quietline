@@ -462,10 +462,12 @@ Scope {
                                 title: Lang.s.appearancePanel
                                 SettingsRow {
                                     label: Lang.s.appearanceBatteryPercent
-                                    ShellSwitch {
-                                        checked: Appearance.batteryPercent
-                                        onToggled: Appearance.update({batteryPercent: checked})
-                                        Accessible.name: Lang.s.appearanceBatteryPercent
+                                    SegmentedControl {
+                                        readonly property var modes: ["off", "beside", "inside"]
+                                        showLabels: true; segmentHeight: 22
+                                        model: [{label: Lang.s.batteryPercentOff}, {label: Lang.s.batteryPercentBeside}, {label: Lang.s.batteryPercentInside}]
+                                        currentIndex: modes.indexOf(Appearance.batteryPercent)
+                                        onActivated: index => Appearance.update({batteryPercent: modes[index]})
                                     }
                                 }
                             }

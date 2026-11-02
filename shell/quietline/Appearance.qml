@@ -16,8 +16,8 @@ Singleton {
     property string cursor: "dark"
     // 24 | 36 | 48
     property int cursorSize: 24
-    // Процент заряда рядом с батареей на панели.
-    property bool batteryPercent: false
+    // Процент заряда на панели: `off` | `beside` (рядом с батареей) | `inside` (внутри значка).
+    property string batteryPercent: "off"
     readonly property bool light: theme === "light"
     // Текст последней ошибки чтения или записи; пусто — ошибок нет.
     property string error: ""
@@ -47,7 +47,7 @@ Singleton {
         if (data.theme === "dark" || data.theme === "light") theme = data.theme;
         if (data.cursor === "dark" || data.cursor === "light") cursor = data.cursor;
         if ([24, 36, 48].indexOf(data.cursorSize) >= 0) cursorSize = data.cursorSize;
-        if (typeof data.batteryPercent === "boolean") batteryPercent = data.batteryPercent;
+        if (["off", "beside", "inside"].indexOf(data.batteryPercent) >= 0) batteryPercent = data.batteryPercent;
     }
     function failure(key, detail) { error = Lang.s[key] + (detail ? ": " + detail : ""); }
 
