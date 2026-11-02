@@ -16,8 +16,8 @@ import "../notifications"
 import "../logic/Models.js" as Models
 
 // Верхняя панель экрана, 30 px вплотную к краю: слева меню Quietline, активное приложение и
-// пространства; справа режим «Окна / Тайлы», трей, раскладка, сеть, Bluetooth, батарея,
-// пункт управления и дата со временем (открывает центр уведомлений).
+// пространства; справа режим «Окна / Тайлы», трей, раскладка, сеть, Bluetooth, батарея (открывает
+// окно батареи с режимом питания), пункт управления и дата со временем (открывает центр уведомлений).
 PanelWindow {
     id: root
     required property var engine
@@ -179,7 +179,8 @@ PanelWindow {
                             if (modelData.onlyMenu) showMenu();
                             else modelData.activate();
                         }
-                        // Значки трея обесцвечены: на панели они одного тона, детали сохраняются.
+                        // Значки трея обесцвечены и приведены к тону текста панели: в тёмной теме
+                        // слегка осветлены, в светлой затемнены почти до чёрного; детали сохраняются.
                         Image {
                             id: trayIcon
                             anchors.centerIn: parent
@@ -192,7 +193,7 @@ PanelWindow {
                             anchors.fill: trayIcon
                             source: trayIcon
                             saturation: -1
-                            brightness: 0.15
+                            brightness: Theme.light ? -0.8 : 0.15
                             opacity: 0.9
                         }
                         TapHandler { acceptedButtons: Qt.RightButton; onTapped: parent.showMenu() }
@@ -247,7 +248,8 @@ PanelWindow {
                 implicitHeight: Theme.barItemHeight
                 hint: Lang.f(root.services.power.charging ? Lang.s.barBatteryChargingName : Lang.s.barBatteryName, root.services.power.percent)
                     + (root.services.power.timeText ? " · " + root.services.power.timeText : "")
-                onClicked: popout.toggle("quick")
+                selected: popout.opened && popout.showingBattery
+                onClicked: popout.toggle("battery")
                 contentItem: Item {
                     implicitWidth: batteryRow.implicitWidth; implicitHeight: 14
                     Row {
@@ -337,6 +339,7 @@ PanelWindow {
         readonly property bool showingQuick: currentName === "quick"
         readonly property bool showingClipboard: currentName === "clipboard"
         readonly property bool showingNotifications: currentName === "notifications"
+        readonly property bool showingBattery: currentName === "battery"
         parentPanel: root
         reducedMotion: root.reducedMotion
         // Сетевая панель держит формы: щелчок в другом окне её не закрывает.
@@ -350,7 +353,7 @@ PanelWindow {
               : showingMenu ? Theme.screenMargin : Math.max(Theme.screenMargin, root.width - panelWidth - Theme.screenMargin)
         popupY: centered ? Math.round((root.screen ? root.screen.height : 800) * 0.19) : Theme.barHeight + Theme.popupGap
         panelWidth: showingMenu ? 248 : showingApplications ? Math.min(640, root.width - 24) : showingClipboard ? Math.min(600, root.width - 24)
-                  : Math.min(showingNetwork || showingNotifications ? 376 : 336, root.width - 12)
+                  : Math.min(showingNetwork || showingNotifications ? 376 : showingBattery ? 300 : 336, root.width - 12)
         panelHeight: showingMenu ? quietlineMenu.implicitHeight + 10
                    : showingApplications ? searchPanel.contentHeight
                    : showingClipboard ? clipboardPanel.contentHeight
@@ -405,6 +408,13 @@ PanelWindow {
                     visible: active
                     Layout.fillWidth: true
                     sourceComponent: Component { NetworkControls { network: root.network; compact: true } }
+                }
+                BatteryPanel {
+                    visible: popout.showingBattery
+                    Layout.fillWidth: true
+                    power: root.services.power
+                    reducedMotion: root.reducedMotion
+                    onSettingsRequested: { popout.close(); root.services.settings.open("power"); }
                 }
                 QuickSettings {
                     visible: popout.showingQuick

@@ -200,8 +200,9 @@ ColumnLayout {
             }
         }
     }
+    // Режим питания здесь — только без батареи: с батареей он в окне батареи на панели.
     Module {
-        visible: root.power.profilesAvailable
+        visible: root.power.profilesAvailable && !root.power.hasBattery
         Layout.fillWidth: true
         implicitHeight: 36
         SegmentedControl {

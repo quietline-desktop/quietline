@@ -481,7 +481,9 @@ var STRINGS = {
         appearancePending: "Сохранено; применится после перезагрузки конфигурации Hyprland или повторного входа",
         appearanceReadFailed: "Настройки оформления недоступны",
         appearanceSaveFailed: "Настройки оформления не сохранены",
-        darkModeButton: "Тёмная тема"
+        darkModeButton: "Тёмная тема",
+        batteryTitle: "Аккумулятор",
+        batterySettings: "Настройки питания…"
     }),
     en: withKeywords({
         clockTitle: "Time format",
@@ -932,7 +934,9 @@ var STRINGS = {
         appearancePending: "Saved; applies after the Hyprland configuration is reloaded or you sign in again",
         appearanceReadFailed: "Appearance settings are unavailable",
         appearanceSaveFailed: "Appearance settings not saved",
-        darkModeButton: "Dark mode"
+        darkModeButton: "Dark mode",
+        batteryTitle: "Battery",
+        batterySettings: "Power settings…"
     })
 };
 
