@@ -13,7 +13,7 @@
 - Видимый текст — в обеих таблицах `Strings.js`; кириллица в QML и `Models.js` запрещена тестом. Новые ключи добавляются, неиспользуемые — удаляются из обеих таблиц.
 - Комментарии — по-русски и только о текущем поведении. Папка — не больше восьми записей: `controls/` (7) делится, когда появляется девятая.
 - IPC `quietline` сохраняет все функции и сигнатуры (`launcher`, `showApplications`, `showSummary`, `clipboard`, `notifications`, `settings`, `confirmKill`, `focusDock`, `toggle`, `movePin`, `dnd`, `osd`, `status`); `status` может получать новые поля.
-- Проверки после каждой задачи: `node --test 'tests/shell/*.test.cjs'`, `uv run --python 3.14 pytest`; QML — живой запуск из репозитория: установленная оболочка останавливается (`pkill -x qs` по процессу `qs -c quietline`), `scripts/run-shell` в фоне, вызовы `qs -p shell/quietline ipc call quietline …`, снимок `grim`; по окончании — `qs -c quietline -d` возвращает установленную. Снимки сравниваются со сценами макета.
+- Проверки после каждой задачи: `node --test 'tests/shell/*.test.cjs'`, `uv run --python 3.14 pytest`; QML — живой запуск из репозитория: установленная оболочка останавливается (`pkill -fx 'qs -c quietline'`: экран блокировки — тоже процесс `qs`), `scripts/run-shell` в фоне, вызовы `qs -p shell/quietline ipc call quietline …`, снимок `grim`; по окончании — `qs -c quietline -d` возвращает установленную. Снимки сравниваются со сценами макета.
 - Коммит — на логический шаг; сообщения — по `AGENTS.md`.
 
 ## Review Focus
