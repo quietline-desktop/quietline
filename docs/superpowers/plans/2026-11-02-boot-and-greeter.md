@@ -42,7 +42,7 @@
 - [x] 3. `config/greeter/`: сценарий с запасным tuigreet, `hyprland.lua` (без логотипа, раскладки, `qs -p` и выход Hyprland), tmpfiles. Первая проверка — `qs -p Greeter.qml` в текущем сеансе: вне greetd (`Greetd.available` ложно) экран показывает форму и списки, а вход отвечает «экран входа запущен не из greetd». Полная проверка — после установки пакета.
 - [x] 4. Тема GRUB: шаблон, генератор PNG на стандартной библиотеке Python, шрифты `grub-mkfont` с кириллицей; PKGBUILD. Проверка — `scripts/preview-grub-theme`: `grub-mkstandalone` с темой во встроенном диске, запуск в QEMU с OVMF без доступа к настоящему загрузчику, снимок экрана монитора QEMU на 1920×1200.
 - [x] 5. Установщик: шаблон greetd, шаг темы GRUB (пропуск без GRUB, `GRUB_THEME`, `GRUB_TERMINAL_OUTPUT`, `grub-mkconfig`, возврат при ошибке), откат по журналу, тесты; `FORBIDDEN` не тронут.
-- [ ] 6. Документы и сценарий живой проверки `scripts/smoke-boot-greeter.md`, пункты в `docs/backlog.md`.
+- [x] 6. Документы и сценарий живой проверки `scripts/smoke-boot-greeter.md`, пункты в `docs/backlog.md`.
 - [ ] 7. Живая проверка на машине пользователя: пакет из клона (`./install.sh update`), перезагрузка — меню GRUB, экран входа, вход и хранилище паролей, выход из сеанса, запасной tuigreet.
 
 ## Review Focus

@@ -64,7 +64,7 @@
 - Шаг установщика «Тема меню загрузки»:
   - Пропускается, если GRUB не установлен или нет `/etc/default/grub`.
   - Сохраняет копию `/etc/default/grub` и задаёт `GRUB_THEME=/usr/share/quietline/grub/theme-<язык>.txt`. Язык берётся из экранов установщика.
-  - Комментирует действующую строку `GRUB_TERMINAL_OUTPUT`, если в ней нет `gfxterm`: с текстовым выводом тема не видна.
+  - Комментирует действующие строки `GRUB_TERMINAL_OUTPUT` и `GRUB_TERMINAL`, если в них нет `gfxterm`: с текстовым выводом тема не видна, а `GRUB_TERMINAL` задаёт и вывод.
   - Запускает `grub-mkconfig -o /boot/grub/grub.cfg`. При ошибке возвращает копию файла, ещё раз запускает `grub-mkconfig` и останавливается с понятным сообщением.
 - Откат по журналу возвращает `/etc/default/grub` из копии и снова запускает `grub-mkconfig`. Откат к снимку Btrfs возвращает всё сам: `/boot/grub/grub.cfg` лежит в `@`.
 
@@ -72,7 +72,7 @@
 
 - Шаг greetd пишет новый шаблон `/etc/greetd/config.toml` с `command = "quietline-greeter"`. Уже установленный файл Quietline с tuigreet заменяется (с копией), как любой чужой файл. Шаг выполнен, когда в файле есть `quietline-greeter` и служба включена.
 - Пакет добавляет: `/usr/bin/quietline-greeter`, `/usr/share/quietline/greeter/hyprland.lua`, `/usr/lib/tmpfiles.d/quietline-greeter.conf`, `/usr/share/quietline/grub/`. Корень `shell/quietline/Greeter.qml` уже попадает в `/usr/share/quietline/shell/`. В `makedepends` добавляется `grub` (`grub-mkfont`), в `depends` — `greetd` и `greetd-tuigreet` (запасной путь).
-- Файлы в репозитории: `config/greeter/` (сценарий запуска, конфигурация Hyprland, правило tmpfiles), `config/grub/` (шаблоны тем и генератор PNG на стандартной библиотеке Python), `shell/quietline/Greeter.qml` и `shell/quietline/greeter/`, `src/quietline_shell/greeter.py`.
+- Файлы в репозитории: `config/greeter/` (сценарий запуска, конфигурация Hyprland, правило tmpfiles), `config/grub/` (шаблоны тем и генератор PNG на стандартной библиотеке Python), `shell/quietline/Greeter.qml` и `shell/quietline/greeter/`, подкоманда `greeter` в `src/quietline_shell/session.py`.
 
 ## Что не входит
 
