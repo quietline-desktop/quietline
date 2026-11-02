@@ -58,7 +58,7 @@
 
 `applied` — `true`, только если все три шага вернули код 0; вне сеанса Hyprland шаги 2–3 пропускаются и `applied` — `false` (тема применится при входе: `quietline.lua` читает `appearance.lua` при загрузке, gsettings хранятся в dconf).
 
-**Оболочка.** Новый синглтон `Appearance.qml` (по образцу `Lang.qml`): читает `quietline-shell appearance` при старте, `update(changes)` пишет через `--set` и перечитывает. `Theme.qml` отдаёт токены по `Appearance.light` — все поверхности перекрашиваются сразу, с плавным переходом цвета `motionDuration` там, где он уже анимируется. Процесс экрана блокировки `Appearance` не читает.
+**Оболочка.** Новый синглтон `Appearance.qml` (по образцу `Lang.qml`): читает `quietline-shell appearance` при старте, `update(changes)` пишет через `--set` и перечитывает. `Theme.qml` отдаёт токены по `Appearance.light` — все поверхности перекрашиваются сразу, с плавным переходом цвета `motionDuration` там, где он уже анимируется. Экран блокировки берёт из `Theme` только шрифты и цвет выделения текста, его цвета от темы не зависят.
 
 **Hyprland.** `quietline.lua` читает `appearance.lua` так же, как `display.lua` (`pcall(dofile, …)`, проверка типов, без файла — тёмная тема) и выбирает таблицу цветов. `hl.env("XCURSOR_THEME", …)` в `hyprland.lua` после подключения Quietline по-прежнему главнее.
 
