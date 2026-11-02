@@ -12,9 +12,8 @@ Scope {
     property var devices: []
     property var profiles: []
     property var wifi: ({enabled: false})
-    // Сигнал активной точки Wi‑Fi 0–100 или `null`; подключён ли туннель VPN.
+    // Сигнал активной точки Wi‑Fi 0–100 или `null`.
     property var wifiSignal: null
-    property bool vpn: false
     property var networks: []
     property bool busy: false
     property bool scanning: false
@@ -146,7 +145,6 @@ Scope {
                 root.profiles = data.profiles || [];
                 root.wifi = data.wifi || {enabled: false};
                 root.wifiSignal = typeof data.wifiSignal === "number" ? data.wifiSignal : null;
-                root.vpn = data.vpn === true;
                 root.pending = Models.pendingFromStatus(data, root.pending);
                 if (hadDeadline && !root.pending) root.notice = Lang.s.networkConfirmExpired;
             }
