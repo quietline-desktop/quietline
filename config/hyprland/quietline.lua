@@ -33,16 +33,22 @@ if loaded and type(chosen) == "table"
 end
 hl.config({ input = { kb_layout = keyboard.kb_layout, kb_options = keyboard.kb_options } })
 
--- Оформление окон варианта B: скругление 10, тонкая светлая рамка, отступы 4/8. Тень мягкая
--- и почти равномерная со всех сторон (сдвиг вниз 3 px), у неактивного окна — вдвое слабее.
+-- Оформление окон варианта B: скругление 10, рамка 2 px — у активного окна синяя (акцент),
+-- у остальных едва заметная светлая; отступы 4/8. Тень мягкая и почти равномерная со всех
+-- сторон (сдвиг вниз 3 px), у неактивного окна — вдвое слабее.
 -- Размытие включено для полупрозрачных поверхностей оболочки (правило слоёв ниже); у окон
 -- приложений фон непрозрачный, им размытие не мешает.
 hl.config({
     general = {
-        border_size = 1,
+        border_size = 2,
         gaps_in = 4,
         gaps_out = 8,
-        col = { active_border = "rgba(ffffff29)", inactive_border = "rgba(ffffff14)" },
+        -- Размер окна меняется перетаскиванием рамки или угла мышью; захват — 15 px за рамкой,
+        -- над ней указатель показывает стрелку изменения размера.
+        resize_on_border = true,
+        extend_border_grab_area = 15,
+        hover_icon_on_border = true,
+        col = { active_border = "rgba(0a84ffd9)", inactive_border = "rgba(ffffff14)" },
     },
     decoration = {
         rounding = 10,
@@ -77,13 +83,11 @@ hl.layer_rule({
     no_anim = true,
 })
 
--- В «Тайлах» у окон нет заголовков и теней в колонках: активное окно выделено рамкой
--- акцента 2 px. Правило динамическое: плавающее окно возвращает обычную рамку и тень.
+-- В «Тайлах» у окон в колонках нет теней (и заголовков — правило hyprbars ниже). Правило
+-- динамическое: плавающее окно возвращает тень.
 hl.window_rule({
-    name = "quietline-tiled-border",
+    name = "quietline-tiled-no-shadow",
     match = { float = false },
-    border_size = 2,
-    border_color = "rgba(0a84ffd9) rgba(ffffff14)",
     no_shadow = true,
 })
 
