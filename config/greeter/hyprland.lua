@@ -20,7 +20,7 @@ hl.monitor({ output = "", mode = "preferred", position = "auto", scale = "auto" 
 
 local greeter = "qs -p /usr/share/quietline/shell/Greeter.qml"
 local fail = 'touch "$QUIETLINE_GREETER_FAILED"'
-local exit = [[hyprctl dispatch 'hl.dsp.exit()']]
+local exit = [[hyprctl dispatch "hl.dsp.exit()"]]
 
 hl.on("hyprland.start", function ()
     hl.exec_cmd("sh -c '" .. greeter .. " || " .. fail .. "; " .. exit .. "'")
