@@ -163,9 +163,11 @@ PanelWindow {
                 }
             }
             Item { Layout.fillWidth: true; Layout.minimumWidth: 0 }
-            // Правая часть — группы с зазором 8 px; внутри групп кнопки стоят вплотную.
+            // Правая часть — группы: режим окон | запущенные программы (трей) | системное (приватность,
+            // раскладка, сеть, VPN, Bluetooth, звук, батарея, режимы) | пункт управления и часы. Каждая группа,
+            // кроме первой, начинается разделителем и прячется вместе с ним.
             RowLayout {
-                spacing: 8
+                spacing: 0
                 // Режим активного пространства; меняется только после подтверждения движком.
                 RowLayout {
                     spacing: 0
@@ -194,6 +196,7 @@ PanelWindow {
                 }
                 RowLayout {
                     spacing: 0
+                    GroupDivider {}
                     visible: !root.compact && SystemTray.items.values.length > 0
                     Repeater {
                         model: SystemTray.items
@@ -231,6 +234,7 @@ PanelWindow {
                 }
                 RowLayout {
                     spacing: 0
+                    GroupDivider {}
                     // Приватность: оранжевая капсула, пока приложение пишет микрофон или идёт запись экрана.
                     Rectangle {
                         id: privacy
@@ -389,6 +393,7 @@ PanelWindow {
                 }
                 RowLayout {
                     spacing: 0
+                    GroupDivider {}
                     BarIcon {
                         id: details
                         symbol: "tune"
