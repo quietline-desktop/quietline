@@ -241,6 +241,13 @@ var STRINGS = {
         lockCheckFailed: "Ошибка проверки пароля",
         lockChecking: "Проверка…",
         lockPasswordLabel: "Пароль для разблокировки",
+        greeterNoGreetd: "Экран входа запущен не из greetd",
+        greeterNothingToStart: "Нет пользователя или сеанса для входа",
+        greeterNoUsers: "Нет пользователей",
+        greeterFailed: "Ошибка входа: {0}",
+        greeterChooseUser: "Выбрать пользователя",
+        greeterChooseSession: "Выбрать сеанс",
+        greeterPasswordLabel: "Пароль пользователя {0}",
 
         // История буфера
         clipboardTitle: "История буфера",
@@ -714,6 +721,13 @@ var STRINGS = {
         lockCheckFailed: "Password check failed",
         lockChecking: "Checking…",
         lockPasswordLabel: "Password to unlock",
+        greeterNoGreetd: "The login screen was not started by greetd",
+        greeterNothingToStart: "No user or session to sign in to",
+        greeterNoUsers: "No users",
+        greeterFailed: "Sign-in failed: {0}",
+        greeterChooseUser: "Choose a user",
+        greeterChooseSession: "Choose a session",
+        greeterPasswordLabel: "Password for {0}",
 
         // История буфера
         clipboardTitle: "Clipboard history",
