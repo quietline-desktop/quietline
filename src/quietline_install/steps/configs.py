@@ -18,7 +18,7 @@ SHELL_DIR = Path('/usr/share/quietline/shell')
 LOCALE_FISH = '/usr/share/quietline/fish/quietline-locale.fish'
 FNM_HOOK = 'fnm env --use-on-cd --shell fish | source'
 MICRO_SETTINGS = {'clipboard': 'external', 'mouse': True}
-GHOSTTY_THEME = 'theme = light:Apple System Colors Light,dark:Apple System Colors'
+GHOSTTY_THEME = 'theme = light:/usr/share/quietline/ghostty/quietline-light,dark:Apple System Colors'
 USER_DIRS = ('Desktop', 'Documents', 'Downloads', 'Music', 'Pictures', 'Public', 'Templates', 'Videos')
 REGION_DEFAULTS = {'ru': {'clock': '24h', 'date': 'dmy'}, 'en': {'clock': '12h', 'date': 'mdy'}}
 
@@ -132,7 +132,8 @@ def _ghostty_config(ctx: Ctx) -> Path:
 
 
 def ghostty_step() -> Step:
-    """Ghostty следует теме окружения: светлая и тёмная схема Apple System Colors по `color-scheme`.
+    """Ghostty следует теме окружения по `color-scheme`: светлая схема Quietline из пакета, тёмная —
+    Apple System Colors.
     Строка добавляется в конец файла, только если в нём нет своей `theme`; остальное не меняется."""
     def has_theme(ctx: Ctx) -> bool:
         path = _ghostty_config(ctx)

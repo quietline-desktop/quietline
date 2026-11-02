@@ -220,9 +220,10 @@ def test_pkgbuild_installs_expected_paths():
         assert f"'{package}'" in depends, package
     for target in ('/usr/share/quietline/shell', '/usr/share/quietline/hyprland/quietline.lua',
                    '/usr/share/quietline/fish/quietline-locale.fish',
-                   '/usr/share/polkit-1/rules.d/50-quietline-network.rules', '/usr/share/licenses/$pkgname/LICENSE'):
+                   '/usr/share/polkit-1/rules.d/50-quietline-network.rules', '/usr/share/licenses/$pkgname/LICENSE',
+                   '/usr/share/quietline/ghostty/quietline-light'):
         assert target in text, target
     assert 'git -C "$_repo" archive HEAD' in text
     for source in ('config/hyprland/quietline.lua', 'config/fish/quietline-locale.fish',
-                   'config/polkit/50-quietline-network.rules', 'shell/quietline/.'):
+                   'config/polkit/50-quietline-network.rules', 'config/ghostty/quietline-light', 'shell/quietline/.'):
         assert source in text and (REPO / source.rstrip('/.')).exists(), source

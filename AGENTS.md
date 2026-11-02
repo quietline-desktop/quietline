@@ -48,6 +48,7 @@ docs/superpowers/specs/   — спеки: что строим и почему
 docs/superpowers/plans/   — планы реализации по шагам
 config/hyprland/          — Lua-конфигурация Hyprland: раскладка, запуск сервиса и оболочки, клавиши, теги диалогов
 config/fish/              — `quietline-locale.fish`: сообщения программ в терминале fish остаются английскими
+config/ghostty/           — `quietline-light`: светлая схема Ghostty на сером фоне для светлой темы
 config/polkit/            — правило polkit для сетевых профилей и отката NetworkManager
 config/hypridle/          — `hypridle.conf`: блокировка, отключение экрана и сон по простою, блокировка перед сном
 config/fontconfig/        — `50-quietline-titlebar.conf`: шрифт заголовков окон «Quietline Titlebar» (Inter и значки Material Symbols)

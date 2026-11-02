@@ -1,0 +1,24 @@
+# Светлая схема Ghostty для Quietline: палитра Apple System Colors Light на сером фоне
+# заголовков окон светлой темы (#ececef) вместо белого.
+palette = 0=#1a1a1a
+palette = 1=#cc372e
+palette = 2=#26a439
+palette = 3=#b39500
+palette = 4=#0869cb
+palette = 5=#9647bf
+palette = 6=#3a8fb3
+palette = 7=#8a8a90
+palette = 8=#464646
+palette = 9=#ff453a
+palette = 10=#1f9e36
+palette = 11=#c9a400
+palette = 12=#0a84ff
+palette = 13=#bf5af2
+palette = 14=#2fa6d6
+palette = 15=#ffffff
+background = #ececef
+foreground = #1d1d1f
+cursor-color = #8a8a90
+cursor-text = #ffffff
+selection-background = #b9d4f5
+selection-foreground = #1d1d1f

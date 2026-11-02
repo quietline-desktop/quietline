@@ -209,7 +209,7 @@ def test_ghostty_gets_theme_pair_appended_and_keeps_user_settings(ctx):
     assert step.check(ctx) is False
     step.run(ctx)
     assert target.read_text() == (
-        '# my settings\nfont-size = 13\ntheme = light:Apple System Colors Light,dark:Apple System Colors\n')
+        '# my settings\nfont-size = 13\ntheme = light:/usr/share/quietline/ghostty/quietline-light,dark:Apple System Colors\n')
     assert step.check(ctx) is True
 
 
@@ -225,7 +225,7 @@ def test_ghostty_config_is_created_when_missing(ctx):
     assert step.check(ctx) is False
     step.run(ctx)
     assert config(ctx, 'ghostty/config.ghostty').read_text() == (
-        'theme = light:Apple System Colors Light,dark:Apple System Colors\n')
+        'theme = light:/usr/share/quietline/ghostty/quietline-light,dark:Apple System Colors\n')
     assert not config(ctx, 'ghostty/config').exists()
 
 
