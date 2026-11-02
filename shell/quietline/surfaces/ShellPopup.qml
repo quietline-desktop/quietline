@@ -88,7 +88,8 @@ PanelWindow {
     HyprlandFocusGrab {
         windows: [root]
         active: root.visible && !root.persistent
-        onCleared: root.close()
+        // Перехват снимается и тогда, когда окно само становится `persistent`: закрывает только щелчок снаружи.
+        onCleared: { if (!root.persistent) root.close(); }
     },
     RectangularShadow {
         anchors.fill: frame
