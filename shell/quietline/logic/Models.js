@@ -895,3 +895,57 @@ function monthGrid(year, month, firstDay, today) {
     }
     return cells;
 }
+
+// Значок Wi‑Fi панели: дуги по сигналу активной точки, как в списке сетей; без данных о сигнале — `wifi`.
+function barWifiSymbol(signal) {
+    return signal === null || signal === undefined ? "wifi" : wifiSymbol(signal);
+}
+
+// Значок громкости панели: выключен, ноль, до 50 %, громче.
+function volumeSymbol(volume, muted) {
+    if (muted) return "volume_off";
+    if (!(volume > 0.005)) return "volume_mute";
+    return volume < 0.5 ? "volume_down" : "volume_up";
+}
+
+// Пространство для колеса мыши над номерами панели: следующее (`direction` > 0) или предыдущее
+// после активного среди своих пространств монитора, без перехода по кругу; перенесённые с другого
+// монитора пропускаются. Нет такого — `null`.
+function wheelWorkspace(items, direction) {
+    var own = (items || []).filter(function(item) { return !item.migrated; });
+    var index = own.findIndex(function(item) { return item.active; });
+    if (index < 0) return null;
+    return own[index + (direction > 0 ? 1 : -1)] || null;
+}
+
+// Номера для «На пространство» меню окна: 1…N, где N — наибольший номер своего пространства
+// монитора + 1, но не больше 10.
+function moveTargets(items) {
+    var top = 0;
+    (items || []).forEach(function(item) { if (!item.migrated && item.number > top) top = item.number; });
+    var result = [];
+    for (var number = 1; number <= Math.min(10, top + 1); number++) result.push(number);
+    return result;
+}
+
+// Уровень заряда для заливки батареи: `critical` — 10 % и ниже, `low` — 20 % и ниже, при зарядке
+// и выше — `normal`.
+function batteryLevel(percent, charging) {
+    if (charging) return "normal";
+    if (percent <= 10) return "critical";
+    return percent <= 20 ? "low" : "normal";
+}
+
+// Приложения, записывающие микрофон, по свойствам входных аудиопотоков Pipewire: `application.name`
+// (иначе `node.name`) без повторов; потоки самой оболочки (Quickshell) не считаются.
+function micUsers(streams) {
+    var names = [];
+    (streams || []).forEach(function(props) {
+        if (!props) return;
+        var name = String(props["application.name"] || props["node.name"] || "");
+        var binary = String(props["application.process.binary"] || "").toLowerCase();
+        if (!name || /^quickshell$/i.test(name) || binary === "quickshell" || binary === "qs") return;
+        if (names.indexOf(name) < 0) names.push(name);
+    });
+    return names;
+}
