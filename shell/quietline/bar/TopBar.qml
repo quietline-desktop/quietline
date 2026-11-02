@@ -15,9 +15,11 @@ import "../search"
 import "../notifications"
 import "../logic/Models.js" as Models
 
-// Верхняя панель экрана, 30 px вплотную к краю: слева меню Quietline, активное приложение и
-// пространства; справа режим «Окна / Тайлы», трей, раскладка, сеть, Bluetooth, батарея (открывает
-// окно батареи с режимом питания), пункт управления и дата со временем (открывает центр уведомлений).
+// Верхняя панель экрана, 30 px вплотную к краю: слева меню Quietline, активное приложение (меню
+// окна) и пространства (колесо мыши листает их); справа группами — режим «Окна / Тайлы»; трей;
+// приватность (микрофон, запись экрана), раскладка, сеть и VPN, Bluetooth, звук (колесо —
+// громкость), батарея, «Не засыпать», «Не беспокоить»; пункт управления и дата со временем.
+// Значки состояния открывают свои окна: сеть, Bluetooth, звук, батарея.
 PanelWindow {
     id: root
     required property var engine
@@ -41,6 +43,21 @@ PanelWindow {
     readonly property var buttons: engine.ready ? Models.barWorkspaces(Models.workspaceItems(engine.state, monitorName, Lang.s)) : []
     readonly property var buttonsByKey: Models.keyed(buttons, Models.workspaceKey)
     readonly property string activeApp: Models.activeAppName(desktop.windows, monitorName, desktop.entries)
+    readonly property var activeWindow: desktop.windows.find(window => window.monitor === monitorName && window.activated) || null
+    readonly property var audio: services.audio
+    readonly property var power: services.power
+    readonly property string batteryLevel: Models.batteryLevel(power.percent, power.charging)
+    // Меню окна берёт окно и номера при открытии: фокус меню не меняет цель.
+    function openWindowMenu() {
+        if (popout.opened && popout.showingWindow) { popout.close(); return; }
+        if (!activeWindow) return;
+        windowMenu.window = activeWindow;
+        windowMenu.appName = activeApp;
+        windowMenu.targets = Models.moveTargets(buttons);
+        windowMenu.currentNumber = workspace ? workspace.number : 0;
+        popout.windowX = appButton.mapToItem(bar, 0, 0).x;
+        popout.open("window");
+    }
     readonly property string errorText: engine.message || desktop.errorMessage
     readonly property string message: errorText || desktop.notice
     anchors { top: true; left: true; right: true }
@@ -100,20 +117,28 @@ PanelWindow {
                     }
                 }
             }
-            Text {
-                renderType: Text.CurveRendering
+            ShellButton {
+                id: appButton
                 visible: !root.narrow && root.activeApp.length > 0
                 Layout.maximumWidth: Math.max(0, root.width * 0.22)
-                leftPadding: 6; rightPadding: 6
+                implicitHeight: Theme.barItemHeight
                 text: root.activeApp
-                color: Theme.text
-                font.family: Theme.sans; font.pixelSize: Theme.fontSize; font.weight: Font.Bold
-                elide: Text.ElideRight
+                hint: Lang.s.barWindowMenuHint
+                font.weight: Font.Bold
+                selected: popout.opened && popout.showingWindow
+                onClicked: root.openWindowMenu()
                 Accessible.name: root.activeApp
             }
             Row {
                 Layout.leftMargin: 4
                 spacing: 2
+                WheelSteps {
+                    onStep: direction => {
+                        if (!root.engine.ready || root.engine.busy) return;
+                        var target = Models.wheelWorkspace(root.buttons, direction);
+                        if (target) root.engine.switchWorkspace(target.number, target.monitor);
+                    }
+                }
                 Repeater {
                     model: ScriptModel { values: root.buttons.map(Models.workspaceKey) }
                     delegate: ShellButton {
@@ -138,192 +163,256 @@ PanelWindow {
                 }
             }
             Item { Layout.fillWidth: true; Layout.minimumWidth: 0 }
-            // Режим активного пространства; меняется только после подтверждения движком.
-            SegmentedControl {
-                id: modeControl
-                Layout.rightMargin: 6
-                visible: root.engine.ready && !!root.workspace
-                model: [{symbol: "filter_none", hint: Lang.f(Lang.s.barModeHint, Lang.s.modeWindows)},
-                        {symbol: "view_week", hint: Lang.f(Lang.s.barModeHint, Lang.s.modeTiles)}]
-                currentIndex: root.workspace && root.workspace.mode === "tiles" ? 1 : 0
-                reducedMotion: root.reducedMotion
-                enabled: root.engine.ready && !!root.monitor && !root.engine.busy
-                busy: root.engine.busy && root.engine.pendingMonitor === (root.monitor ? root.monitor.key : "")
-                Accessible.name: Lang.f(Lang.s.barModeHint, root.modeLabel)
-                onActivated: index => {
-                    if (index !== currentIndex) root.engine.toggle(root.monitor.key);
-                }
-            }
-            ShellButton {
-                visible: !root.engine.ready
-                implicitHeight: Theme.barItemHeight
-                text: Lang.s.barNoConnection
-                hint: Lang.s.barEngineUnavailable
-                foreground: Theme.text2
-                onClicked: root.engine.retry()
-            }
-            Row {
-                visible: !root.compact
-                spacing: 0
-                Repeater {
-                    model: SystemTray.items
-                    delegate: ShellButton {
-                        required property var modelData
-                        hint: modelData.tooltipTitle || modelData.title || modelData.id
-                        implicitHeight: Theme.barItemHeight; implicitWidth: 28
-                        function showMenu() {
-                            var point = mapToItem(root.contentItem, 0, height);
-                            modelData.display(root, point.x, point.y);
-                        }
-                        onClicked: {
-                            if (modelData.onlyMenu) showMenu();
-                            else modelData.activate();
-                        }
-                        // Значки трея обесцвечены и приведены к тону текста панели: в тёмной теме
-                        // слегка осветлены, в светлой затемнены почти до чёрного; детали сохраняются.
-                        Image {
-                            id: trayIcon
-                            anchors.centerIn: parent
-                            width: 16; height: 16
-                            source: parent.modelData.icon
-                            sourceSize.width: 32; sourceSize.height: 32
-                            visible: false
-                        }
-                        MultiEffect {
-                            anchors.fill: trayIcon
-                            source: trayIcon
-                            saturation: -1
-                            brightness: Theme.light ? -0.8 : 0.15
-                            opacity: 0.9
-                        }
-                        TapHandler { acceptedButtons: Qt.RightButton; onTapped: parent.showMenu() }
-                    }
-                }
-            }
-            ShellButton {
-                implicitHeight: Theme.barItemHeight
-                hint: (root.desktop.keyboardLayoutName ? root.desktop.keyboardLayoutName + " · " : "") + Lang.f(Lang.s.barLayoutHint, Models.toggleLabel(Lang.toggle, Lang.s))
-                Accessible.name: root.desktop.keyboardLayout
-                onClicked: root.desktop.switchLayout()
-                contentItem: Item {
-                    implicitWidth: layoutBadge.width; implicitHeight: layoutBadge.height
-                    Rectangle {
-                        id: layoutBadge
-                        anchors.centerIn: parent
-                        width: layoutText.implicitWidth + 8; height: 16
-                        radius: 4
-                        color: "transparent"
-                        border.width: 1.5; border.color: Theme.text
-                        // Заглавные Inter стоят выше середины строки: подпись опущена до центра рамки.
-                        Text {
-                            renderType: Text.CurveRendering
-                            id: layoutText
-                            anchors.centerIn: parent
-                            anchors.verticalCenterOffset: 0.75
-                            text: root.desktop.keyboardLayout
-                            color: Theme.text
-                            font.family: Theme.sans; font.pixelSize: 10; font.weight: Font.Bold
+            // Правая часть — группы с зазором 8 px; внутри групп кнопки стоят вплотную.
+            RowLayout {
+                spacing: 8
+                // Режим активного пространства; меняется только после подтверждения движком.
+                RowLayout {
+                    spacing: 0
+                    SegmentedControl {
+                        id: modeControl
+                        visible: root.engine.ready && !!root.workspace
+                        model: [{symbol: "filter_none", hint: Lang.f(Lang.s.barModeHint, Lang.s.modeWindows)},
+                                {symbol: "view_week", hint: Lang.f(Lang.s.barModeHint, Lang.s.modeTiles)}]
+                        currentIndex: root.workspace && root.workspace.mode === "tiles" ? 1 : 0
+                        reducedMotion: root.reducedMotion
+                        enabled: root.engine.ready && !!root.monitor && !root.engine.busy
+                        busy: root.engine.busy && root.engine.pendingMonitor === (root.monitor ? root.monitor.key : "")
+                        Accessible.name: Lang.f(Lang.s.barModeHint, root.modeLabel)
+                        onActivated: index => {
+                            if (index !== currentIndex) root.engine.toggle(root.monitor.key);
                         }
                     }
+                    ShellButton {
+                        visible: !root.engine.ready
+                        implicitHeight: Theme.barItemHeight
+                        text: Lang.s.barNoConnection
+                        hint: Lang.s.barEngineUnavailable
+                        foreground: Theme.text2
+                        onClicked: root.engine.retry()
+                    }
                 }
-            }
-            ShellButton {
-                id: networkButton
-                implicitHeight: Theme.barItemHeight
-                symbol: root.network.wifiConnected ? "wifi" : root.network.connected ? "lan" : "wifi_off"
-                hint: Lang.f(Lang.s.barNetworkHint, root.network.summary)
-                selected: popout.opened && popout.showingNetwork
-                onClicked: popout.toggle("network")
-            }
-            ShellButton {
-                visible: root.services.bluetooth.available && root.services.bluetooth.enabled && !root.narrow
-                implicitHeight: Theme.barItemHeight
-                symbol: "bluetooth"
-                hint: Lang.s.barBluetoothOn
-                onClicked: popout.toggle("quick")
-            }
-            // Батарея: ячейка с заливкой по проценту, молния — при зарядке.
-            ShellButton {
-                visible: root.services.power.hasBattery
-                implicitHeight: Theme.barItemHeight
-                hint: Lang.f(root.services.power.charging ? Lang.s.barBatteryChargingName : Lang.s.barBatteryName, root.services.power.percent)
-                    + (root.services.power.timeText ? " · " + root.services.power.timeText : "")
-                selected: popout.opened && popout.showingBattery
-                onClicked: popout.toggle("battery")
-                contentItem: Item {
-                    implicitWidth: batteryRow.implicitWidth; implicitHeight: 14
-                    Row {
-                        id: batteryRow
-                        anchors.centerIn: parent
-                        spacing: 1
-                        Rectangle {
-                            id: batteryCell
-                            anchors.verticalCenter: parent.verticalCenter
-                            width: 25; height: 12; radius: 3.5
-                            color: "transparent"
-                            border.width: 1.2; border.color: Theme.batteryOutline
-                            Rectangle {
-                                x: 2; y: 2
-                                height: parent.height - 4
-                                width: Math.max(2, (parent.width - 4) * root.services.power.percent / 100)
-                                radius: 1.5
-                                color: root.services.power.percent <= 10 && !root.services.power.charging ? Theme.danger : Theme.text
+                RowLayout {
+                    spacing: 0
+                    visible: !root.compact && SystemTray.items.values.length > 0
+                    Repeater {
+                        model: SystemTray.items
+                        delegate: BarIcon {
+                            required property var modelData
+                            hint: modelData.tooltipTitle || modelData.title || modelData.id
+                            function showMenu() {
+                                var point = mapToItem(root.contentItem, 0, height);
+                                modelData.display(root, point.x, point.y);
                             }
-                            // При зарядке молния — внутри ячейки, тёмная на светлой заливке.
-                            Icon {
-                                visible: root.services.power.charging
+                            onClicked: {
+                                if (modelData.onlyMenu) showMenu();
+                                else modelData.activate();
+                            }
+                            // Значки трея обесцвечены и приведены к тону текста панели: в тёмной теме
+                            // слегка осветлены, в светлой затемнены почти до чёрного; детали сохраняются.
+                            Image {
+                                id: trayIcon
                                 anchors.centerIn: parent
-                                name: "bolt"; filled: true; weight: 600; size: 12
-                                color: root.services.power.percent > 45 ? Theme.textInverse : Theme.text
+                                width: 16; height: 16
+                                source: parent.modelData.icon
+                                sourceSize.width: 32; sourceSize.height: 32
+                                visible: false
                             }
-                        }
-                        Rectangle {
-                            anchors.verticalCenter: parent.verticalCenter
-                            width: 1.5; height: 4; radius: 1
-                            color: Theme.batteryOutline
+                            MultiEffect {
+                                anchors.fill: trayIcon
+                                source: trayIcon
+                                saturation: -1
+                                brightness: Theme.light ? -0.8 : 0.15
+                                opacity: 0.9
+                            }
+                            TapHandler { acceptedButtons: Qt.RightButton; onTapped: parent.showMenu() }
                         }
                     }
                 }
-            }
-            // «Не засыпать» включено: нажатие выключает режим.
-            ShellButton {
-                visible: root.services.keepAwake.active
-                implicitHeight: Theme.barItemHeight
-                symbol: "coffee"
-                hint: Lang.s.barKeepAwakeOn
-                onClicked: root.services.keepAwake.active = false
-            }
-            // «Не беспокоить» включено: нажатие выключает режим.
-            ShellButton {
-                visible: root.services.notifications.dnd
-                implicitHeight: Theme.barItemHeight
-                symbol: "do_not_disturb_on"
-                hint: Lang.s.barDndOn
-                onClicked: root.services.notifications.setDnd(false)
-            }
-            ShellButton {
-                id: details
-                implicitHeight: Theme.barItemHeight
-                symbol: "tune"
-                hint: Lang.s.quickSettingsTitle
-                selected: popout.opened && popout.showingQuick
-                onClicked: popout.toggle("quick")
-            }
-            // Дата и время открывают центр уведомлений; точка — есть непрочитанные.
-            ShellButton {
-                id: clockButton
-                implicitHeight: Theme.barItemHeight
-                text: root.tiny ? Lang.time(clock.date) : Lang.barClock(clock.date)
-                hint: Lang.longDate(clock.date) + (root.services.notifications.unread > 0
-                      ? " · " + Lang.f(Lang.s.barNotificationsUnread, root.services.notifications.unread) : "")
-                Accessible.name: Lang.longDate(clock.date) + ", " + Lang.time(clock.date)
-                selected: popout.opened && popout.showingNotifications
-                onClicked: popout.toggle("notifications")
-                Rectangle {
-                    visible: root.services.notifications.unread > 0
-                    width: 6; height: 6; radius: 3
-                    color: Theme.accent
-                    anchors { top: parent.top; right: parent.right; topMargin: 2; rightMargin: 1 }
+                RowLayout {
+                    spacing: 0
+                    // Приватность: оранжевая капсула, пока приложение пишет микрофон или идёт запись экрана.
+                    Rectangle {
+                        id: privacy
+                        readonly property var micUsers: root.audio.micUsers
+                        readonly property bool screen: root.desktop.screencast
+                        visible: micUsers.length > 0 || screen
+                        Layout.leftMargin: 4; Layout.rightMargin: 4
+                        implicitWidth: privacyRow.implicitWidth + 10; implicitHeight: 18
+                        radius: 9
+                        color: Theme.warning
+                        Row {
+                            id: privacyRow
+                            anchors.centerIn: parent
+                            spacing: 2
+                            Icon { visible: privacy.micUsers.length > 0; name: "mic"; filled: true; size: 13; color: Theme.accentForeground }
+                            Icon { visible: privacy.screen; name: "screen_share"; filled: true; size: 13; color: Theme.accentForeground }
+                        }
+                        HoverHandler {
+                            onHoveredChanged: {
+                                var text = [privacy.micUsers.length > 0 ? Lang.f(Lang.s.barPrivacyMic, privacy.micUsers.join(", ")) : "",
+                                            privacy.screen ? Lang.s.barPrivacyScreen : ""].filter(Boolean).join(" · ");
+                                if (hovered) root.hints.show(privacy, text, true);
+                                else root.hints.hide(privacy);
+                            }
+                        }
+                        Accessible.role: Accessible.StaticText
+                        Accessible.name: Lang.s.barPrivacyScreen
+                    }
+                    ShellButton {
+                        implicitHeight: Theme.barItemHeight
+                        hint: (root.desktop.keyboardLayoutName ? root.desktop.keyboardLayoutName + " · " : "") + Lang.f(Lang.s.barLayoutHint, Models.toggleLabel(Lang.toggle, Lang.s))
+                        Accessible.name: root.desktop.keyboardLayout
+                        onClicked: root.desktop.switchLayout()
+                        contentItem: Item {
+                            implicitWidth: layoutBadge.width + 4; implicitHeight: layoutBadge.height
+                            Rectangle {
+                                id: layoutBadge
+                                anchors.centerIn: parent
+                                width: layoutText.implicitWidth + 8; height: 16
+                                radius: 4
+                                color: "transparent"
+                                border.width: 1.5; border.color: Theme.text
+                                // Заглавные Inter стоят выше середины строки: подпись опущена до центра рамки.
+                                Text {
+                                    renderType: Text.CurveRendering
+                                    id: layoutText
+                                    anchors.centerIn: parent
+                                    anchors.verticalCenterOffset: 0.75
+                                    text: root.desktop.keyboardLayout
+                                    color: Theme.text
+                                    font.family: Theme.sans; font.pixelSize: 10; font.weight: Font.Bold
+                                }
+                            }
+                        }
+                    }
+                    BarIcon {
+                        id: networkButton
+                        symbol: root.network.wifiConnected ? Models.barWifiSymbol(root.network.wifiSignal) : root.network.connected ? "lan" : "wifi_off"
+                        hint: Lang.f(Lang.s.barNetworkHint, root.network.summary)
+                        selected: popout.opened && popout.showingNetwork
+                        onClicked: popout.toggle("network")
+                    }
+                    BarIcon {
+                        visible: root.network.vpn && !root.narrow
+                        symbol: "vpn_key"
+                        hint: Lang.s.barVpnOn
+                        onClicked: popout.toggle("network")
+                    }
+                    BarIcon {
+                        visible: root.services.bluetooth.available && root.services.bluetooth.enabled && !root.narrow
+                        symbol: root.services.bluetooth.connected.length > 0 ? "bluetooth_connected" : "bluetooth"
+                        hint: root.services.bluetooth.connected.length > 0
+                            ? Lang.f(Lang.s.barBluetoothConnected, root.services.bluetooth.connected.map(device => root.services.bluetooth.label(device)).join(", "))
+                            : Lang.s.barBluetoothOn
+                        selected: popout.opened && popout.showingBluetooth
+                        onClicked: popout.toggle("bluetooth")
+                    }
+                    // Звук: колесо — громкость по 5 %, средняя кнопка — без звука, щелчок — окно звука.
+                    BarIcon {
+                        visible: root.audio.available && !root.narrow
+                        readonly property var sinkAudio: root.audio.available ? root.audio.sink.audio : null
+                        symbol: sinkAudio ? Models.volumeSymbol(sinkAudio.volume, sinkAudio.muted) : "volume_up"
+                        hint: sinkAudio && sinkAudio.muted ? Lang.s.barSoundMuted : Lang.f(Lang.s.barSoundHint, Math.round((sinkAudio ? sinkAudio.volume : 0) * 100))
+                        selected: popout.opened && popout.showingSound
+                        onClicked: popout.toggle("sound")
+                        TapHandler { acceptedButtons: Qt.MiddleButton; onTapped: root.audio.toggleMute() }
+                        WheelSteps { onStep: direction => root.audio.stepVolume(-direction * 0.05) }
+                    }
+                    // Батарея: ячейка с заливкой по проценту (оранжевая при 20 % и ниже, красная при 10 %),
+                    // молния — при зарядке, процент рядом — по настройке «Оформления».
+                    ShellButton {
+                        visible: root.power.hasBattery
+                        implicitHeight: Theme.barItemHeight
+                        hint: Lang.f(root.power.charging ? Lang.s.barBatteryChargingName : Lang.s.barBatteryName, root.power.percent)
+                            + (root.power.timeText ? " · " + root.power.timeText : "")
+                        selected: popout.opened && popout.showingBattery
+                        onClicked: popout.toggle("battery")
+                        contentItem: Item {
+                            implicitWidth: batteryRow.implicitWidth + 4; implicitHeight: 14
+                            Row {
+                                id: batteryRow
+                                anchors.centerIn: parent
+                                spacing: 1
+                                Text {
+                                    renderType: Text.CurveRendering
+                                    visible: Appearance.batteryPercent
+                                    anchors.verticalCenter: parent.verticalCenter
+                                    rightPadding: 4
+                                    text: root.power.percent + "%"
+                                    color: Theme.text
+                                    font.family: Theme.sans; font.pixelSize: Theme.smallFontSize; font.weight: Font.Medium
+                                    font.features: { "tnum": 1 }
+                                }
+                                Rectangle {
+                                    anchors.verticalCenter: parent.verticalCenter
+                                    width: 25; height: 12; radius: 3.5
+                                    color: "transparent"
+                                    border.width: 1.2; border.color: Theme.batteryOutline
+                                    Rectangle {
+                                        x: 2; y: 2
+                                        height: parent.height - 4
+                                        width: Math.max(2, (parent.width - 4) * root.power.percent / 100)
+                                        radius: 1.5
+                                        color: root.batteryLevel === "critical" ? Theme.danger : root.batteryLevel === "low" ? Theme.warning : Theme.text
+                                    }
+                                    // При зарядке молния — внутри ячейки, контрастная заливке.
+                                    Icon {
+                                        visible: root.power.charging
+                                        anchors.centerIn: parent
+                                        name: "bolt"; filled: true; weight: 600; size: 12
+                                        color: root.power.percent > 45 ? Theme.textInverse : Theme.text
+                                    }
+                                }
+                                Rectangle {
+                                    anchors.verticalCenter: parent.verticalCenter
+                                    width: 1.5; height: 4; radius: 1
+                                    color: Theme.batteryOutline
+                                }
+                            }
+                        }
+                    }
+                    // «Не засыпать» включено: нажатие выключает режим.
+                    BarIcon {
+                        visible: root.services.keepAwake.active
+                        symbol: "coffee"
+                        hint: Lang.s.barKeepAwakeOn
+                        onClicked: root.services.keepAwake.active = false
+                    }
+                    // «Не беспокоить» включено: нажатие выключает режим.
+                    BarIcon {
+                        visible: root.services.notifications.dnd
+                        symbol: "do_not_disturb_on"
+                        hint: Lang.s.barDndOn
+                        onClicked: root.services.notifications.setDnd(false)
+                    }
+                }
+                RowLayout {
+                    spacing: 0
+                    BarIcon {
+                        id: details
+                        symbol: "tune"
+                        hint: Lang.s.quickSettingsTitle
+                        selected: popout.opened && popout.showingQuick
+                        onClicked: popout.toggle("quick")
+                    }
+                    // Дата и время открывают центр уведомлений; точка — есть непрочитанные.
+                    ShellButton {
+                        id: clockButton
+                        implicitHeight: Theme.barItemHeight
+                        text: root.tiny ? Lang.time(clock.date) : Lang.barClock(clock.date)
+                        hint: Lang.longDate(clock.date) + (root.services.notifications.unread > 0
+                              ? " · " + Lang.f(Lang.s.barNotificationsUnread, root.services.notifications.unread) : "")
+                        Accessible.name: Lang.longDate(clock.date) + ", " + Lang.time(clock.date)
+                        selected: popout.opened && popout.showingNotifications
+                        onClicked: popout.toggle("notifications")
+                        Rectangle {
+                            visible: root.services.notifications.unread > 0
+                            width: 6; height: 6; radius: 3
+                            color: Theme.accent
+                            anchors { top: parent.top; right: parent.right; topMargin: 2; rightMargin: 1 }
+                        }
+                    }
                 }
             }
         }
@@ -340,25 +429,33 @@ PanelWindow {
         readonly property bool showingClipboard: currentName === "clipboard"
         readonly property bool showingNotifications: currentName === "notifications"
         readonly property bool showingBattery: currentName === "battery"
+        readonly property bool showingBluetooth: currentName === "bluetooth"
+        readonly property bool showingSound: currentName === "sound"
+        readonly property bool showingWindow: currentName === "window"
+        // Левый край меню окна — под названием приложения; задаётся при открытии.
+        property real windowX: Theme.screenMargin
         parentPanel: root
         reducedMotion: root.reducedMotion
         // Сетевая панель держит формы: щелчок в другом окне её не закрывает.
         persistent: showingNetwork
         // Поиск и буфер — окна по центру экрана; остальное выпадает из панели.
         readonly property bool centered: showingApplications || showingClipboard
-        padding: showingMenu ? 5 : centered ? 0 : 10
+        padding: showingMenu || showingWindow ? 5 : centered ? 0 : 10
         radius: centered ? Theme.radiusLarge : Theme.radiusPopup
         surfaceColor: centered ? Theme.solidSurface : Theme.popupSurface
         popupX: centered ? Math.round((root.width - panelWidth) / 2)
-              : showingMenu ? Theme.screenMargin : Math.max(Theme.screenMargin, root.width - panelWidth - Theme.screenMargin)
+              : showingMenu ? Theme.screenMargin
+              : showingWindow ? Math.max(Theme.screenMargin, Math.min(windowX, root.width - panelWidth - Theme.screenMargin))
+              : Math.max(Theme.screenMargin, root.width - panelWidth - Theme.screenMargin)
         popupY: centered ? Math.round((root.screen ? root.screen.height : 800) * 0.19) : Theme.barHeight + Theme.popupGap
-        panelWidth: showingMenu ? 248 : showingApplications ? Math.min(640, root.width - 24) : showingClipboard ? Math.min(600, root.width - 24)
+        panelWidth: showingMenu || showingWindow ? 248 : showingApplications ? Math.min(640, root.width - 24) : showingClipboard ? Math.min(600, root.width - 24)
                   : Math.min(showingNetwork || showingNotifications ? 376 : showingBattery ? 300 : 336, root.width - 12)
         panelHeight: showingMenu ? quietlineMenu.implicitHeight + 10
+                   : showingWindow ? windowMenu.implicitHeight + 10
                    : showingApplications ? searchPanel.contentHeight
                    : showingClipboard ? clipboardPanel.contentHeight
                    : Math.min(content.implicitHeight + 20, root.screen ? root.screen.height - 80 : 500)
-        onPresented: { if (showingApplications) searchPanel.reset(); else if (showingClipboard) clipboardPanel.reset(); else if (showingMenu) quietlineMenu.takeFocus(); else if (showingNotifications) notificationCenter.reset(); }
+        onPresented: { if (showingApplications) searchPanel.reset(); else if (showingClipboard) clipboardPanel.reset(); else if (showingMenu) quietlineMenu.takeFocus(); else if (showingWindow) windowMenu.takeFocus(); else if (showingNotifications) notificationCenter.reset(); }
         onDismissed: searchPanel.reset()
         QuietlineMenu {
             id: quietlineMenu
@@ -367,6 +464,14 @@ PanelWindow {
             services: root.services
             onDone: popout.close()
             onSessionRequested: action => root.openSession(action)
+        }
+        WindowMenu {
+            id: windowMenu
+            visible: popout.showingWindow
+            width: parent.width
+            desktop: root.desktop
+            engine: root.engine
+            onDone: popout.close()
         }
         SearchPanel {
             id: searchPanel
@@ -389,7 +494,7 @@ PanelWindow {
         }
         ScrollView {
             id: summaryScroll
-            visible: !popout.showingApplications && !popout.showingMenu && !popout.showingClipboard
+            visible: !popout.showingApplications && !popout.showingMenu && !popout.showingClipboard && !popout.showingWindow
             anchors.fill: parent
             rightPadding: ScrollBar.vertical.visible ? ScrollBar.vertical.width + 4 : 0
             ScrollBar.vertical: ShellScrollBar {}
@@ -409,10 +514,24 @@ PanelWindow {
                     Layout.fillWidth: true
                     sourceComponent: Component { NetworkControls { network: root.network; compact: true } }
                 }
+                Text { renderType: Text.CurveRendering; visible: popout.showingBluetooth; text: "Bluetooth"; color: Theme.text; font.family: Theme.sans; font.pixelSize: Theme.titleFontSize; font.weight: Font.Bold }
+                Loader {
+                    active: popout.showingBluetooth && popout.opened
+                    visible: active
+                    Layout.fillWidth: true
+                    sourceComponent: Component { BluetoothControls { bluetooth: root.services.bluetooth } }
+                }
+                Text { renderType: Text.CurveRendering; visible: popout.showingSound; text: Lang.s.quickSound; color: Theme.text; font.family: Theme.sans; font.pixelSize: Theme.titleFontSize; font.weight: Font.Bold }
+                Loader {
+                    active: popout.showingSound && popout.opened
+                    visible: active
+                    Layout.fillWidth: true
+                    sourceComponent: Component { AudioControls { audio: root.services.audio } }
+                }
                 BatteryPanel {
                     visible: popout.showingBattery
                     Layout.fillWidth: true
-                    power: root.services.power
+                    power: root.power
                     reducedMotion: root.reducedMotion
                     onSettingsRequested: { popout.close(); root.services.settings.open("power"); }
                 }

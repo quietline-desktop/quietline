@@ -3,7 +3,8 @@ import Quickshell
 import Quickshell.Services.Pipewire
 import "../logic/Models.js" as Models
 
-// Звук PipeWire: выход и микрофон по умолчанию, громкость до 150 %, выбор выхода.
+// Звук PipeWire: выход и микрофон по умолчанию, громкость до 150 %, выбор выхода, приложения,
+// которые сейчас записывают микрофон (`micUsers`).
 Scope {
     id: root
     readonly property var sink: Pipewire.defaultAudioSink
@@ -19,7 +20,18 @@ Scope {
     function toggleMute() { if (available) { markLocal(); sink.audio.muted = !sink.audio.muted; } }
     function setMicVolume(value) { if (micAvailable) { markLocal(); source.audio.volume = Models.clampVolume(value); } }
     function toggleMicMute() { if (micAvailable) { markLocal(); source.audio.muted = !source.audio.muted; } }
+    // Шаг громкости колесом мыши на панели: выше 100 % колесо не поднимает (ползунок — до 150 %);
+    // индикатор показывает новое значение.
+    function stepVolume(delta) {
+        if (!available) return;
+        var current = sink.audio.volume;
+        sink.audio.volume = Math.max(0, Math.min(Math.max(1, current), current + delta));
+    }
     function selectSink(node) { Pipewire.preferredDefaultAudioSink = node; }
+    // Потоки приложений; входные (`media.class` Stream/Input/Audio) — запись микрофона.
+    readonly property var streams: Pipewire.nodes.values.filter(node => node.isStream)
+    readonly property var micUsers: Models.micUsers(streams.map(node => node.properties)
+        .filter(props => !!props && props["media.class"] === "Stream/Input/Audio"))
     // Свойства звука узлов обновляются, только пока их держит трекер.
-    PwObjectTracker { objects: [root.sink, root.source].filter(Boolean) }
+    PwObjectTracker { objects: [root.sink, root.source].filter(Boolean).concat(root.streams) }
 }

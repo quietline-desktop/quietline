@@ -24,6 +24,8 @@ QtObject {
     readonly property color focusRing: light ? Qt.rgba(0, 122 / 255, 1, 0.7) : Qt.rgba(10 / 255, 132 / 255, 1, 0.7)
     readonly property color danger: light ? "#ff3b30" : "#ff453a"
     readonly property color success: light ? "#34c759" : "#30d158"
+    // Предупреждение: низкий заряд, индикатор микрофона и записи экрана.
+    readonly property color warning: light ? "#ff9500" : "#ff9f0a"
     // Поверхности: панель, всплывающие окна, окна по центру (поиск, буфер), окно «Настройки».
     readonly property color barSurface: light ? Qt.rgba(246 / 255, 246 / 255, 248 / 255, 0.62) : Qt.rgba(22 / 255, 22 / 255, 26 / 255, 0.50)
     readonly property color popupSurface: light ? Qt.rgba(246 / 255, 246 / 255, 248 / 255, 0.82) : Qt.rgba(32 / 255, 32 / 255, 36 / 255, 0.80)

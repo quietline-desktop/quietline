@@ -483,7 +483,21 @@ var STRINGS = {
         appearanceSaveFailed: "Настройки оформления не сохранены",
         darkModeButton: "Тёмная тема",
         batteryTitle: "Аккумулятор",
-        batterySettings: "Настройки питания…"
+        batterySettings: "Настройки питания…",
+        barWindowMenuHint: "Меню окна",
+        windowMinimize: "Свернуть",
+        windowMaximize: "Развернуть",
+        windowMoveTo: "На пространство",
+        windowClose: "Закрыть окно",
+        windowQuit: "Выйти из «{0}»",
+        barVpnOn: "VPN подключён",
+        barBluetoothConnected: "Bluetooth · {0}",
+        barSoundHint: "Громкость {0}% · колесо — громкость, средняя кнопка — без звука",
+        barSoundMuted: "Звук выключен · средняя кнопка — включить",
+        barPrivacyMic: "Микрофон: {0}",
+        barPrivacyScreen: "Идёт запись экрана",
+        appearancePanel: "Панель",
+        appearanceBatteryPercent: "Процент заряда на панели"
     }),
     en: withKeywords({
         clockTitle: "Time format",
@@ -936,7 +950,21 @@ var STRINGS = {
         appearanceSaveFailed: "Appearance settings not saved",
         darkModeButton: "Dark mode",
         batteryTitle: "Battery",
-        batterySettings: "Power settings…"
+        batterySettings: "Power settings…",
+        barWindowMenuHint: "Window menu",
+        windowMinimize: "Minimize",
+        windowMaximize: "Maximize",
+        windowMoveTo: "Move to workspace",
+        windowClose: "Close window",
+        windowQuit: "Quit {0}",
+        barVpnOn: "VPN connected",
+        barBluetoothConnected: "Bluetooth · {0}",
+        barSoundHint: "Volume {0}% · scroll to change, middle click to mute",
+        barSoundMuted: "Sound off · middle click to unmute",
+        barPrivacyMic: "Microphone: {0}",
+        barPrivacyScreen: "Screen is being recorded",
+        appearancePanel: "Top bar",
+        appearanceBatteryPercent: "Battery percentage in the top bar"
     })
 };
 

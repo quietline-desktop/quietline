@@ -35,6 +35,8 @@ Scope {
     }
     function switchWorkspace(number, monitor) { send("switch", {number: number, monitor: monitor}); }
     function toggle(monitor) { send("toggle", {monitor: monitor}); }
+    // Переносит активное окно на пространство `number` его монитора.
+    function moveWindow(number) { send("move", {number: number}); }
     function retry() {
         errorMessage = Lang.s.engineConnecting;
         reconnect();

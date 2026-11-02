@@ -11,6 +11,8 @@ Scope {
     property var pinned: ["org.kde.dolphin", "google-chrome", "code", "com.mitchellh.ghostty", "org.telegram.desktop"]
     property string errorMessage: ""
     property string notice: ""
+    // Идёт запись экрана (событие Hyprland `screencast`); до первого события после старта — `false`.
+    property bool screencast: false
     property bool saving: true
     property var keyboard: null
     property var xkbNames: ({})
@@ -78,6 +80,12 @@ Scope {
         if (!selector || !Number.isInteger(workspace) || workspace <= 0) return;
         Hyprland.dispatch('hl.dsp.window.move({window="' + selector + '", workspace=' + workspace + ', follow=false})');
         focusWindow(window);
+    }
+    // Разворачивает окно на рабочую область или возвращает прежний размер; окно сначала получает фокус.
+    function toggleMaximize(window) {
+        if (!window) return;
+        focusWindow(window);
+        Hyprland.dispatch('hl.dsp.window.fullscreen({ mode = "maximized", action = "toggle" })');
     }
     function cycle(group, direction) { focusWindow(Models.cycleTarget(group, direction)); }
     function closeWindow(window) {
@@ -162,6 +170,7 @@ Scope {
         target: Hyprland
         function onRawEvent(event) {
             if (event.name === "activelayout" && !keyboards.running) keyboards.running = true;
+            if (event.name === "screencast") root.screencast = String(event.data).split(",")[0] === "1";
             if (["fullscreen", "activewindowv2", "movewindowv2", "openwindow", "closewindow"].indexOf(event.name) >= 0) Hyprland.refreshToplevels();
         }
     }

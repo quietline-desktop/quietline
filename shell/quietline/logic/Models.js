@@ -901,11 +901,11 @@ function barWifiSymbol(signal) {
     return signal === null || signal === undefined ? "wifi" : wifiSymbol(signal);
 }
 
-// Значок громкости панели: выключен, ноль, до 50 %, громче.
+// Значок громкости панели: выключен, ноль, до трети, громче.
 function volumeSymbol(volume, muted) {
     if (muted) return "volume_off";
     if (!(volume > 0.005)) return "volume_mute";
-    return volume < 0.5 ? "volume_down" : "volume_up";
+    return volume < 0.33 ? "volume_down" : "volume_up";
 }
 
 // Пространство для колеса мыши над номерами панели: следующее (`direction` > 0) или предыдущее

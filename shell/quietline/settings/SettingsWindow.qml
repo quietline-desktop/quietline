@@ -458,6 +458,17 @@ Scope {
                                     }
                                 }
                             }
+                            SettingsGroup {
+                                title: Lang.s.appearancePanel
+                                SettingsRow {
+                                    label: Lang.s.appearanceBatteryPercent
+                                    ShellSwitch {
+                                        checked: Appearance.batteryPercent
+                                        onToggled: Appearance.update({batteryPercent: checked})
+                                        Accessible.name: Lang.s.appearanceBatteryPercent
+                                    }
+                                }
+                            }
                             Note { visible: !Appearance.applied; text: Lang.s.appearancePending }
                         }
                         Page {

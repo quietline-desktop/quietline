@@ -260,19 +260,11 @@ ColumnLayout {
             }
         }
     }
+    // Внизу — только переход в «Настройки»: состояние батареи — в окне батареи на панели.
     RowLayout {
         Layout.fillWidth: true
         Layout.leftMargin: 4
-        Text {
-            renderType: Text.CurveRendering
-            Layout.fillWidth: true
-            text: !root.power.hasBattery ? Lang.s.powerOnMains
-                : root.power.charging ? (root.power.percent >= 100 ? Lang.s.quickCharged : Lang.s.quickCharging + " · " + root.power.percent + "%")
-                : Lang.s.quickOnBattery + " · " + root.power.percent + "%"
-            color: Theme.text2
-            font.family: Theme.sans; font.pixelSize: 12
-            elide: Text.ElideRight
-        }
+        Item { Layout.fillWidth: true }
         ShellButton {
             visible: !!root.services.settings
             implicitHeight: 24

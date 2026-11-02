@@ -3,7 +3,8 @@ import QtQuick
 import Quickshell
 import Quickshell.Io
 
-// Оформление из `quietline-shell appearance`: тема окружения и цвет и размер указателя. Читает
+// Оформление из `quietline-shell appearance`: тема окружения, цвет и размер указателя, процент
+// заряда на панели. Читает
 // настройки при старте; `update` меняет значения в оболочке сразу (Theme перекрашивает поверхности),
 // затем записывает и применяет их через `--set` и перечитывает файл. Пока ответа нет — тёмная
 // тема, тёмный указатель 24 px.
@@ -15,6 +16,8 @@ Singleton {
     property string cursor: "dark"
     // 24 | 36 | 48
     property int cursorSize: 24
+    // Процент заряда рядом с батареей на панели.
+    property bool batteryPercent: false
     readonly property bool light: theme === "light"
     // Текст последней ошибки чтения или записи; пусто — ошибок нет.
     property string error: ""
@@ -23,7 +26,7 @@ Singleton {
     // Изменения, пришедшие во время записи: отправляются следующей записью.
     property var pending: null
 
-    // Сохраняет часть настроек (`{theme, cursor, cursorSize}`) и применяет их.
+    // Сохраняет часть настроек (`{theme, cursor, cursorSize, batteryPercent}`) и применяет их.
     function update(changes) {
         apply(changes);
         if (writer.running) {
@@ -44,6 +47,7 @@ Singleton {
         if (data.theme === "dark" || data.theme === "light") theme = data.theme;
         if (data.cursor === "dark" || data.cursor === "light") cursor = data.cursor;
         if ([24, 36, 48].indexOf(data.cursorSize) >= 0) cursorSize = data.cursorSize;
+        if (typeof data.batteryPercent === "boolean") batteryPercent = data.batteryPercent;
     }
     function failure(key, detail) { error = Lang.s[key] + (detail ? ": " + detail : ""); }
 
