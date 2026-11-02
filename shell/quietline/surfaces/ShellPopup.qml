@@ -4,11 +4,14 @@ import Quickshell
 import Quickshell.Wayland
 import Quickshell.Hyprland
 import ".."
+import "../logic/Models.js" as Models
 
 // Всплывающее окно панели или дока: полупрозрачная поверхность с тенью, появляется
 // затуханием и масштабом от края привязки, закрывается кликом снаружи и Esc, возвращает фокус.
 // Окно с `persistent` не закрывается кликом снаружи и не держит клавиатуру исключительно:
-// закрытие — Esc и `close()`. Размер поверхности — `panelWidth` × `panelHeight`, её левый
+// закрытие — Esc и `close()`. Любое окно закрывается само, когда открывается новое окно
+// приложения (снимок в Satty, запуск программы): иначе исключительная клавиатура окна панели не
+// пустила бы ввод в новое окно. Размер поверхности — `panelWidth` × `panelHeight`, её левый
 // верхний угол — `popupX`, `popupY` на экране; вокруг остаётся поле под тень, щелчки в нём
 // проходят насквозь.
 PanelWindow {
@@ -66,6 +69,17 @@ PanelWindow {
         Qt.callLater(function() { body.forceActiveFocus(); root.presented(); });
     }
     function close() { visible = false; }
+    // Новое окно приложения: окно панели закрывается, и фокус переходит новому окну — пока
+    // клавиатура была у окна панели, Hyprland оставил фокус прежнему окну.
+    Connections {
+        target: Hyprland
+        function onRawEvent(event) {
+            if (event.name !== "openwindow" || !root.visible) return;
+            root.close();
+            var selector = Models.windowSelector(String(event.data).split(",")[0]);
+            if (selector) Qt.callLater(function() { Hyprland.dispatch('hl.dsp.focus({window="' + selector + '"})'); });
+        }
+    }
     // Клик снаружи, который закрывает окно через захват фокуса, доходит и до кнопки,
     // поэтому только что закрытое окно не открывается снова для того же содержимого.
     function toggle(name) {

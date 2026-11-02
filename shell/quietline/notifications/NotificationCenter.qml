@@ -76,6 +76,8 @@ RowLayout {
                 readonly property bool open: !!root.expanded[modelData.key]
                 readonly property var shownEntries: open ? modelData.entries : modelData.entries.slice(0, 1)
                 Layout.fillWidth: true
+                // Крестик карточки выступает за её левый верхний угол на 6 px: место под него.
+                Layout.leftMargin: 6
                 spacing: 6
                 Repeater {
                     model: group.shownEntries
