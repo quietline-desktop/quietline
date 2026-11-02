@@ -110,6 +110,7 @@
 
 - Hyprland, Quickshell, движок и оболочка Quietline, экран входа greetd;
 - PipeWire, NetworkManager, Bluetooth, порталы выбора файлов и демонстрации экрана, агент polkit, power-profiles-daemon;
+- хранилище паролей gnome-keyring (служба `org.freedesktop.secrets`): его открывает вход через greetd паролем пользователя, иначе программы на libsecret — 1Password, Chrome, VS Code — не сохраняют пароли и токены;
 - шрифты IBM Plex Sans/Mono, JetBrainsMono Nerd Font, шрифты с кириллицей;
 - grim, slurp, Satty, wl-clipboard, cliphist, plocate;
 - Ghostty, fish, Starship, micro, git, OpenSSH, curl, unzip;

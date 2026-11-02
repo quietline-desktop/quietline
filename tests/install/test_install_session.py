@@ -45,6 +45,52 @@ def test_user_greetd_config_with_tuigreet_is_kept(ctx, system, root):
     assert not any(call['args'][:1] in (['tee'], ['cp']) for call in system.calls)
 
 
+ARCH_PAM_GREETD = """#%PAM-1.0
+
+auth       required     pam_securetty.so
+auth       requisite    pam_nologin.so
+auth       include      system-local-login
+account    include      system-local-login
+session    include      system-local-login
+"""
+
+
+def test_keyring_unlocks_with_login_password():
+    lines = session.with_keyring(ARCH_PAM_GREETD).splitlines()
+    assert lines[lines.index('auth       include      system-local-login') + 1] == session.KEYRING_AUTH
+    assert lines[-1] == session.KEYRING_SESSION
+    assert lines.index(session.KEYRING_AUTH) < lines.index('account    include      system-local-login')
+
+
+def test_keyring_lines_are_not_duplicated():
+    once = session.with_keyring(ARCH_PAM_GREETD)
+    assert session.with_keyring(once) == once
+    mine = ARCH_PAM_GREETD + '-auth optional pam_gnome_keyring.so\n'
+    assert session.with_keyring(mine).count('pam_gnome_keyring.so') == 2
+
+
+def test_keyring_step_backs_up_pam_and_writes_it(ctx, system, root):
+    (root / 'etc/pam.d').mkdir(parents=True)
+    (root / 'etc/pam.d/greetd').write_text(ARCH_PAM_GREETD)
+    step = session.keyring_step()
+    assert step.check(ctx) is False
+    step.run(ctx)
+    copy = next(call for call in system.calls if call['args'][:2] == ['cp', '-a'])
+    assert copy['sudo'] and copy['args'][2] == '/etc/pam.d/greetd'
+    tee = next(call for call in system.calls if call['args'][:1] == ['tee'])
+    assert tee['sudo'] and tee['input'] == session.with_keyring(ARCH_PAM_GREETD)
+    assert {'kind': 'file', 'path': '/etc/pam.d/greetd', 'backup': copy['args'][3]} in ctx.state.changes
+    assert any(ctx.t('session.keyringRelogin') in line for line in ctx.lines)
+    (root / 'etc/pam.d/greetd').write_text(tee['input'])
+    assert step.check(ctx) is True
+
+
+def test_keyring_step_needs_greetd_pam(ctx, system, root):
+    with pytest.raises(StepFailed, match='/etc/pam.d/greetd'):
+        session.keyring_step().run(ctx)
+    assert not system.calls
+
+
 def test_manual_steps_wait_for_confirmation_and_verify(ctx, system):
     step = session.docker_desktop_step()
     assert step.manual
@@ -175,7 +221,7 @@ def test_login_session_comes_before_aur_and_manual_steps_last():
     ids = [step.id for step in build_steps(FULL)]
     assert ids == ['system-upgrade', 'repo-packages', 'graphics', 'locales', 'quietline-package', 'services',
                    'hyprland-config', 'fish', 'micro', 'quickshell-link', 'user-dirs', 'region', 'pins', 'greetd',
-                   'flatpak', 'fnm', 'uv', 'aur-google-chrome', 'aur-1password', 'default-shell', 'hyprbars', 'docker-group',
+                   'keyring', 'flatpak', 'fnm', 'uv', 'aur-google-chrome', 'aur-1password', 'default-shell', 'hyprbars', 'docker-group',
                    'docker-desktop', 'amneziavpn']
     steps = {step.id: step for step in build_steps(FULL)}
     assert all(steps[name].manual for name in ('docker-desktop', 'amneziavpn'))
@@ -186,7 +232,7 @@ def test_unselected_programs_have_no_steps():
     for absent in ('flatpak', 'fnm', 'uv', 'docker-group', 'docker-desktop', 'amneziavpn'):
         assert absent not in ids
     assert not any(name.startswith('aur-') for name in ids)
-    assert 'greetd' in ids and 'default-shell' in ids and 'hyprbars' in ids
+    assert 'greetd' in ids and 'keyring' in ids and 'default-shell' in ids and 'hyprbars' in ids
 
 
 LISTING_ENABLED = """→ Repository hyprland-plugins (by quietline-desktop):

@@ -1,4 +1,4 @@
-"""Экран входа greetd, fish по умолчанию, доступ к Docker и программы, которые ставятся вручную.
+"""Экран входа greetd, хранилище паролей, fish по умолчанию, доступ к Docker и программы, которые ставятся вручную.
 
 Необязательные вопросы (оболочка, группа docker) после отказа больше не задаются: отказ помечается
 файлом `~/.local/state/quietline/declined-<id>`. Ручные шаги показывают официальные инструкции,
@@ -17,6 +17,9 @@ from quietline_install.runner import (Ctx, Step, StepFailed, backup_system_file,
 FILES = Path(__file__).resolve().parents[3] / 'installer/files'
 GREETD_TEMPLATE = FILES / 'greetd-config.toml'
 GREETD_CONFIG = '/etc/greetd/config.toml'
+PAM_GREETD = '/etc/pam.d/greetd'
+KEYRING_AUTH = 'auth       optional     pam_gnome_keyring.so'
+KEYRING_SESSION = 'session    optional     pam_gnome_keyring.so auto_start'
 DOCKER_DESKTOP_DOCS = 'https://docs.docker.com/desktop/setup/install/linux/archlinux/'
 AMNEZIA_RELEASES = 'https://github.com/amnezia-vpn/amnezia-client/releases'
 AMNEZIA_SITE = 'https://amnezia.org/en/downloads'
@@ -59,6 +62,52 @@ def greetd_step() -> Step:
 
     return Step('greetd', 'step.greetd', 'Arch repositories: greetd, tuigreet',
                 lambda ctx: has_tuigreet(ctx) and _greetd_enabled(ctx), run)
+
+
+def _has_keyring(pam: str, kind: str) -> bool:
+    return any(line.split()[:1] in ([kind], [f'-{kind}']) and 'pam_gnome_keyring.so' in line
+               for line in pam.splitlines())
+
+
+def with_keyring(pam: str) -> str:
+    """PAM greetd, в котором вход открывает gnome-keyring паролем пользователя.
+
+    Строка `auth` встаёт после последней строки `auth`, строка `session` с `auto_start` — после
+    последней строки `session`; без таких строк — в конец. Уже подключённый модуль не дублируется.
+    """
+    lines = pam.splitlines()
+    for kind, line in (('auth', KEYRING_AUTH), ('session', KEYRING_SESSION)):
+        if _has_keyring(pam, kind):
+            continue
+        last = max((index for index, current in enumerate(lines)
+                    if current.split()[:1] in ([kind], [f'-{kind}'])), default=len(lines) - 1)
+        lines.insert(last + 1, line)
+    return '\n'.join(lines) + '\n'
+
+
+def keyring_step() -> Step:
+    """Хранилище секретов gnome-keyring открывается при входе через greetd.
+
+    Без службы `org.freedesktop.secrets` программы на libsecret (1Password, Chrome, VS Code) не
+    сохраняют пароли и токены. Изменённый PAM greetd сохраняется копией; хранилище с паролем
+    входа появляется при следующем входе в систему.
+    """
+    def current(ctx: Ctx) -> str | None:
+        return read_system_file(ctx, PAM_GREETD)
+
+    def check(ctx: Ctx) -> bool:
+        pam = current(ctx) or ''
+        return _has_keyring(pam, 'auth') and _has_keyring(pam, 'session')
+
+    def run(ctx: Ctx) -> None:
+        pam = current(ctx)
+        if pam is None:
+            raise StepFailed(f'{PAM_GREETD} was not found', 'Install greetd, then run ./install.sh again.')
+        backup_system_file(ctx, PAM_GREETD)
+        write_system_file(ctx, PAM_GREETD, with_keyring(pam))
+        ctx.out(ctx.t('session.keyringRelogin'))
+
+    return Step('keyring', 'step.keyring', 'Arch repositories: gnome-keyring', check, run)
 
 
 def default_shell_step() -> Step:
