@@ -167,6 +167,9 @@ test('Lua dispatch accepts only literal compositor addresses',()=>{
  assert.equal(M.windowSelector('0xabc'), 'address:0xabc');
  assert.equal(M.windowSelector('abc'), 'address:0xabc');
  assert.equal(M.windowSelector('0x1\"); os.execute(\"bad\")'),null);
+ assert.equal(M.focusWindowCommand('0xabc'),
+  'function() hl.dispatch(hl.dsp.focus({ window = "address:0xabc" })); hl.dispatch(hl.dsp.window.bring_to_top()) end');
+ assert.equal(M.focusWindowCommand('0x1"); os.execute("bad")'),null);
 });
 test('stable keys let delegates survive snapshot and title refreshes',()=>{
  const s={...state,workspaces:[...state.workspaces,{monitor_key:'right',display_monitor_key:'left',number:2,workspace_id:5,mode:'windows'}]};

@@ -76,8 +76,8 @@ PanelWindow {
         function onRawEvent(event) {
             if (event.name !== "openwindow" || !root.visible) return;
             root.close();
-            var selector = Models.windowSelector(String(event.data).split(",")[0]);
-            if (selector) Qt.callLater(function() { Hyprland.dispatch('hl.dsp.focus({window="' + selector + '"})'); });
+            var command = Models.focusWindowCommand(String(event.data).split(",")[0]);
+            if (command) Qt.callLater(function() { Hyprland.dispatch(command); });
         }
     }
     // Клик снаружи, который закрывает окно через захват фокуса, доходит и до кнопки,

@@ -91,7 +91,7 @@ def _dispatch(expression: str) -> str:
 
 
 def render_action(action: HyprAction) -> str:
-    """Собирает одну строку Lua; значения проверяются до подстановки."""
+    """Собирает код Lua одного действия; значения проверяются до подстановки."""
     match action:
         case SetFloating(address, floating):
             mode = "enable" if _boolean(floating, "floating flag") else "disable"
@@ -107,7 +107,9 @@ def render_action(action: HyprAction) -> str:
                 f'window = "address:{_address(address)}" }})'
             )
         case FocusWindow(address):
-            return _dispatch(f'hl.dsp.focus({{ window = "address:{_address(address)}" }})')
+            # Фокус сам по себе плавающее окно не поднимает: окно поднимается следом.
+            return (_dispatch(f'hl.dsp.focus({{ window = "address:{_address(address)}" }})') + "\n"
+                    + _dispatch("hl.dsp.window.bring_to_top()"))
         case FocusWorkspace(workspace_id):
             return _dispatch(
                 f'hl.dsp.focus({{ workspace = "{_integer(workspace_id, "workspace id")}", on_current_monitor = true }})'

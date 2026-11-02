@@ -267,6 +267,14 @@ function windowSelector(address) {
     return /^[0-9a-fA-F]+$/.test(raw) ? "address:0x" + raw : null;
 }
 
+// Выражение для `Hyprland.dispatch`: фокус окна и подъём его поверх остальных одним вызовом —
+// фокус сам по себе плавающее окно не поднимает. Адрес не литерал — `null`.
+function focusWindowCommand(address) {
+    var selector = windowSelector(address);
+    return selector ? 'function() hl.dispatch(hl.dsp.focus({ window = "' + selector + '" })); '
+        + 'hl.dispatch(hl.dsp.window.bring_to_top()) end' : null;
+}
+
 // Ключ делегата: при обновлении снимка делегат обновляется на месте и не теряет
 // фокус, открытое меню и перетаскивание.
 function workspaceKey(item) { return item.monitor + ":" + item.number; }

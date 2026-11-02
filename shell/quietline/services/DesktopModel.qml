@@ -59,8 +59,8 @@ Scope {
         run(id, entry.command, entry.workingDirectory);
     }
     function focusWindow(window) {
-        var selector = window ? Models.windowSelector(window.address) : null;
-        if (selector) Hyprland.dispatch('hl.dsp.focus({window="' + selector + '"})');
+        var command = window ? Models.focusWindowCommand(window.address) : null;
+        if (command) Hyprland.dispatch(command);
     }
     // Свёрнутое окно возвращается на активное пространство монитора `monitor` и получает фокус.
     function activate(group, monitor) {

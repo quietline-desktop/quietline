@@ -284,6 +284,7 @@ def test_eval_escapes_only_validated_ids():
         'hl.dispatch(hl.dsp.window.move({ x = 100, y = 200, window = "address:0xa1" }))',
         'hl.dispatch(hl.dsp.window.resize({ x = 800, y = 600, window = "address:0xa1" }))',
         'hl.dispatch(hl.dsp.focus({ window = "address:0xa1" }))',
+        'hl.dispatch(hl.dsp.window.bring_to_top())',
         'hl.dispatch(hl.dsp.focus({ workspace = "1001", on_current_monitor = true }))',
         'hl.dispatch(hl.dsp.focus({ monitor = "HDMI-A-1" }))',
         'hl.dispatch(hl.dsp.window.move({ workspace = "1002", window = "address:0xa1", follow = false }))',
@@ -373,7 +374,8 @@ def test_hyprctl_failure_raises_without_success_state(monkeypatch):
 @pytest.mark.parametrize("reply", ["error: no such window", "", "okay", "ok ok"])
 def test_eval_reply_other_than_ok_is_an_error(reply):
     runner = FakeRunner()
-    runner.replies[("hyprctl", "eval", 'hl.dispatch(hl.dsp.focus({ window = "address:0xa1" }))')] = reply
+    script = 'hl.dispatch(hl.dsp.focus({ window = "address:0xa1" }))\nhl.dispatch(hl.dsp.window.bring_to_top())'
+    runner.replies[("hyprctl", "eval", script)] = reply
     with pytest.raises(HyprlandError, match="hyprctl eval"):
         Hyprland(runner=runner).apply([FocusWindow("0xa1")])
 
