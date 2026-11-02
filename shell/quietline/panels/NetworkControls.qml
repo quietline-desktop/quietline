@@ -10,7 +10,8 @@ import "../logic/Models.js" as Models
 // по 44 px. Один компонент — и сетевая панель верхней панели (`compact`: не больше шести
 // других сетей), и страница «Сеть» окна «Настройки».
 // Сети: «Известные» (есть профиль) и «Другие»; строка — имя сети, справа замок защищённой
-// сети, сила сигнала и галочка текущей. Нажатие подключает, защищённая сеть без профиля
+// сети, сила сигнала и галочка текущей. «Другие сети» раскрываются строкой-заголовком с числом
+// найденных: в окне панели список свёрнут, на странице «Настроек» раскрыт. Нажатие подключает, защищённая сеть без профиля
 // сначала спрашивает пароль под строкой. Пока идёт действие, строки не нажимаются.
 ColumnLayout {
     id: root
@@ -21,6 +22,7 @@ ColumnLayout {
     property string connectingTo: ""
     property string deleting: ""
     property bool formOpen: false
+    property bool othersOpen: !compact
     // Идёт ввод или решение, которое нельзя терять щелчком мимо панели: пароль сети, форма
     // профиля, подключение или полоса «Оставить / Вернуть».
     readonly property bool holding: passwordFor !== "" || formOpen || (connectingTo !== "" && network.busy) || !!network.pending
@@ -173,16 +175,26 @@ ColumnLayout {
 
     SettingsGroup {
         visible: root.wifiOn
-        title: Lang.s.netOtherNetworks
+        SettingsRow {
+            label: Lang.s.netOtherNetworks
+            note: root.network.scanning && root.otherNetworks.length === 0 ? Lang.s.netScanning
+                : Lang.f(Lang.s.netOtherFound, root.network.networks.filter(item => !item.known && !item.active).length)
+            clickable: true
+            onClicked: root.othersOpen = !root.othersOpen
+            Accessible.role: Accessible.Button
+            Accessible.description: root.othersOpen ? Lang.s.netCollapse : Lang.s.netExpand
+            Icon { name: root.othersOpen ? "expand_less" : "expand_more"; size: 20; color: Theme.text2 }
+        }
         Repeater {
-            model: root.otherNetworks
+            model: root.othersOpen ? root.otherNetworks : []
             delegate: WifiRow { required property var modelData; host: root; item: modelData }
         }
         SettingsRow {
-            visible: root.otherNetworks.length === 0
+            visible: root.othersOpen && root.otherNetworks.length === 0
             note: root.network.scanning ? Lang.s.netScanning : Lang.s.netNoNetworks
         }
         SettingsRow {
+            visible: root.othersOpen
             label: root.network.scanning ? Lang.s.netScanning : Lang.s.netRefresh
             clickable: !root.network.busy
             onClicked: root.network.scanWifi()

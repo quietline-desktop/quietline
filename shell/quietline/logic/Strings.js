@@ -497,7 +497,10 @@ var STRINGS = {
         barPrivacyMic: "Микрофон: {0}",
         barPrivacyScreen: "Идёт запись экрана",
         appearancePanel: "Панель",
-        appearanceBatteryPercent: "Процент заряда на панели"
+        appearanceBatteryPercent: "Процент заряда на панели",
+        netOtherFound: "Найдено: {0}",
+        netExpand: "Показать",
+        netCollapse: "Скрыть"
     }),
     en: withKeywords({
         clockTitle: "Time format",
@@ -964,7 +967,10 @@ var STRINGS = {
         barPrivacyMic: "Microphone: {0}",
         barPrivacyScreen: "Screen is being recorded",
         appearancePanel: "Top bar",
-        appearanceBatteryPercent: "Battery percentage in the top bar"
+        appearanceBatteryPercent: "Battery percentage in the top bar",
+        netOtherFound: "Found: {0}",
+        netExpand: "Show",
+        netCollapse: "Hide"
     })
 };
 
