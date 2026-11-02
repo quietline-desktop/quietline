@@ -176,7 +176,7 @@ def test_cli_form_error_names_the_field(system, capsys, monkeypatch):
 def test_cli_status_prints_one_json_line(system, capsys, monkeypatch, config):
     answer_status(system)
     code, response = run_cli(capsys, monkeypatch, "", "network", "status")
-    assert code == 0 and set(response) == {"devices", "wifi", "profiles", "pendingCheckpoints"}
+    assert code == 0 and set(response) == {"devices", "wifi", "wifiSignal", "vpn", "profiles", "pendingCheckpoints"}
 
 
 GDBUS = [
@@ -353,3 +353,29 @@ def test_checkpoint_reply_without_path_is_an_error(system, config):
     with pytest.raises(RuntimeError, match="did not return a checkpoint"):
         network.apply_profile("1111-aaaa", "enx00e04c")
     assert not any(command[3:5] == ["connection", "up"] for command in system.commands())
+
+
+def test_status_without_wifi_or_tunnel_has_no_signal_and_no_vpn(system):
+    answer_status(system)
+    system.add(["nmcli", "-t", "-f", "TYPE,STATE", "device"], "ethernet:connected\nloopback:connected (externally)\n")
+    result = network.status()
+    assert (result["wifiSignal"], result["vpn"]) == (None, False)
+    assert not any("wifi" in call and "list" in call for call in system.commands())
+
+
+def test_status_reports_active_access_point_signal_and_external_tunnel(system):
+    system.add(["nmcli", "-t", "--escape", "yes", "-f"], "\n".join([
+        "GENERAL.DEVICE:wlp0s20f3", "GENERAL.TYPE:wifi", "GENERAL.STATE:100 (connected)",
+        "GENERAL.CONNECTION:Home", "GENERAL.CON-UUID:2222-bbbb", "IP4.GATEWAY:--", ""]))
+    system.add(CONNECTIONS, "")
+    system.add(["nmcli", "-t", "-f", "WIFI", "radio"], "enabled\n")
+    system.add(["nmcli", "-t", "-f", "IN-USE,SIGNAL", "device", "wifi", "list", "--rescan", "no"], " :100\n*:62\n :99\n")
+    system.add(["nmcli", "-t", "-f", "TYPE,STATE", "device"], "wifi:connected\ntun:connected (externally)\n")
+    result = network.status()
+    assert (result["wifiSignal"], result["vpn"]) == (62, True)
+
+
+def test_failed_signal_and_tunnel_queries_do_not_break_status(system):
+    answer_status(system)
+    system.add(["nmcli", "-t", "-f", "TYPE,STATE", "device"], code=8, stderr="Error")
+    assert network.status()["vpn"] is False

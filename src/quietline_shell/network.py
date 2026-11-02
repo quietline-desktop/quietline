@@ -10,7 +10,9 @@ NetworkManager — через `run_gdbus`. Пароль Wi-Fi приходит �
 
 Подкоманды `quietline-shell network` и их ответы:
 
-- `status` — `{devices, wifi: {enabled}, profiles, pendingCheckpoints: [path]}`;
+- `status` — `{devices, wifi: {enabled}, wifiSignal, vpn, profiles, pendingCheckpoints: [path]}`:
+  `wifiSignal` — сигнал активной точки Wi-Fi 0–100 или `null`, `vpn` — подключено ли устройство
+  туннеля (`tun`, `wireguard`, `vpn`), в том числе поднятое не NetworkManager;
 - `wifi-scan` — `{networks: [{ssid, signal, security, active, known}]}`;
 - `wifi-radio --on|--off` — `{wifi: {enabled}}`;
 - `wifi-connect --ssid S [--device D]`, пароль одной строкой в stdin (пусто — открытая
@@ -246,14 +248,48 @@ def pending_checkpoints() -> list[str]:
     return _CHECKPOINT_IN_REPLY.findall(output)
 
 
+VPN_TYPES = frozenset({"tun", "wireguard", "vpn"})
+
+
+def vpn_active() -> bool:
+    """Подключено ли устройство туннеля; ошибка `nmcli` — `False`."""
+    try:
+        output = run_nmcli(["-t", "-f", "TYPE,STATE", "device"])
+    except RuntimeError:
+        return False
+    for line in output.splitlines():
+        kind, _, state = line.partition(":")
+        if kind in VPN_TYPES and state.startswith("connected"):
+            return True
+    return False
+
+
+def wifi_signal(found: list[dict[str, Any]]) -> int | None:
+    """Сигнал точки, к которой подключён Wi-Fi, по последнему сканированию без нового; иначе `None`."""
+    if not any(item["type"] == "wifi" and item["state"] == "connected" for item in found):
+        return None
+    try:
+        output = run_nmcli(["-t", "-f", "IN-USE,SIGNAL", "device", "wifi", "list", "--rescan", "no"])
+    except RuntimeError:
+        return None
+    for line in output.splitlines():
+        in_use, _, signal = line.partition(":")
+        if in_use == "*" and signal.isdigit():
+            return min(100, int(signal))
+    return None
+
+
 def status() -> dict[str, Any]:
     used = recent()
     profiles = [
         _profile(name, uuid, used) for name, uuid, kind in _connections() if kind == ETHERNET and name != DHCP_PROFILE
     ]
+    found = devices()
     return {
-        "devices": devices(),
+        "devices": found,
         "wifi": {"enabled": wifi_enabled()},
+        "wifiSignal": wifi_signal(found),
+        "vpn": vpn_active(),
         "profiles": profiles,
         "pendingCheckpoints": pending_checkpoints(),
     }

@@ -13,8 +13,9 @@
 монитор — правило вывода Hyprland (`desc:<описание>` или имя разъёма). Рядом пишется `display.lua`,
 который читает конфигурация Hyprland Quietline.
 
-Оформление — `appearance.json` вида `{"version": 1, "theme", "cursor", "cursorSize"}`: тема
-окружения и цвет указателя (`dark` | `light`), размер указателя (24, 36 или 48). Рядом пишется
+Оформление — `appearance.json` вида `{"version": 1, "theme", "cursor", "cursorSize", "batteryPercent"}`:
+тема окружения и цвет указателя (`dark` | `light`), размер указателя (24, 36 или 48), процент
+заряда рядом с батареей на панели (`true` | `false`). Рядом пишется
 `appearance.lua` для конфигурации Hyprland. Только стандартная библиотека.
 """
 
@@ -319,8 +320,9 @@ def apply_display(output: str, scale: float | None) -> bool:
     return result.returncode == 0
 
 
-APPEARANCE_DEFAULTS = {"theme": "dark", "cursor": "dark", "cursorSize": 24}
-_APPEARANCE_CHOICES = {"theme": ("dark", "light"), "cursor": ("dark", "light"), "cursorSize": (24, 36, 48)}
+APPEARANCE_DEFAULTS = {"theme": "dark", "cursor": "dark", "cursorSize": 24, "batteryPercent": False}
+_APPEARANCE_CHOICES = {"theme": ("dark", "light"), "cursor": ("dark", "light"), "cursorSize": (24, 36, 48),
+                       "batteryPercent": (False, True)}
 CURSOR_THEMES = {"dark": "capitaine-cursors", "light": "capitaine-cursors-light"}
 _GSETTINGS_TIMEOUT = 5
 
@@ -332,11 +334,12 @@ def default_appearance_path() -> Path:
 
 
 def _checked_appearance(values: dict[str, Any]) -> dict[str, Any]:
-    """Все три поля с допустимыми значениями; иначе `ValueError` с именем поля."""
+    """Все поля с допустимыми значениями (флаги — только `bool`, числа — не `bool`); иначе `ValueError`."""
     result = {}
     for key, choices in _APPEARANCE_CHOICES.items():
         value = values.get(key)
-        if isinstance(value, bool) or value not in choices:
+        flag = isinstance(choices[0], bool)
+        if isinstance(value, bool) != flag or value not in choices:
             raise ValueError(f"{key} must be one of {', '.join(map(str, choices))}: {value!r}")
         result[key] = value
     return result
@@ -370,7 +373,7 @@ def updated_appearance(change: object, current: dict[str, Any]) -> dict[str, Any
 
 def appearance_lua(values: dict[str, Any]) -> str:
     """Содержимое `appearance.lua`: таблица оформления для конфигурации Hyprland."""
-    checked = _checked_appearance(values)
+    checked = _checked_appearance({**APPEARANCE_DEFAULTS, **values})
     return (f'return {{ theme = "{checked["theme"]}", cursor = "{checked["cursor"]}", '
             f'cursor_size = {checked["cursorSize"]} }}\n')
 
@@ -394,7 +397,7 @@ def apply_appearance(values: dict[str, Any]) -> bool:
     """Применяет оформление сразу: схему приложений в gsettings (`color-scheme`, `gtk-theme` для
     GTK 3), затем в работающем Hyprland перечитывает конфигурацию (рамки, тени, заголовки) и меняет
     указатель. `True` только если все шаги вернули код 0; вне сеанса Hyprland — `False` после gsettings."""
-    checked = _checked_appearance(values)
+    checked = _checked_appearance({**APPEARANCE_DEFAULTS, **values})
     light = checked["theme"] == "light"
     interface = "org.gnome.desktop.interface"
     steps = [

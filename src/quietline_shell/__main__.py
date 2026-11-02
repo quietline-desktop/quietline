@@ -12,8 +12,9 @@
   {"output", "scale"}` масштаб (число от 0.5 до 4 или `"auto"` — убрать запись) пишется в
   `display.json` и `display.lua` рядом с ним и применяется в Hyprland, в ответ добавляется
   `"applied": true | false`;
-- `appearance [--set JSON] [--path PATH]` — `{"theme", "cursor", "cursorSize"}`: тема окружения
-  и цвет указателя (`dark` | `light`), размер указателя (24, 36, 48); с `--set` часть полей
+- `appearance [--set JSON] [--path PATH]` — `{"theme", "cursor", "cursorSize", "batteryPercent"}`:
+  тема окружения и цвет указателя (`dark` | `light`), размер указателя (24, 36, 48), процент
+  заряда на панели (`true` | `false`); с `--set` часть полей
   проверяется и пишется в `appearance.json` и `appearance.lua` рядом с ним, схема приложений
   меняется в gsettings, в Hyprland перечитывается конфигурация и меняется указатель; в ответ
   добавляется `"applied": true | false`;
@@ -74,7 +75,7 @@ def _parser() -> argparse.ArgumentParser:
     display.add_argument("--set", dest="change", metavar="JSON", help='apply {"output": ..., "scale": NUMBER | "auto"} first')
     display.add_argument("--path", type=Path, help="display file (default: $XDG_CONFIG_HOME/quietline/display.json); display.lua is written next to it")
     appearance = commands.add_parser("appearance", help="print the theme and pointer settings as JSON")
-    appearance.add_argument("--set", dest="change", metavar="JSON", help='apply {"theme", "cursor", "cursorSize"} (any of them) first')
+    appearance.add_argument("--set", dest="change", metavar="JSON", help='apply {"theme", "cursor", "cursorSize", "batteryPercent"} (any of them) first')
     appearance.add_argument("--path", type=Path, help="appearance file (default: $XDG_CONFIG_HOME/quietline/appearance.json); appearance.lua is written next to it")
     commands.add_parser("motion", help="print whether animations should be reduced")
     commands.add_parser("about", help="print system facts for the settings window")
