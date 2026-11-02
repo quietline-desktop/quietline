@@ -18,6 +18,10 @@
   проверяется и пишется в `appearance.json` и `appearance.lua` рядом с ним, схема приложений
   меняется в gsettings, в Hyprland перечитывается конфигурация и меняется указатель; в ответ
   добавляется `"applied": true | false`;
+- `greeter [--remember JSON] [--path PATH]` — данные экрана входа `{users: [{name, display}],
+  sessions: [{id, name, command, desktopNames}], last: {user, session}}`; с `--remember
+  {"user", "session"}` выбор проверяется и пишется в `greeter.json` (по умолчанию
+  `$XDG_STATE_HOME/quietline/greeter.json`), ответ — `{"user", "session"}`;
 - `motion` — `{"reducedMotion": true | false}`;
 - `about` — `{os, kernel, hostname, cpu, memoryGb, hyprland, quickshell}` для страницы
   «О системе» (`hyprland` и `quickshell` — номера версий вида `0.55.1`), недоступное значение — `null`;
@@ -77,6 +81,9 @@ def _parser() -> argparse.ArgumentParser:
     appearance = commands.add_parser("appearance", help="print the theme and pointer settings as JSON")
     appearance.add_argument("--set", dest="change", metavar="JSON", help='apply {"theme", "cursor", "cursorSize", "batteryPercent"} (any of them) first')
     appearance.add_argument("--path", type=Path, help="appearance file (default: $XDG_CONFIG_HOME/quietline/appearance.json); appearance.lua is written next to it")
+    greeter = commands.add_parser("greeter", help="print the users and sessions for the login screen as JSON")
+    greeter.add_argument("--remember", metavar="JSON", help="store this {user, session} choice instead")
+    greeter.add_argument("--path", type=Path, help="state file (default: $XDG_STATE_HOME/quietline/greeter.json)")
     commands.add_parser("motion", help="print whether animations should be reduced")
     commands.add_parser("about", help="print system facts for the settings window")
     commands.add_parser("lock", help="start the lock screen unless it is already running")
@@ -142,6 +149,12 @@ def _run(args: argparse.Namespace) -> dict[str, Any]:
             updated = updated_appearance(json.loads(args.change), current)
             save_appearance(path, updated)
             return {**updated, "applied": apply_appearance(updated)}
+        case "greeter":
+            path = args.path or session.default_greeter_path()
+            if args.remember is not None:
+                return session.remember_greeter(path, json.loads(args.remember))
+            language = "ru" if os.environ.get("LANG", "").startswith("ru") else "en"
+            return session.greeter_data(path, language=language)
         case "motion":
             return {"reducedMotion": reduced_motion()}
         case "lock":

@@ -12,11 +12,19 @@
 Корректный выход закрывает окна процесса; процессу, оставшемуся без окон, `SIGTERM`
 посылается, только если он из такой группы и ни у одного процесса группы нет окна (в том
 числе диалога сохранения). `SIGKILL` — только у `app kill`, после подтверждения на панели.
+
+Экран входа (`greeter`) получает отсюда пользователей, сеансы Wayland и последний выбор:
+пользователи — записи `passwd` с UID в диапазоне `UID_MIN`…`UID_MAX` из `login.defs` и оболочкой
+не `nologin` / `false`; сеансы — `*.desktop` из `wayland-sessions` без `Hidden` и `NoDisplay`, с
+командой `Exec` без кодов полей. Последний выбор хранится в `$XDG_STATE_HOME/quietline/greeter.json`.
 """
 
+import configparser
 import json
 import os
 import re
+import shlex
+import shutil
 import signal
 import subprocess
 import tempfile
@@ -24,7 +32,7 @@ import time
 from pathlib import Path
 from typing import Any
 
-from quietline_shell.config import notification_text
+from quietline_shell.config import atomic_write_json, notification_text
 
 SESSION_ACTIONS = ("logout", "reboot", "poweroff")
 CLOSE_TIMEOUT = 20.0
@@ -391,3 +399,126 @@ def kill_app(pid: int) -> dict[str, int]:
     except PermissionError as error:
         raise RuntimeError(f"process {pid} belongs to another user") from error
     return {"killed": pid}
+
+
+# Экран входа.
+
+PASSWD = Path("/etc/passwd")
+LOGIN_DEFS = Path("/etc/login.defs")
+WAYLAND_SESSIONS = Path("/usr/share/wayland-sessions")
+DEFAULT_SESSION = "hyprland"
+_NO_LOGIN_SHELLS = ("nologin", "false")
+_USER_NAME = re.compile(r"[a-z_][a-z0-9_-]*\$?")
+_SESSION_ID = re.compile(r"[A-Za-z0-9._-]+")
+_FIELD_CODE = re.compile(r"%[fFuUdDnNickvm]")
+
+
+def default_greeter_path() -> Path:
+    state = os.environ.get("XDG_STATE_HOME") or str(Path.home() / ".local/state")
+    return Path(state) / "quietline/greeter.json"
+
+
+def _uid_range(login_defs: str) -> tuple[int, int]:
+    """`UID_MIN` и `UID_MAX` из `login.defs`; без них — 1000 и 60000."""
+    values = {"UID_MIN": 1000, "UID_MAX": 60000}
+    for line in login_defs.splitlines():
+        parts = line.split()
+        if len(parts) >= 2 and parts[0] in values and parts[1].isdigit():
+            values[parts[0]] = int(parts[1])
+    return values["UID_MIN"], values["UID_MAX"]
+
+
+def greeter_users(passwd: str, login_defs: str) -> list[dict[str, str]]:
+    """Пользователи, которые могут войти: `{name, display}` по возрастанию UID."""
+    low, high = _uid_range(login_defs)
+    found = []
+    for line in passwd.splitlines():
+        fields = line.split(":")
+        if len(fields) < 7 or not fields[2].isdigit() or not _USER_NAME.fullmatch(fields[0]):
+            continue
+        uid, shell = int(fields[2]), fields[6].strip()
+        if not low <= uid <= high or not shell or Path(shell).name in _NO_LOGIN_SHELLS:
+            continue
+        display = fields[4].split(",")[0].strip() or fields[0][:1].upper() + fields[0][1:]
+        found.append((uid, {"name": fields[0], "display": display}))
+    return [user for _, user in sorted(found, key=lambda item: item[0])]
+
+
+def session_command(exec_line: str) -> list[str]:
+    """Команда `Exec` из desktop-файла: аргументы без кодов полей `%f`, `%U` и т.п., `%%` — знак `%`."""
+    words = []
+    for word in shlex.split(exec_line):
+        word = _FIELD_CODE.sub("", word).replace("%%", "%")
+        if word:
+            words.append(word)
+    return words
+
+
+def greeter_sessions(folder: Path, language: str = "en") -> list[dict[str, Any]]:
+    """Сеансы Wayland: `{id, name, command, desktopNames}` по названию; файл без рабочей команды пропускается."""
+    found = []
+    for path in sorted(folder.glob("*.desktop")):
+        parser = configparser.RawConfigParser(strict=False, interpolation=None)
+        parser.optionxform = str
+        try:
+            parser.read_string(path.read_text(encoding="utf-8"))
+            entry = parser["Desktop Entry"]
+        except (OSError, UnicodeDecodeError, configparser.Error, KeyError):
+            continue
+        if entry.get("Hidden", "").lower() == "true" or entry.get("NoDisplay", "").lower() == "true":
+            continue
+        try_exec = entry.get("TryExec", "").strip()
+        if try_exec and shutil.which(try_exec) is None:
+            continue
+        try:
+            command = session_command(entry.get("Exec", ""))
+        except ValueError:
+            continue
+        if not command or not _SESSION_ID.fullmatch(path.stem):
+            continue
+        name = entry.get(f"Name[{language}]") or entry.get("Name") or path.stem
+        desktop_names = [item for item in entry.get("DesktopNames", "").split(";") if item]
+        found.append({"id": path.stem, "name": name, "command": command, "desktopNames": desktop_names})
+    return sorted(found, key=lambda item: item["name"].lower())
+
+
+def greeter_data(state_path: Path, passwd: Path = PASSWD, login_defs: Path = LOGIN_DEFS,
+                 sessions: Path = WAYLAND_SESSIONS, language: str = "en") -> dict[str, Any]:
+    """Данные экрана входа: `{users, sessions, last: {user, session}}`.
+
+    Последний выбор берётся из файла, если такой пользователь и сеанс ещё есть; иначе —
+    первый пользователь и сеанс `hyprland` (без него — первый по названию). Повреждённый
+    или нечитаемый файл равен отсутствующему.
+    """
+    try:
+        defs = login_defs.read_text(encoding="utf-8")
+    except OSError:
+        defs = ""
+    users = greeter_users(passwd.read_text(encoding="utf-8"), defs)
+    available = greeter_sessions(sessions, language)
+    try:
+        saved = json.loads(state_path.read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        saved = {}
+    if not isinstance(saved, dict):
+        saved = {}
+    names = [user["name"] for user in users]
+    ids = [item["id"] for item in available]
+    user = saved.get("user") if saved.get("user") in names else (names[0] if names else None)
+    fallback = DEFAULT_SESSION if DEFAULT_SESSION in ids else (ids[0] if ids else None)
+    chosen = saved.get("session") if saved.get("session") in ids else fallback
+    return {"users": users, "sessions": available, "last": {"user": user, "session": chosen}}
+
+
+def remember_greeter(state_path: Path, change: Any) -> dict[str, str]:
+    """Пишет последний выбор `{user, session}` после проверки имён."""
+    if not isinstance(change, dict) or set(change) != {"user", "session"}:
+        raise ValueError("expected an object with user and session")
+    user, chosen = change["user"], change["session"]
+    if not isinstance(user, str) or not _USER_NAME.fullmatch(user):
+        raise ValueError(f"invalid user name: {user!r}")
+    if not isinstance(chosen, str) or not _SESSION_ID.fullmatch(chosen):
+        raise ValueError(f"invalid session id: {chosen!r}")
+    remembered = {"user": user, "session": chosen}
+    atomic_write_json(state_path, remembered)
+    return remembered

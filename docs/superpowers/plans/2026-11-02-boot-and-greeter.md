@@ -15,9 +15,9 @@
 
 ## Карта файлов
 
-- `src/quietline_shell/greeter.py` — пользователи по `login.defs`, сеансы из `wayland-sessions`, `Exec` без кодов полей, чтение и запись последнего выбора.
+- `src/quietline_shell/session.py` (в папке уже восемь модулей) — пользователи по `login.defs`, сеансы из `wayland-sessions`, `Exec` без кодов полей, чтение и запись последнего выбора.
 - `src/quietline_shell/__main__.py` — подкоманда `greeter [--remember JSON] [--path PATH]`, docstring.
-- `tests/helper/test_shell_greeter.py` — тесты подкоманды.
+- `tests/helper/test_greeter.py` — тесты подкоманды.
 - `shell/quietline/Greeter.qml` — корень процесса экрана входа: `Greetd`, данные `quietline-shell greeter`, вход и запуск сеанса.
 - `shell/quietline/greeter/` — `GreeterSurface.qml` (поверхность на экране), `Wallpaper.qml` (обои Quietline), `qmldir`.
 - `shell/quietline/logic/Strings.js` — строки `greeter*` на двух языках.
@@ -36,7 +36,7 @@
 
 ## Шаги
 
-- [ ] 1. `quietline-shell greeter` и тесты: пользователи с UID в диапазоне `login.defs` и оболочкой не `nologin` / `false`, имя из GECOS; сеансы без `Hidden` / `NoDisplay`, `Exec` без `%f` и т.п., `DesktopNames`; последний выбор с проверкой, что пользователь и сеанс ещё есть; повреждённый файл — выбор по умолчанию; `--remember` пишет атомарно.
+- [x] 1. `quietline-shell greeter` и тесты: пользователи с UID в диапазоне `login.defs` и оболочкой не `nologin` / `false`, имя из GECOS; сеансы без `Hidden` / `NoDisplay`, `Exec` без `%f` и т.п., `DesktopNames`; последний выбор с проверкой, что пользователь и сеанс ещё есть; повреждённый файл — выбор по умолчанию; `--remember` пишет атомарно.
 - [ ] 2. `Greeter.qml`, `greeter/` и строки: форма на мониторе с фокусом, список пользователей и сеансов, `Greetd` — `createSession`, `respond`, `launch(argv, env, true)`, ошибки, перезагрузка и выключение. Тест строк зелёный.
 - [ ] 3. `config/greeter/`: сценарий с запасным tuigreet, `hyprland.lua` (без логотипа, раскладки, `qs -p` и выход Hyprland), tmpfiles. Первая проверка — `qs -p Greeter.qml` в текущем сеансе: вне greetd (`Greetd.available` ложно) экран показывает форму и списки, а вход отвечает «экран входа запущен не из greetd». Полная проверка — после установки пакета.
 - [ ] 4. Тема GRUB: шаблон, генератор PNG на стандартной библиотеке Python, шрифты `grub-mkfont` с кириллицей; PKGBUILD. Проверка — `scripts/preview-grub-theme`: `grub-mkstandalone` с темой во встроенном диске, запуск в QEMU с OVMF без доступа к настоящему загрузчику, снимок экрана монитора QEMU на 1920×1200.
