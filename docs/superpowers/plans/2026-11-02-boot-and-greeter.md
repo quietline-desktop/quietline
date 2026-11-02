@@ -39,7 +39,7 @@
 
 - [x] 1. `quietline-shell greeter` и тесты: пользователи с UID в диапазоне `login.defs` и оболочкой не `nologin` / `false`, имя из GECOS; сеансы без `Hidden` / `NoDisplay`, `Exec` без `%f` и т.п., `DesktopNames`; последний выбор с проверкой, что пользователь и сеанс ещё есть; повреждённый файл — выбор по умолчанию; `--remember` пишет атомарно.
 - [x] 2. `Greeter.qml`, `greeter/` и строки: форма на мониторе с фокусом, список пользователей и сеансов, `Greetd` — `createSession`, `respond`, `launch(argv, env, true)`, ошибки, перезагрузка и выключение. Тест строк зелёный.
-- [ ] 3. `config/greeter/`: сценарий с запасным tuigreet, `hyprland.lua` (без логотипа, раскладки, `qs -p` и выход Hyprland), tmpfiles. Первая проверка — `qs -p Greeter.qml` в текущем сеансе: вне greetd (`Greetd.available` ложно) экран показывает форму и списки, а вход отвечает «экран входа запущен не из greetd». Полная проверка — после установки пакета.
+- [x] 3. `config/greeter/`: сценарий с запасным tuigreet, `hyprland.lua` (без логотипа, раскладки, `qs -p` и выход Hyprland), tmpfiles. Первая проверка — `qs -p Greeter.qml` в текущем сеансе: вне greetd (`Greetd.available` ложно) экран показывает форму и списки, а вход отвечает «экран входа запущен не из greetd». Полная проверка — после установки пакета.
 - [ ] 4. Тема GRUB: шаблон, генератор PNG на стандартной библиотеке Python, шрифты `grub-mkfont` с кириллицей; PKGBUILD. Проверка — `scripts/preview-grub-theme`: `grub-mkstandalone` с темой во встроенном диске, запуск в QEMU с OVMF без доступа к настоящему загрузчику, снимок экрана монитора QEMU на 1920×1200.
 - [ ] 5. Установщик: шаблон greetd, шаг темы GRUB (пропуск без GRUB, `GRUB_THEME`, `GRUB_TERMINAL_OUTPUT`, `grub-mkconfig`, возврат при ошибке), откат по журналу, тесты; `FORBIDDEN` не тронут.
 - [ ] 6. Документы и сценарий живой проверки `scripts/smoke-boot-greeter.md`, пункты в `docs/backlog.md`.
@@ -55,4 +55,5 @@
 
 ## Решения по ходу
 
+- `qs -p` при ошибке загрузки QML завершается с кодом 255 — `hyprland.lua` экрана входа ставит метку, и `quietline-greeter` открывает tuigreet. Проверено 2026-11-02 вместе с `Hyprland --verify-config` для `config/greeter/hyprland.lua` и показом `Greeter.qml` в текущем сеансе.
 - Чужой `config.toml` greetd с tuigreet (без строки-отметки шаблона Quietline) сохраняется, как раньше; прежний шаблон Quietline с tuigreet заменяется новым с копией.
