@@ -13,7 +13,8 @@ import "../logic/Models.js" as Models
 // Окно «Настройки»: боковая навигация и страницы на тех же компонентах управления,
 // что и всплывающие панели, поэтому изменение здесь видно и там.
 // `open(section)` открывает раздел по идентификатору (`keyboard` открывает `region`);
-// пусто или неизвестно — текущий раздел. Окно создаётся при открытии и уничтожается при
+// пусто или неизвестно — текущий раздел; уже открытое окно переходит на активное пространство
+// и получает фокус. Окно создаётся при открытии и уничтожается при
 // закрытии: закрытое композитором `FloatingWindow` повторно не показывается. Раздел,
 // привязки и сведения о системе живут вне окна и переживают его закрытие.
 Scope {
@@ -51,8 +52,19 @@ Scope {
     function open(name) {
         var id = Models.resolveSection(name);
         if (id && sections.some(item => item.id === id)) section = id;
+        if (opened) raise();
         windowLoader.active = true;
         load();
+    }
+    // Уже открытое окно — свёрнутое или на другом пространстве — переходит на активное
+    // пространство монитора с фокусом и получает фокус. Окно ищется по классу Quickshell и заголовку.
+    function raise() {
+        var window = desktop.windows.find(item => (item.appId || item.className) === "org.quickshell" && item.title === Lang.s.settingsTitle);
+        if (!window) return;
+        var monitor = Hyprland.focusedMonitor;
+        var here = monitor && monitor.activeWorkspace && window.workspace_id === monitor.activeWorkspace.id;
+        if (here) desktop.focusWindow(window);
+        else desktop.restore(window, monitor ? monitor.name : "");
     }
     onSectionChanged: { if (opened) load(); }
     function load() {
