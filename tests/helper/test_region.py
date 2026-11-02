@@ -13,8 +13,8 @@ from quietline_shell.config import (
     NOTIFICATION_TEXTS, default_region, keyboard_lua, load_region, notification_text, save_region, validated_region,
 )
 
-RU_DEFAULT = {"language": "ru", "clock": "24h", "date": "dmy", "layouts": ["us", "ru"], "toggle": "grp:lalt_lshift_toggle"}
-EN_DEFAULT = {"language": "en", "clock": "12h", "date": "mdy", "layouts": ["us", "ru"], "toggle": "grp:lalt_lshift_toggle"}
+RU_DEFAULT = {"language": "ru", "clock": "24h", "date": "dmy", "barDate": "short", "layouts": ["us", "ru"], "toggle": "grp:lalt_lshift_toggle"}
+EN_DEFAULT = {"language": "en", "clock": "12h", "date": "mdy", "barDate": "short", "layouts": ["us", "ru"], "toggle": "grp:lalt_lshift_toggle"}
 
 
 def run_cli(capsys, *argv):
@@ -54,6 +54,7 @@ def test_region_roundtrip_and_partial_update(tmp_path, capsys, monkeypatch):
     {"layouts": ["us"]},
     {"layouts": ["us", "us"]},
     {"toggle": "grp:win_space_toggle"},
+    {"barDate": "long"},
     {"extra": 1},
 ])
 def test_invalid_region_values_are_rejected(tmp_path, capsys, update):
@@ -247,3 +248,15 @@ def test_fish_locale_keeps_terminal_messages_english():
     assert "set -gx LC_MESSAGES en_US.UTF-8" in text
     assert "set -e LANGUAGE" in text
     assert not re.search(r"\bLANG\b(?!UAGE)", re.sub(r"#.*", "", text))
+
+
+def test_bar_date_is_saved_and_old_files_keep_short_date(tmp_path, capsys, monkeypatch):
+    monkeypatch.setenv("LANG", "ru_RU.UTF-8")
+    path = tmp_path / "quietline" / "region.json"
+    path.parent.mkdir(parents=True)
+    path.write_text(json.dumps({"version": 1, "language": "ru", "clock": "24h", "date": "dmy",
+                                "layouts": ["us", "ru"], "toggle": "grp:lalt_lshift_toggle"}), encoding="utf-8")
+    assert load_region(path)["barDate"] == "short"
+    code, response = run_cli(capsys, "region", "--path", str(path), "--set", '{"barDate": "weekday"}')
+    assert (code, response["barDate"]) == (0, "weekday")
+    assert json.loads(path.read_text(encoding="utf-8"))["barDate"] == "weekday"

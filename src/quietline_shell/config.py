@@ -4,8 +4,9 @@
 Запись атомарная: новый файл с правами `0600` пишется рядом и заменяет старый, поэтому
 ошибка записи оставляет прежний список.
 
-Язык и регион — `region.json` вида `{"version": 1, "language", "clock", "date", "layouts",
-"toggle"}`. Сохранение region также обновляет `locale.conf` (строка `LANG`, остальные строки
+Язык и регион — `region.json` вида `{"version": 1, "language", "clock", "date", "barDate", "layouts",
+"toggle"}`; `barDate` — дата на панели: `short` («Пн 2 нояб.»), `numeric` (дата по `date`),
+`weekday` (день недели и дата по `date`). Сохранение region также обновляет `locale.conf` (строка `LANG`, остальные строки
 файла сохраняются) и `quietline/keyboard.lua` с раскладками для Hyprland. Тексты уведомлений
 `quietline-shell` — `NOTIFICATION_TEXTS` на языке из region.
 
@@ -80,10 +81,11 @@ def save_pins(path: Path, ids: object) -> None:
 LANGUAGES = ("ru", "en")
 CLOCKS = ("24h", "12h")
 DATES = ("dmy", "ymd", "mdy")
+BAR_DATES = ("short", "numeric", "weekday")
 LAYOUTS = ("us", "ru")
 TOGGLES = ("grp:lalt_lshift_toggle", "grp:alt_shift_toggle", "grp:ctrl_shift_toggle", "grp:caps_toggle")
 
-_REGION_FIELDS = ("language", "clock", "date", "layouts", "toggle")
+_REGION_FIELDS = ("language", "clock", "date", "barDate", "layouts", "toggle")
 _LOCALES = {"ru": "ru_RU.UTF-8", "en": "en_US.UTF-8"}
 _HYPRCTL_TIMEOUT = 3
 
@@ -101,6 +103,7 @@ def default_region(lang: str | None) -> dict[str, Any]:
         "language": "ru" if russian else "en",
         "clock": "24h" if russian else "12h",
         "date": "dmy" if russian else "mdy",
+        "barDate": "short",
         "layouts": list(LAYOUTS),
         "toggle": TOGGLES[0],
     }
@@ -150,8 +153,9 @@ def validated_region(data: object, current: dict[str, Any]) -> dict[str, Any]:
     unknown = sorted(str(key) for key in data if key not in _REGION_FIELDS)
     if unknown:
         raise ValueError(f"unknown region field: {', '.join(unknown)}")
-    result = {key: (list(current[key]) if key == "layouts" else current[key]) for key in _REGION_FIELDS}
-    choices = {"language": LANGUAGES, "clock": CLOCKS, "date": DATES, "toggle": TOGGLES}
+    base = {"barDate": BAR_DATES[0], **current}
+    result = {key: (list(base[key]) if key == "layouts" else base[key]) for key in _REGION_FIELDS}
+    choices = {"language": LANGUAGES, "clock": CLOCKS, "date": DATES, "barDate": BAR_DATES, "toggle": TOGGLES}
     for key, value in data.items():
         if key == "layouts":
             if not isinstance(value, list) or sorted(map(str, value)) != sorted(LAYOUTS) or not all(isinstance(item, str) for item in value):

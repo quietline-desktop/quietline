@@ -14,6 +14,8 @@ Singleton {
     property string clock: language === "ru" ? "24h" : "12h"
     // `dmy` | `ymd` | `mdy`
     property string date: language === "ru" ? "dmy" : "mdy"
+    // Дата на панели: `short` («Пн 2 нояб.»), `numeric` (дата по `date`), `weekday` (день и дата по `date`).
+    property string barDate: "short"
     property var layouts: ["us", "ru"]
     property string toggle: "grp:lalt_lshift_toggle"
     // Текст последней ошибки чтения или записи настроек; пусто — ошибок нет.
@@ -32,13 +34,20 @@ Singleton {
     // Дата в заданном формате (`dmy` | `ymd` | `mdy`), а не в выбранном.
     function dateIn(value, format) { return value.toLocaleDateString(locale, Strings.dateFormat(format)); }
     function longDate(value) { return value.toLocaleDateString(locale, "dddd, d MMMM"); }
-    // Дата и время на панели: «Вс 1 нояб. 22:48» / «Sun Nov 1 10:48 PM».
-    function barClock(value) {
-        var day = value.toLocaleDateString(locale, language === "ru" ? "ddd d MMM" : "ddd MMM d");
-        return day.charAt(0).toUpperCase() + day.slice(1) + "  " + time(value);
+    // Дата и время на панели по `barDate`: «Вс 1 нояб. 22:48» / «Sun Nov 1 10:48 PM», «01.11.2026 22:48»
+    // или «Вс 01.11.2026 22:48» (числовая дата — в формате `date`).
+    function barClock(value) { return barDay(value, barDate) + "  " + time(value); }
+    // Дата панели в виде `mode` (`short` | `numeric` | `weekday`) — и для примеров в «Настройках».
+    function barDay(value, mode) {
+        var day = mode === "numeric" ? shortDate(value)
+            : mode === "weekday" ? value.toLocaleDateString(locale, "ddd") + " " + shortDate(value)
+            : value.toLocaleDateString(locale, language === "ru" ? "ddd d MMM" : "ddd MMM d");
+        return day.charAt(0).toUpperCase() + day.slice(1);
     }
+    // Полная дата для подсказки: «понедельник, 2 ноября 2026 · 02.11.2026».
+    function fullDate(value) { return value.toLocaleDateString(locale, "dddd, d MMMM yyyy") + " · " + shortDate(value); }
 
-    // Сохраняет часть настроек (`{language, clock, date, layouts, toggle}`) и перечитывает их.
+    // Сохраняет часть настроек (`{language, clock, date, barDate, layouts, toggle}`) и перечитывает их.
     function update(changes) {
         if (writer.running) {
             pending = Object.assign({}, pending || {}, changes);
@@ -58,6 +67,7 @@ Singleton {
         if (typeof data.language === "string") language = data.language === "ru" ? "ru" : "en";
         if (typeof data.clock === "string") clock = data.clock;
         if (typeof data.date === "string") date = data.date;
+        if (typeof data.barDate === "string") barDate = data.barDate;
         if (Array.isArray(data.layouts)) layouts = data.layouts;
         if (typeof data.toggle === "string") toggle = data.toggle;
     }

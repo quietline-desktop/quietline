@@ -2,8 +2,8 @@
 
 - `pins [--set JSON] [--path PATH]` — `{"pinned": [...]}`; с `--set` список сначала
   проверяется и атомарно записывается;
-- `region [--set JSON] [--path PATH]` — `{"language", "clock", "date", "layouts", "toggle"}`:
-  язык, форматы времени и даты, раскладки и сочетание переключения; с `--set` частичное
+- `region [--set JSON] [--path PATH]` — `{"language", "clock", "date", "barDate", "layouts", "toggle"}`:
+  язык, форматы времени и даты, вид даты на панели, раскладки и сочетание переключения; с `--set` частичное
   обновление проверяется и пишется в `region.json`, а `locale.conf` и `quietline/keyboard.lua`
   — в каталог на два уровня выше `PATH` (`PATH/../../`; по умолчанию `$XDG_CONFIG_HOME`), раскладки применяются в Hyprland,
   в ответ добавляется `"applied": true | false`;

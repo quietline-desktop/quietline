@@ -540,6 +540,17 @@ Scope {
                                         onActivated: index => Lang.update({date: formats[index]})
                                     }
                                 }
+                                SettingsRow {
+                                    label: Lang.s.settingsBarDate
+                                    fill: true
+                                    SegmentedControl {
+                                        readonly property var modes: ["short", "numeric", "weekday"]
+                                        showLabels: true; segmentHeight: 22
+                                        model: modes.map(mode => ({label: Lang.barDay(regionPage.today, mode)}))
+                                        currentIndex: modes.indexOf(Lang.barDate)
+                                        onActivated: index => Lang.update({barDate: modes[index]})
+                                    }
+                                }
                             }
                             SettingsGroup {
                                 title: Lang.s.settingsLayouts

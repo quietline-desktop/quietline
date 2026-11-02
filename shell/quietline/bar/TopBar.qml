@@ -100,7 +100,7 @@ PanelWindow {
             id: clockButton
             anchors.centerIn: parent
             implicitHeight: Theme.barItemHeight
-            hint: Lang.longDate(clock.date) + (root.services.notifications.dnd ? " · " + Lang.s.barDndOn
+            hint: Lang.fullDate(clock.date) + (root.services.notifications.dnd ? " · " + Lang.s.barDndOn
                   : root.services.notifications.unread > 0 ? " · " + Lang.f(Lang.s.barNotificationsUnread, root.services.notifications.unread) : "")
             Accessible.name: Lang.longDate(clock.date) + ", " + Lang.time(clock.date)
             selected: popout.opened && popout.showingNotifications
