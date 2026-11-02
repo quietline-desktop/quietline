@@ -1,5 +1,5 @@
-"""Файлы пользователя: конфигурация Hyprland, fish, micro, ссылка на оболочку, домашние папки,
-язык системы и закрепления дока.
+"""Файлы пользователя: конфигурация Hyprland, fish, micro, схема Ghostty, ссылка на оболочку,
+домашние папки, язык системы и закрепления дока.
 
 Заменяемый файл сохраняется копией `<файл>.quietline-<время>`; если текущее содержимое уже лежит
 в последней копии, новая не создаётся. Каждое изменение записывается в журнал для отката.
@@ -18,6 +18,7 @@ SHELL_DIR = Path('/usr/share/quietline/shell')
 LOCALE_FISH = '/usr/share/quietline/fish/quietline-locale.fish'
 FNM_HOOK = 'fnm env --use-on-cd --shell fish | source'
 MICRO_SETTINGS = {'clipboard': 'external', 'mouse': True}
+GHOSTTY_THEME = 'theme = light:Apple System Colors Light,dark:Apple System Colors'
 USER_DIRS = ('Desktop', 'Documents', 'Downloads', 'Music', 'Pictures', 'Public', 'Templates', 'Videos')
 REGION_DEFAULTS = {'ru': {'clock': '24h', 'date': 'dmy'}, 'en': {'clock': '12h', 'date': 'mdy'}}
 
@@ -120,6 +121,33 @@ def micro_step() -> Step:
         write_text(ctx, target(ctx), json.dumps({**current, **MICRO_SETTINGS}, indent=4, ensure_ascii=False) + '\n')
 
     return Step('micro', 'step.micro', 'Quietline', check, run)
+
+
+def _ghostty_config(ctx: Ctx) -> Path:
+    """Файл настроек Ghostty: `config.ghostty`, иначе существующий `config`, иначе новый `config.ghostty`."""
+    directory = _config(ctx, 'ghostty')
+    if not (directory / 'config.ghostty').exists() and (directory / 'config').is_file():
+        return directory / 'config'
+    return directory / 'config.ghostty'
+
+
+def ghostty_step() -> Step:
+    """Ghostty следует теме окружения: светлая и тёмная схема Apple System Colors по `color-scheme`.
+    Строка добавляется в конец файла, только если в нём нет своей `theme`; остальное не меняется."""
+    def has_theme(ctx: Ctx) -> bool:
+        path = _ghostty_config(ctx)
+        if not path.is_file():
+            return False
+        text = path.read_text(encoding='utf-8', errors='replace')
+        return any('=' in line and line.split('=', 1)[0].strip() == 'theme' for line in text.splitlines())
+
+    def run(ctx: Ctx) -> None:
+        path = _ghostty_config(ctx)
+        current = path.read_text(encoding='utf-8') if path.is_file() else ''
+        separator = '' if not current or current.endswith('\n') else '\n'
+        write_text(ctx, path, current + separator + GHOSTTY_THEME + '\n')
+
+    return Step('ghostty', 'step.ghostty', 'Quietline', has_theme, run)
 
 
 def quickshell_link_step() -> Step:

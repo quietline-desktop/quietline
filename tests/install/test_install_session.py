@@ -174,7 +174,7 @@ FULL = Plan(repo=['fish', 'docker'], flatpak=['com.brave.Browser'], aur=['google
 def test_login_session_comes_before_aur_and_manual_steps_last():
     ids = [step.id for step in build_steps(FULL)]
     assert ids == ['system-upgrade', 'repo-packages', 'graphics', 'locales', 'quietline-package', 'services',
-                   'hyprland-config', 'fish', 'micro', 'quickshell-link', 'user-dirs', 'region', 'pins', 'greetd',
+                   'hyprland-config', 'fish', 'micro', 'ghostty', 'quickshell-link', 'user-dirs', 'region', 'pins', 'greetd',
                    'flatpak', 'fnm', 'uv', 'aur-google-chrome', 'aur-1password', 'default-shell', 'hyprbars', 'docker-group',
                    'docker-desktop', 'amneziavpn']
     steps = {step.id: step for step in build_steps(FULL)}
