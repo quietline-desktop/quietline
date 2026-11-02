@@ -538,6 +538,12 @@ test('battery level bouncing around a threshold warns only once until charging',
  assert.equal(M.batteryWarning(warned,20,true),20);
 });
 test('do not disturb lets only critical cards through, the open centre none',()=>{
+ assert.equal(M.notificationImage('image://icon//tmp/satty-x/1.png'),'file:///tmp/satty-x/1.png');
+ assert.equal(M.notificationImage('/tmp/a b.png'),'file:///tmp/a b.png');
+ assert.equal(M.notificationImage('file:///tmp/a.png'),'file:///tmp/a.png');
+ assert.equal(M.notificationImage('image://icon/satty'),'image://icon/satty');
+ assert.equal(M.notificationImage('image://qsimage/12/0'),'image://qsimage/12/0');
+ assert.equal(M.notificationImage(''),'');
  assert.equal(M.popupAllowed(2,true,false),true);
  assert.equal(M.popupAllowed(1,true,false),false);
  assert.equal(M.popupAllowed(2,false,true),false);

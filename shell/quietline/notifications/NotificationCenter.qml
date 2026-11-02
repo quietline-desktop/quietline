@@ -88,13 +88,20 @@ RowLayout {
                         readonly property bool stacked: !group.open && group.modelData.entries.length > 1
                         Layout.fillWidth: true
                         implicitHeight: card.implicitHeight + (stacked ? 6 : 0)
-                        // Край следующей карточки под верхней — признак стопки.
-                        Rectangle {
+                        // Край следующей карточки под верхней — признак стопки. Карточка
+                        // полупрозрачная, поэтому край виден только ниже неё: полоса 6 px
+                        // обрезает скруглённый прямоугольник.
+                        Item {
                             visible: slot.stacked
                             x: 10; width: parent.width - 20
-                            y: card.implicitHeight - 10; height: 16
-                            radius: Theme.radiusCard
-                            color: Theme.stackEdge
+                            y: card.implicitHeight; height: 6
+                            clip: true
+                            Rectangle {
+                                width: parent.width
+                                y: -10; height: 16
+                                radius: Theme.radiusCard
+                                color: Theme.stackEdge
+                            }
                         }
                         NotificationCard {
                             id: card

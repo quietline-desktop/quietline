@@ -652,6 +652,17 @@ function popupAllowed(urgency, dnd, centerOpen) {
     if (centerOpen) return false;
     return urgency === 2 || !dnd;
 }
+// Картинка уведомления для Image. Путь к файлу (`image-path`, в том числе в виде
+// `image://icon/<путь>`) становится адресом `file://`: файл, который приложение уже удалило
+// (миниатюра снимка Satty), даёт ошибку загрузки и запасной значок, а не клетку «нет значка».
+// Имя значка и `image://qsimage/…` остаются как есть.
+function notificationImage(image) {
+    var value = String(image || "");
+    var path = value.indexOf("image://icon/") === 0 ? decodeURIComponent(value.slice(13)) : value;
+    if (path.indexOf("file://") === 0) return path;
+    if (path.charAt(0) === "/") return "file://" + path;
+    return value;
+}
 // `transient` живёт только карточкой: без видимой карточки (скрыта, не всплыла при
 // «Не беспокоить» или открытом центре) он сразу закрывается по сроку.
 function transientExpires(transient, popupShown) { return !!transient && !popupShown; }

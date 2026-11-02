@@ -3,6 +3,7 @@ import QtQuick.Layouts
 import Quickshell
 import ".."
 import "../controls"
+import "../logic/Models.js" as Models
 
 // Карточка уведомления: значок приложения (или картинка уведомления), имя приложения и
 // время, заголовок, текст и кнопки действий. Нажатие на карточку — действие по умолчанию;
@@ -18,7 +19,7 @@ Rectangle {
     signal activated()
     readonly property var defaultAction: notification ? notification.actions.find(action => action.identifier === "default") || null : null
     readonly property var extraActions: notification ? notification.actions.filter(action => action.identifier !== "default") : []
-    readonly property string picture: !notification ? "" : notification.image ? notification.image
+    readonly property string picture: !notification ? "" : notification.image ? Models.notificationImage(notification.image)
         : notification.appIcon ? Quickshell.iconPath(notification.appIcon, true) : ""
     implicitHeight: body.implicitHeight + 24
     radius: Theme.radiusCard
