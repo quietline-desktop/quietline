@@ -78,6 +78,12 @@ hl.config({
     },
 })
 
+-- Указатель — тема Capitaine (пакет capitaine-cursors), 24 px. Hyprland сам передаёт тему и размер
+-- в gsettings (cursor.sync_gsettings_theme), их берут программы GTK; Qt и XWayland читают
+-- XCURSOR_THEME. hl.env в hyprland.lua после подключения этого файла главнее.
+hl.env("XCURSOR_THEME", "capitaine-cursors")
+hl.env("XCURSOR_SIZE", "24")
+
 -- Окна появляются из 96 % масштаба, пространства сдвигаются; кривая — та же, что у оболочки.
 hl.curve("quietline", { type = "bezier", points = { { 0.2, 0.9 }, { 0.3, 1 } } })
 hl.animation({ leaf = "windowsIn", enabled = true, speed = 2.5, bezier = "quietline", style = "popin 96%" })

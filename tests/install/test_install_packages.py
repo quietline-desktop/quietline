@@ -216,7 +216,7 @@ def test_pkgbuild_installs_expected_paths():
     depends = re.search(r'^depends=\(([^)]*)\)', text, re.M | re.S).group(1)
     for package in ('python', 'hyprland', 'quickshell', 'networkmanager', 'brightnessctl', 'power-profiles-daemon',
                     'bluez', 'pipewire', 'wireplumber', 'glib2', 'libnotify', 'wl-clipboard', 'cliphist', 'grim',
-                    'slurp', 'satty', 'plocate', 'polkit'):
+                    'slurp', 'satty', 'plocate', 'polkit', 'capitaine-cursors'):
         assert f"'{package}'" in depends, package
     for target in ('/usr/share/quietline/shell', '/usr/share/quietline/hyprland/quietline.lua',
                    '/usr/share/quietline/fish/quietline-locale.fish',

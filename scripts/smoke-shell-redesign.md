@@ -2,12 +2,12 @@
 
 Проверка по спеке `docs/superpowers/specs/2026-11-01-shell-redesign-design.md` и плану `docs/superpowers/plans/2026-11-01-shell-redesign.md` в сеансе Hyprland ≥ 0.55 с Quickshell ≥ 0.3.2, после установки пакета `quietline` из этой ветки (`./install.sh update` или `makepkg -si` в `packaging/arch`). Модульные тесты проверяют чистую логику (номера пространств и название приложения на панели, разделы поиска, вид записей буфера, стопки уведомлений, сетку календаря, видимость дока, свёрнутые окна в доке, специальное пространство в движке, шаг hyprbars установщика, снимки для фона блокировки); здесь — то, что подтверждается только вживую. Пока пункт не проверен, он числится в `docs/backlog.md`.
 
-Нумерация: **R1–R20**.
+Нумерация: **R1–R24**.
 
 ## Подготовка
 
 ```sh
-sudo pacman -S --needed hyprpm inter-font ttf-material-symbols-variable ttf-jetbrains-mono
+sudo pacman -S --needed hyprpm inter-font ttf-material-symbols-variable ttf-jetbrains-mono capitaine-cursors
 hyprpm update && hyprpm add https://github.com/quietline-desktop/hyprland-plugins && hyprpm enable hyprbars
 hyprctl reload
 ```
@@ -41,3 +41,4 @@ hyprctl reload
 | R21 | Открыть «Настройки», свернуть кнопкой заголовка, нажать `Super+I`; затем перенести окно на другое пространство и снова `Super+I` | Окно возвращается на текущее пространство поверх остальных и получает фокус; заголовок окна не ломается. | проверено 2026-11-02 через IPC `settings` (оболочка из репозитория) |
 | R22 | «Настройки» → «Экран и яркость» → «Масштаб»: выбрать 100 %, затем 125 %, затем «Авто»; `hyprctl reload`; перезайти | Масштаб меняется сразу, сегмент остаётся выбранным; после `hyprctl reload` и перезахода сохраняется; «Авто» возвращает выбор Hyprland. | чтение и сегмент проверены 2026-11-02 (запись — командой `quietline-shell display --set`, загрузчик `display.lua` — через `hyprctl eval`); щелчки по сегментам, `hyprctl reload` и перезаход — нет |
 | R23 | В «Окнах» навести указатель на край и угол окна и потянуть; то же в «Тайлах» | Указатель меняется на стрелку размера, окно меняет размер за край и за угол; в «Тайлах» меняется ширина колонки. | не проверено (опции применены через `hyprctl eval` 2026-11-02) |
+| R24 | После перезахода навести указатель на рабочий стол, ссылку в Chrome, поле ввода в Ghostty и Dolphin, рамку окна; `gsettings get org.gnome.desktop.interface cursor-theme` | Везде тема Capitaine (тёмная стрелка с белой обводкой), 24 px, без смены вида между Hyprland, GTK, Qt и XWayland; gsettings — `'capitaine-cursors'`. | частично: 2026-11-02 `hyprctl setcursor capitaine-cursors 24` — тема применилась, gsettings стал `'capitaine-cursors'`; вид в программах и после перезахода с файлом из пакета — нет |
