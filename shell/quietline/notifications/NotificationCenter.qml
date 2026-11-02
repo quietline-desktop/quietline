@@ -88,15 +88,15 @@ ColumnLayout {
                         x: 10; width: parent.width - 20
                         y: card.implicitHeight - 10; height: 16
                         radius: Theme.radiusCard
-                        color: Qt.rgba(1, 1, 1, 0.045)
+                        color: Theme.stackEdge
                     }
                     NotificationCard {
                         id: card
                         width: parent.width
                         notification: slot.modelData.notification
                         timeText: root.ageText(slot.modelData.received)
-                        surfaceColor: Qt.rgba(1, 1, 1, 0.07)
-                        border.color: notification.urgency === 2 ? Theme.danger : Qt.rgba(1, 1, 1, 0.05)
+                        surfaceColor: Theme.fill
+                        border.color: notification.urgency === 2 ? Theme.danger : Theme.groupBorder
                         onCloseRequested: slot.modelData.notification.dismiss()
                     }
                 }

@@ -15,6 +15,7 @@ var KEYWORDS = {
     settingsNotificationsKeywords: "уведомления не беспокоить история notifications do not disturb history",
     settingsRegionKeywords: "язык регион раскладка клавиатура время дата формат часы language region keyboard layout clock time date format",
     settingsShortcutsKeywords: "клавиши горячие памятка сочетания shortcuts hotkeys keys",
+    settingsAppearanceKeywords: "тема светлая тёмная темная оформление указатель курсор theme light dark appearance pointer cursor mouse",
     settingsAboutKeywords: "о системе версия система компьютер about version system computer",
     actionLockKeywords: "заблокировать блокировка экран lock screen",
     actionLogoutKeywords: "выйти из сеанса выход logout log out sign out",
@@ -462,7 +463,25 @@ var STRINGS = {
         aboutLoading: "Сведения загружаются…",
 
         regionReadFailed: "Настройки языка и региона недоступны",
-        regionSaveFailed: "Настройки языка и региона не сохранены"
+        regionSaveFailed: "Настройки языка и региона не сохранены",
+        settingsAppearance: "Оформление",
+        appearanceTheme: "Тема",
+        appearanceLight: "Светлая",
+        appearanceDark: "Тёмная",
+        appearanceApps: "Приложения",
+        appearanceAppsNote: "GTK, Qt и браузеры получают ту же схему; уже открытые окна некоторых программ меняются после перезапуска",
+        appearancePointer: "Указатель",
+        appearancePointerColor: "Цвет",
+        appearancePointerDark: "Тёмный",
+        appearancePointerLight: "Светлый",
+        appearancePointerSize: "Размер",
+        appearanceSizeNormal: "Обычный",
+        appearanceSizeLarge: "Крупный",
+        appearanceSizeLarger: "Очень крупный",
+        appearancePending: "Сохранено; применится после перезагрузки конфигурации Hyprland или повторного входа",
+        appearanceReadFailed: "Настройки оформления недоступны",
+        appearanceSaveFailed: "Настройки оформления не сохранены",
+        darkModeButton: "Тёмная тема"
     }),
     en: withKeywords({
         clockTitle: "Time format",
@@ -895,7 +914,25 @@ var STRINGS = {
         aboutLoading: "Loading information…",
 
         regionReadFailed: "Language and region settings are unavailable",
-        regionSaveFailed: "Language and region settings not saved"
+        regionSaveFailed: "Language and region settings not saved",
+        settingsAppearance: "Appearance",
+        appearanceTheme: "Theme",
+        appearanceLight: "Light",
+        appearanceDark: "Dark",
+        appearanceApps: "Applications",
+        appearanceAppsNote: "GTK, Qt and browsers follow the same scheme; some windows that are already open change after a restart",
+        appearancePointer: "Pointer",
+        appearancePointerColor: "Color",
+        appearancePointerDark: "Dark",
+        appearancePointerLight: "Light",
+        appearancePointerSize: "Size",
+        appearanceSizeNormal: "Normal",
+        appearanceSizeLarge: "Large",
+        appearanceSizeLarger: "Extra large",
+        appearancePending: "Saved; applies after the Hyprland configuration is reloaded or you sign in again",
+        appearanceReadFailed: "Appearance settings are unavailable",
+        appearanceSaveFailed: "Appearance settings not saved",
+        darkModeButton: "Dark mode"
     })
 };
 

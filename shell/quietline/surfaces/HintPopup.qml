@@ -44,7 +44,7 @@ PopupWindow {
     Rectangle {
         anchors.fill: parent
         radius: 7
-        color: Qt.rgba(30 / 255, 30 / 255, 34 / 255, 0.94)
+        color: Theme.tooltipSurface
         border.width: 1; border.color: Theme.border
         Text {
             renderType: Text.CurveRendering

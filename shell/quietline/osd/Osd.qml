@@ -114,12 +114,12 @@ PanelWindow {
                 Layout.fillWidth: true
                 implicitHeight: 6
                 radius: 3
-                color: Qt.rgba(1, 1, 1, 0.18)
+                color: Theme.osdTrack
                 Rectangle {
                     width: parent.width * Math.max(0, root.view.fill)
                     height: parent.height
                     radius: 3
-                    color: root.kind !== "brightness" && (root.kind === "mic" ? root.micAudio && root.micAudio.muted : root.sinkAudio && root.sinkAudio.muted) ? Theme.text3 : "#ffffff"
+                    color: root.kind !== "brightness" && (root.kind === "mic" ? root.micAudio && root.micAudio.muted : root.sinkAudio && root.sinkAudio.muted) ? Theme.text3 : Theme.osdFill
                     Behavior on width { NumberAnimation { duration: root.motion / 2 } }
                 }
             }

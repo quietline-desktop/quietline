@@ -30,6 +30,7 @@ Scope {
         {id: "bluetooth", labelKey: "settingsBluetooth", symbol: "bluetooth", color: "#0a84ff", group: 0},
         {id: "audio", labelKey: "settingsAudio", symbol: "volume_up", color: "#ff375f", group: 1},
         {id: "display", labelKey: "settingsDisplay", symbol: "light_mode", color: "#0a84ff", group: 1},
+        {id: "appearance", labelKey: "settingsAppearance", symbol: "palette", color: "#5e5ce6", group: 1},
         {id: "power", labelKey: "settingsPower", symbol: "battery_full", color: "#30d158", group: 1},
         {id: "notifications", labelKey: "settingsNotifications", symbol: "notifications", color: "#ff453a", group: 1},
         {id: "region", labelKey: "settingsRegion", symbol: "language", color: "#8e8e93", group: 2},
@@ -185,7 +186,7 @@ Scope {
                     Layout.fillHeight: true
                     Layout.preferredWidth: 232
                     color: Theme.sidebarSurface
-                    Rectangle { anchors.right: parent.right; width: 1; height: parent.height; color: Qt.rgba(0, 0, 0, 0.35) }
+                    Rectangle { anchors.right: parent.right; width: 1; height: parent.height; color: Theme.sidebarDivider }
                     ColumnLayout {
                         anchors.fill: parent; anchors.margins: 10
                         spacing: 10
@@ -248,14 +249,14 @@ Scope {
                                     radius: 7
                                     color: navItem.current ? Theme.accent : navArea.containsMouse ? Theme.fill : "transparent"
                                     border.width: navItem.current && navigation.activeFocus ? 2 : 0
-                                    border.color: Qt.rgba(1, 1, 1, 0.5)
+                                    border.color: Theme.accentRing
                                     RowLayout {
                                         anchors.fill: parent; anchors.leftMargin: 8; anchors.rightMargin: 8
                                         spacing: 9
                                         Rectangle {
                                             implicitWidth: 22; implicitHeight: 22; radius: 6
                                             color: navItem.modelData.color
-                                            Icon { anchors.centerIn: parent; name: navItem.modelData.symbol; filled: true; size: 15; color: "#ffffff" }
+                                            Icon { anchors.centerIn: parent; name: navItem.modelData.symbol; filled: true; size: 15; color: Theme.accentForeground }
                                         }
                                         Text {
                                             renderType: Text.CurveRendering
@@ -363,6 +364,101 @@ Scope {
                             Note { visible: root.displayError !== ""; color: Theme.danger; text: root.displayError }
                             Note { visible: !root.scaleApplied; text: Lang.s.displayScalePending }
                             Note { text: Lang.s.settingsDisplayNote }
+                        }
+                        Page {
+                            PageTitle { text: Lang.s.settingsAppearance }
+                            Note { visible: Appearance.error !== ""; color: Theme.danger; text: Appearance.error }
+                            SettingsGroup {
+                                title: Lang.s.appearanceTheme
+                                // Карточки-превью тем: обои, панель, окно и док в миниатюре; выбранная — рамка акцентом.
+                                Row {
+                                    Layout.margins: 14
+                                    spacing: 18
+                                    Repeater {
+                                        model: [
+                                            {theme: "light", labelKey: "appearanceLight", wall: ["#8fb6ec", "#c9b8e6"], bar: Qt.rgba(246 / 255, 246 / 255, 248 / 255, 0.75), window: "#ffffff", title: "#ececef", dock: Qt.rgba(250 / 255, 250 / 255, 252 / 255, 0.6)},
+                                            {theme: "dark", labelKey: "appearanceDark", wall: ["#141a3c", "#0e1230"], bar: Qt.rgba(22 / 255, 22 / 255, 26 / 255, 0.7), window: "#1d1d21", title: "#2b2b30", dock: Qt.rgba(40 / 255, 40 / 255, 46 / 255, 0.6)}
+                                        ]
+                                        delegate: Column {
+                                            id: themeCard
+                                            required property var modelData
+                                            readonly property bool current: Appearance.theme === modelData.theme
+                                            spacing: 7
+                                            Accessible.role: Accessible.RadioButton
+                                            Accessible.name: Lang.s[modelData.labelKey]
+                                            Accessible.checked: current
+                                            Rectangle {
+                                                width: 156; height: 102; radius: 12
+                                                color: "transparent"
+                                                border.width: 3
+                                                border.color: themeCard.current ? Theme.accent : "transparent"
+                                                Rectangle {
+                                                    anchors.fill: parent; anchors.margins: 3
+                                                    radius: 9
+                                                    clip: true
+                                                    border.width: themeCard.current ? 0 : 1; border.color: Theme.border
+                                                    gradient: Gradient {
+                                                        GradientStop { position: 0; color: themeCard.modelData.wall[0] }
+                                                        GradientStop { position: 1; color: themeCard.modelData.wall[1] }
+                                                    }
+                                                    Rectangle { width: parent.width; height: 8; color: themeCard.modelData.bar }
+                                                    Rectangle {
+                                                        x: 18; y: 20; width: 84; height: 56; radius: 5
+                                                        color: themeCard.modelData.window
+                                                        Rectangle { width: parent.width; height: 9; radius: 5; color: themeCard.modelData.title }
+                                                    }
+                                                    Rectangle {
+                                                        anchors.horizontalCenter: parent.horizontalCenter
+                                                        anchors.bottom: parent.bottom; anchors.bottomMargin: 4
+                                                        width: 56; height: 10; radius: 4
+                                                        color: themeCard.modelData.dock
+                                                    }
+                                                }
+                                                MouseArea {
+                                                    anchors.fill: parent
+                                                    cursorShape: Qt.PointingHandCursor
+                                                    onClicked: { if (!themeCard.current) Appearance.update({theme: themeCard.modelData.theme}); }
+                                                }
+                                            }
+                                            Text {
+                                                renderType: Text.CurveRendering
+                                                anchors.horizontalCenter: parent.horizontalCenter
+                                                text: Lang.s[themeCard.modelData.labelKey]
+                                                color: Theme.text
+                                                font.family: Theme.sans; font.pixelSize: Theme.smallFontSize
+                                                font.weight: themeCard.current ? Font.DemiBold : Font.Normal
+                                            }
+                                        }
+                                    }
+                                }
+                                SettingsRow {
+                                    label: Lang.s.appearanceApps
+                                    note: Lang.s.appearanceAppsNote
+                                }
+                            }
+                            SettingsGroup {
+                                title: Lang.s.appearancePointer
+                                SettingsRow {
+                                    label: Lang.s.appearancePointerColor
+                                    SegmentedControl {
+                                        showLabels: true; segmentHeight: 22
+                                        model: [{label: Lang.s.appearancePointerDark}, {label: Lang.s.appearancePointerLight}]
+                                        currentIndex: Appearance.cursor === "light" ? 1 : 0
+                                        onActivated: index => Appearance.update({cursor: index === 1 ? "light" : "dark"})
+                                    }
+                                }
+                                SettingsRow {
+                                    label: Lang.s.appearancePointerSize
+                                    SegmentedControl {
+                                        readonly property var sizes: [24, 36, 48]
+                                        showLabels: true; segmentHeight: 22
+                                        model: [{label: Lang.s.appearanceSizeNormal}, {label: Lang.s.appearanceSizeLarge}, {label: Lang.s.appearanceSizeLarger}]
+                                        currentIndex: sizes.indexOf(Appearance.cursorSize)
+                                        onActivated: index => Appearance.update({cursorSize: sizes[index]})
+                                    }
+                                }
+                            }
+                            Note { visible: !Appearance.applied; text: Lang.s.appearancePending }
                         }
                         Page {
                             PageTitle { text: Lang.s.settingsPower }

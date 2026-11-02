@@ -23,7 +23,7 @@ Switch {
         Rectangle {
             width: 18; height: 18; radius: 9
             y: 2; x: root.checked ? parent.width - width - 2 : 2
-            color: "#ffffff"
+            color: Theme.knob
             Behavior on x { NumberAnimation { duration: Theme.fastDuration; easing.type: Easing.OutCubic } }
         }
     }

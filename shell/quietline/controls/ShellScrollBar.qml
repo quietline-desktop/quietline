@@ -20,7 +20,7 @@ ScrollBar {
         implicitWidth: 4
         implicitHeight: 4
         radius: 2
-        color: root.pressed || root.hovered ? Qt.rgba(1, 1, 1, 0.45) : Qt.rgba(1, 1, 1, 0.22)
+        color: root.pressed || root.hovered ? Theme.scrollHandleActive : Theme.scrollHandle
         opacity: root.size < 1 ? 1 : 0
         Behavior on color { ColorAnimation { duration: Theme.fastDuration } }
     }

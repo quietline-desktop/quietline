@@ -28,7 +28,7 @@ ColumnLayout {
     component Module: Rectangle {
         radius: Theme.radiusModule
         color: Theme.fill
-        border.width: 1; border.color: Qt.rgba(1, 1, 1, 0.04)
+        border.width: 1; border.color: Theme.moduleBorder
     }
     component Caption: Text {
         renderType: Text.CurveRendering
@@ -116,16 +116,34 @@ ColumnLayout {
             }
         }
     }
+    // Модуль «Экран»: кнопка тёмной темы в заголовке (залита акцентом, когда тема тёмная) и
+    // ползунок яркости встроенного экрана, если он есть.
     Module {
-        visible: root.services.brightness.supported && root.builtinScreen
         Layout.fillWidth: true
         implicitHeight: brightnessColumn.implicitHeight + 22
         ColumnLayout {
             id: brightnessColumn
             x: 12; y: 10; width: parent.width - 24
             spacing: 8
-            Caption { text: Lang.s.quickDisplay }
+            RowLayout {
+                Layout.fillWidth: true
+                Caption { Layout.fillWidth: true; text: Lang.s.quickDisplay }
+                ShellButton {
+                    implicitHeight: 22
+                    radius: 11
+                    symbol: "dark_mode"
+                    symbolSize: 14
+                    text: Lang.s.darkModeButton
+                    font.pixelSize: Theme.captionFontSize
+                    emphasized: !Appearance.light
+                    selected: Appearance.light
+                    onClicked: Appearance.update({theme: Appearance.light ? "dark" : "light"})
+                    Accessible.role: Accessible.CheckBox
+                    Accessible.checked: !Appearance.light
+                }
+            }
             ShellSlider {
+                visible: root.services.brightness.supported && root.builtinScreen
                 Layout.fillWidth: true
                 symbol: "light_mode"
                 label: Lang.s.brightnessLabel
@@ -225,7 +243,7 @@ ColumnLayout {
                 Rectangle {
                     Layout.fillWidth: true
                     implicitHeight: 4; radius: 2
-                    color: Qt.rgba(1, 1, 1, 0.12)
+                    color: Theme.track
                     Rectangle { width: parent.width * Math.max(0, Math.min(1, parent.parent.fraction)); height: parent.height; radius: 2; color: Theme.text2 }
                 }
             }

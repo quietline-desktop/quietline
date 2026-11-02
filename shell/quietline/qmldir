@@ -1,3 +1,4 @@
 module Quietline
 singleton Theme 1.0 Theme.qml
 singleton Lang 1.0 Lang.qml
+singleton Appearance 1.0 Appearance.qml

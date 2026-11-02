@@ -164,7 +164,7 @@ ColumnLayout {
                             visible: !!entry.item && entry.item.kind === "file"
                             width: parent.width
                             text: entry.item ? entry.item.subtitle : ""
-                            color: entry.chosen ? Qt.rgba(1, 1, 1, 0.8) : Theme.text2
+                            color: entry.chosen ? Theme.accentForeground2 : Theme.text2
                             font.family: Theme.sans; font.pixelSize: Theme.smallFontSize
                             elide: Text.ElideMiddle; textFormat: Text.PlainText
                         }
@@ -173,7 +173,7 @@ ColumnLayout {
                         renderType: Text.CurveRendering
                         visible: entry.large
                         text: entry.item ? entry.item.subtitle : ""
-                        color: entry.chosen ? Qt.rgba(1, 1, 1, 0.8) : Theme.text3
+                        color: entry.chosen ? Theme.accentForeground2 : Theme.text3
                         font.family: Theme.sans; font.pixelSize: Theme.smallFontSize
                     }
                 }

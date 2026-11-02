@@ -28,7 +28,7 @@ Rectangle {
         width: target ? target.width : 0
         height: root.segmentHeight
         radius: Theme.radiusSmall - 2
-        color: Theme.fillStrong
+        color: Theme.segmentSelected
         Behavior on x { NumberAnimation { duration: root.reducedMotion ? 0 : Theme.motionDuration; easing.type: Easing.OutCubic } }
         Behavior on width { NumberAnimation { duration: root.reducedMotion ? 0 : Theme.motionDuration; easing.type: Easing.OutCubic } }
     }

@@ -84,7 +84,7 @@ Rectangle {
                 Layout.fillWidth: true
                 visible: text.length > 0
                 text: root.notification ? root.notification.body : ""
-                color: Qt.rgba(235 / 255, 235 / 255, 245 / 255, 0.82); font.family: Theme.sans; font.pixelSize: Theme.fontSize
+                color: Theme.textBody; font.family: Theme.sans; font.pixelSize: Theme.fontSize
                 wrapMode: Text.Wrap; maximumLineCount: 4; elide: Text.ElideRight; textFormat: Text.PlainText
                 lineHeight: 1.1
             }
@@ -119,7 +119,7 @@ Rectangle {
         hint: root.closeHint
         background: Rectangle {
             radius: 10
-            color: Qt.rgba(60 / 255, 60 / 255, 66 / 255, 0.96)
+            color: Theme.badgeSurface
             border.width: 1; border.color: Theme.border
         }
         onClicked: root.closeRequested()

@@ -110,7 +110,7 @@ ColumnLayout {
                         Text {
                             renderType: Text.CurveRendering
                             text: Models.clipboardKindLabel(row.modelData, Lang.s)
-                            color: row.chosen ? Qt.rgba(1, 1, 1, 0.8) : Theme.text3
+                            color: row.chosen ? Theme.accentForeground2 : Theme.text3
                             font.family: Theme.sans; font.pixelSize: Theme.captionFontSize
                         }
                     }

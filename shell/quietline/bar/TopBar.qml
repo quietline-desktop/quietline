@@ -259,7 +259,7 @@ PanelWindow {
                             anchors.verticalCenter: parent.verticalCenter
                             width: 25; height: 12; radius: 3.5
                             color: "transparent"
-                            border.width: 1.2; border.color: Qt.rgba(1, 1, 1, 0.5)
+                            border.width: 1.2; border.color: Theme.batteryOutline
                             Rectangle {
                                 x: 2; y: 2
                                 height: parent.height - 4
@@ -272,13 +272,13 @@ PanelWindow {
                                 visible: root.services.power.charging
                                 anchors.centerIn: parent
                                 name: "bolt"; filled: true; weight: 600; size: 12
-                                color: root.services.power.percent > 45 ? "#1c1c20" : Theme.text
+                                color: root.services.power.percent > 45 ? Theme.textInverse : Theme.text
                             }
                         }
                         Rectangle {
                             anchors.verticalCenter: parent.verticalCenter
                             width: 1.5; height: 4; radius: 1
-                            color: Qt.rgba(1, 1, 1, 0.5)
+                            color: Theme.batteryOutline
                         }
                     }
                 }
@@ -459,7 +459,7 @@ PanelWindow {
         text: root.message
         hint: root.message + " · " + (root.engine.ready ? Lang.s.barDismissMessage : Lang.s.barRetryConnection)
         background: Rectangle {
-            color: parent.hovered ? Qt.rgba(48 / 255, 48 / 255, 54 / 255, 0.92) : Theme.solidSurface
+            color: parent.hovered ? Theme.solidSurfaceHover : Theme.solidSurface
             radius: Theme.radiusControl
             border.width: parent.visualFocus ? 2 : 1
             border.color: parent.visualFocus ? Theme.accent : Theme.border

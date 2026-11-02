@@ -21,14 +21,14 @@ Slider {
     background: Rectangle {
         x: root.leftPadding; y: root.topPadding + root.availableHeight / 2 - height / 2
         width: root.availableWidth; height: 24; radius: 12
-        color: Qt.rgba(1, 1, 1, 0.12)
+        color: Theme.track
         border.width: root.visualFocus ? 2 : 0
         border.color: Theme.accent
         Rectangle {
             readonly property real knob: 24
             width: Math.max(knob, knob + root.visualPosition * (parent.width - knob))
             height: parent.height; radius: 12
-            color: "#eef0f4"
+            color: Theme.sliderFill
         }
         Icon {
             visible: root.symbol.length > 0
@@ -36,7 +36,7 @@ Slider {
             name: root.symbol
             filled: true
             size: 16
-            color: "#3a3a40"
+            color: Theme.sliderIcon
             MouseArea {
                 anchors.fill: parent; anchors.margins: -4
                 enabled: root.symbolClickable
@@ -49,7 +49,7 @@ Slider {
         x: root.leftPadding + 2 + root.visualPosition * (root.availableWidth - 24)
         y: root.topPadding + root.availableHeight / 2 - height / 2
         width: 20; height: 20; radius: 10
-        color: "#ffffff"
-        border.width: 1; border.color: Qt.rgba(0, 0, 0, 0.12)
+        color: Theme.knob
+        border.width: 1; border.color: Theme.knobBorder
     }
 }

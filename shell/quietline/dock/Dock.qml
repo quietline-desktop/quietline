@@ -71,7 +71,7 @@ PanelWindow {
         y: root.revealed ? parent.height - height - Theme.dockBottom : parent.height + 12
         radius: Theme.radiusDock
         color: Theme.dockSurface
-        border.width: 1; border.color: Qt.rgba(1, 1, 1, 0.14)
+        border.width: 1; border.color: Theme.dockBorder
         opacity: root.revealed ? 1 : 0
         Behavior on y { NumberAnimation { duration: root.reducedMotion ? 0 : Theme.slideDuration; easing.type: Easing.OutCubic } }
         Behavior on opacity { NumberAnimation { duration: root.reducedMotion ? 0 : Theme.motionDuration } }
@@ -103,7 +103,7 @@ PanelWindow {
                             visible: slot.separatorBefore
                             width: 1; height: Theme.dockIconSize - 12
                             y: 6
-                            color: Qt.rgba(1, 1, 1, 0.18)
+                            color: Theme.dockSeparator
                         }
                         ShellButton {
                             id: dockButton
@@ -145,9 +145,9 @@ PanelWindow {
                             Rectangle {
                                 anchors.top: parent.bottom; anchors.topMargin: 3; anchors.horizontalCenter: parent.horizontalCenter
                                 width: 4; height: 4; radius: 2
-                                color: dockButton.app.minimized ? "transparent" : Qt.rgba(1, 1, 1, 0.8)
+                                color: dockButton.app.minimized ? "transparent" : Theme.dockIndicator
                                 border.width: dockButton.app.minimized ? 1 : 0
-                                border.color: Qt.rgba(1, 1, 1, 0.8)
+                                border.color: Theme.dockIndicator
                                 visible: dockButton.app.running
                             }
                             Timer { id: response; interval: 300; onTriggered: dockButton.launchFlash = false }

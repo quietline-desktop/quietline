@@ -23,7 +23,7 @@ Rectangle {
     implicitHeight: column.implicitHeight + 20
     radius: Theme.radiusModule
     color: Theme.fill
-    border.width: 1; border.color: Qt.rgba(1, 1, 1, 0.04)
+    border.width: 1; border.color: Theme.moduleBorder
     ColumnLayout {
         id: column
         x: 12; y: 10; width: parent.width - 24

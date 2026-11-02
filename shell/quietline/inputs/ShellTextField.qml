@@ -21,6 +21,6 @@ TextField {
         color: Theme.fill
         radius: Theme.radiusControl
         border.width: root.activeFocus ? 2 : 1
-        border.color: root.activeFocus ? Qt.rgba(10 / 255, 132 / 255, 1, 0.7) : Theme.hairline
+        border.color: root.activeFocus ? Theme.focusRing : Theme.hairline
     }
 }
