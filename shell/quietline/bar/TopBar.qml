@@ -489,7 +489,7 @@ PanelWindow {
               : Math.max(Theme.screenMargin, root.width - panelWidth - Theme.screenMargin)
         popupY: centered ? Math.round((root.screen ? root.screen.height : 800) * 0.19) : Theme.barHeight + Theme.popupGap
         panelWidth: showingMenu || showingWindow ? 248 : showingApplications ? Math.min(640, root.width - 24) : showingClipboard ? Math.min(600, root.width - 24)
-                  : Math.min(showingNetwork || showingNotifications ? 376 : showingBattery ? 300 : 336, root.width - 12)
+                  : Math.min(showingNetwork || showingNotifications ? 376 : 336, root.width - 12)
         panelHeight: showingMenu ? quietlineMenu.implicitHeight + 10
                    : showingWindow ? windowMenu.implicitHeight + 10
                    : showingApplications ? searchPanel.contentHeight

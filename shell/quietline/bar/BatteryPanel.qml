@@ -39,8 +39,11 @@ ColumnLayout {
         Layout.fillWidth: true
         Layout.leftMargin: 4; Layout.rightMargin: 4
         Layout.topMargin: -6
-        text: (root.power.charging ? (root.power.percent >= 100 ? Lang.s.quickCharged : Lang.s.quickCharging) : Lang.s.quickOnBattery)
-            + (root.power.timeText ? " · " + root.power.timeText : "")
+        // Время добавляется, только если оно известно: без него «заряжается» повторило бы состояние.
+        readonly property bool full: root.power.charging && root.power.percent >= 100
+        readonly property bool timeKnown: !full && root.power.timeText !== "" && root.power.timeText !== Lang.s.powerCharging
+        text: (root.power.charging ? (full ? Lang.s.quickCharged : Lang.s.quickCharging) : Lang.s.quickOnBattery)
+            + (timeKnown ? " · " + root.power.timeText : "")
         color: Theme.text2
         font.family: Theme.sans; font.pixelSize: Theme.smallFontSize
         elide: Text.ElideRight
