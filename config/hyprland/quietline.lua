@@ -237,7 +237,33 @@ if hl.plugin and hl.plugin.hyprbars then
         match = { float = false },
         ["hyprbars:no_bar"] = true,
     })
+    -- Docker Desktop рисует свои «свернуть», «развернуть» и «закрыть» внутри окна и не даёт
+    -- их отключить, поэтому заголовка не получает: иначе кнопки двоятся.
+    hl.window_rule({
+        name = "quietline-own-titlebar-no-bar",
+        match = { class = "^(docker-desktop)$" },
+        ["hyprbars:no_bar"] = true,
+    })
 end
+
+-- Кнопки окна в самих приложениях GTK, Chromium и Electron (Brave, Claude, VS Code) следуют
+-- gsettings `button-layout`: с заголовками hyprbars набор пуст и кнопки есть только в заголовке,
+-- без плагина — «закрыть», как по умолчанию в GNOME, чтобы окно было чем закрыть мышью.
+hl.exec_cmd("gsettings set org.gnome.desktop.wm.preferences button-layout '"
+    .. ((hl.plugin and hl.plugin.hyprbars) and "appmenu:" or "appmenu:close") .. "'")
+
+-- Приложение, которое просит свернуться своей кнопкой, уходит на скрытое пространство
+-- special:quietline-minimized, как от «свернуть» заголовка. Событие window.minimize есть в
+-- Hyprland 0.57; на версии без него подписка не удаётся и такая просьба ничего не делает.
+pcall(hl.on, "window.minimize", function (window, minimized)
+    if minimized then
+        hl.dispatch(hl.dsp.window.move({
+            window = "address:" .. window.address,
+            workspace = "special:quietline-minimized",
+            follow = false,
+        }))
+    end
+end)
 
 -- Модальные окна плавают и получают тег quietline-modal; движок видит теги в
 -- hyprctl -j clients и такие окна не переставляет.
