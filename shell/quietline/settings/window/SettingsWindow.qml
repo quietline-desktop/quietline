@@ -172,9 +172,11 @@ Scope {
                                     RowLayout {
                                         anchors.fill: parent; anchors.leftMargin: 8; anchors.rightMargin: 8
                                         spacing: 9
+                                        // Плитка выбранного раздела светлая полупрозрачная: цветная слилась бы с акцентной подсветкой строки.
                                         Rectangle {
                                             implicitWidth: 22; implicitHeight: 22; radius: 6
-                                            color: navItem.modelData.color
+                                            color: navItem.current ? Theme.selectedTile : navItem.modelData.color
+                                            Behavior on color { ColorAnimation { duration: Theme.fastDuration } }
                                             Icon { anchors.centerIn: parent; name: navItem.modelData.symbol; filled: true; size: 15; color: Theme.accentForeground }
                                         }
                                         Text {

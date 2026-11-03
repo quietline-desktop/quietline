@@ -22,6 +22,8 @@ QtObject {
     // Второстепенный текст и значки на акценте; обводка фокуса на акценте.
     readonly property color accentForeground2: Qt.rgba(1, 1, 1, 0.8)
     readonly property color accentRing: Qt.rgba(1, 1, 1, 0.5)
+    // Плитка значка на акцентной подсветке (выбранный раздел «Настроек»).
+    readonly property color selectedTile: Qt.rgba(1, 1, 1, 0.24)
     // Рамка поля ввода в фокусе.
     readonly property color focusRing: light ? Qt.rgba(0, 122 / 255, 1, 0.7) : Qt.rgba(10 / 255, 132 / 255, 1, 0.7)
     readonly property color danger: light ? "#ff3b30" : "#ff453a"
