@@ -640,6 +640,7 @@ PanelWindow {
         reducedMotion: root.reducedMotion
         KillConfirm {
             id: killContent
+            entries: root.desktop.entries
             onDone: killDialog.close()
         }
     }

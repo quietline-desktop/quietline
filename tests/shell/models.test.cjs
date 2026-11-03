@@ -736,3 +736,10 @@ test('integerScale: целый масштаб окна даёт нативную
  for(const ratio of [1,2,3,1.004]) assert.equal(M.integerScale(ratio),true,String(ratio));
  for(const ratio of [1.25,1.5,1.75,0,undefined,null,NaN]) assert.equal(M.integerScale(ratio),false,String(ratio));
 });
+
+test('escapeMarkup: имя приложения не становится разметкой StyledText',()=>{
+ assert.equal(M.escapeMarkup('<b>A & "B"</b>'),'&lt;b&gt;A &amp; &quot;B&quot;&lt;/b&gt;');
+ assert.equal(M.escapeMarkup('Claude'),'Claude');
+ assert.equal(M.escapeMarkup(null),'');
+ assert.equal(M.escapeMarkup(undefined),'');
+});

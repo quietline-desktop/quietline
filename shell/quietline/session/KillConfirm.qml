@@ -3,12 +3,18 @@ import QtQuick.Layouts
 import Quickshell
 import ".."
 import "../controls"
+import "../logic/Models.js" as Models
 
 // Содержимое диалога `Super+Shift+Q`: принудительно завершить процесс окна `target`
-// (`{appId, className, title, pid}`) через `quietline-shell app kill`.
+// (`{appId, className, title, pid}`) через `quietline-shell app kill`. Приложение
+// называется и показывается значком по desktop-записи из `entries`, без неё — по окну.
 ColumnLayout {
     id: root
     property var target: null
+    property var entries: []
+    readonly property var entry: target ? Models.desktopFor(target.appId || target.className, entries || []) : null
+    readonly property string appName: entry ? entry.name : target ? (target.title || target.appId || target.className) : ""
+    readonly property string appIcon: entry && entry.icon ? Quickshell.iconPath(entry.icon, true) : ""
     signal done()
     width: parent ? parent.width : 260
     spacing: 0
@@ -20,7 +26,24 @@ ColumnLayout {
         Layout.bottomMargin: 12
         width: 54; height: 54; radius: 14
         color: Theme.fill2
-        Icon { anchors.centerIn: parent; name: "dangerous"; size: 30; color: Theme.danger }
+        Icon { anchors.centerIn: parent; visible: root.appIcon.length === 0; name: "dangerous"; size: 30; color: Theme.danger }
+        Image {
+            anchors.centerIn: parent
+            visible: root.appIcon.length > 0
+            width: 36; height: 36
+            sourceSize.width: 72; sourceSize.height: 72
+            source: root.appIcon
+            smooth: true
+        }
+        // Значок приложения с отметкой опасного действия в углу.
+        Rectangle {
+            visible: root.appIcon.length > 0
+            anchors.right: parent.right; anchors.bottom: parent.bottom
+            anchors.rightMargin: -4; anchors.bottomMargin: -4
+            width: 22; height: 22; radius: 11
+            color: Theme.dialogSurface
+            Icon { anchors.centerIn: parent; name: "dangerous"; size: 18; color: Theme.danger }
+        }
     }
     Text {
         renderType: Theme.textRenderType(QsWindow.window)
@@ -34,7 +57,8 @@ ColumnLayout {
         Layout.fillWidth: true
         Layout.topMargin: 6
         Layout.bottomMargin: 16
-        text: root.target ? Lang.f(Lang.s.killQuestion, root.target.title || root.target.appId || root.target.className)
+        textFormat: Text.StyledText
+        text: root.target ? Lang.f(Lang.s.killQuestion, "<b>" + Models.escapeMarkup(root.appName) + "</b>")
                           : Lang.s.killNoWindow
         color: Theme.text2; font.family: Theme.sans; font.pixelSize: Theme.smallFontSize
         horizontalAlignment: Text.AlignHCenter; wrapMode: Text.Wrap

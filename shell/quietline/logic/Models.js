@@ -1087,3 +1087,10 @@ function integerScale(ratio) {
     var value = Number(ratio);
     return value >= 1 && Math.abs(value - Math.round(value)) < 0.01;
 }
+
+// Текст для `Text.StyledText`: `&`, `<`, `>` и `"` экранируются, чтобы чужая строка (имя окна,
+// приложения) не стала разметкой.
+function escapeMarkup(value) {
+    return String(value === undefined || value === null ? "" : value)
+        .replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
+}

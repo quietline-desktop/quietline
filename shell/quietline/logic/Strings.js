@@ -409,9 +409,9 @@ var STRINGS = {
 
         // Сеанс
         killTitle: "Принудительное завершение",
-        killQuestion: "Завершить «{0}» без сохранения? Несохранённые данные будут потеряны.",
+        killQuestion: "Завершить {0} без сохранения? Несохранённые данные будут потеряны.",
         killNoWindow: "Нет активного окна.",
-        killConfirm: "Завершить принудительно",
+        killConfirm: "Завершить",
         sessionTitle: "Сеанс",
         sessionLockHint: "Заблокировать сеанс · Super+L",
         sessionClosingApps: "Закрываем приложения…",
@@ -984,7 +984,7 @@ var STRINGS = {
 
         // Сеанс
         killTitle: "Force quit",
-        killQuestion: "Force quit “{0}” without saving? Unsaved data will be lost.",
+        killQuestion: "Force quit {0} without saving? Unsaved data will be lost.",
         killNoWindow: "No active window.",
         killConfirm: "Force quit",
         sessionTitle: "Session",
