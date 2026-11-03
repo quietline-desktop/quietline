@@ -1,6 +1,6 @@
 # План: расширение окна «Настройки»
 
-**Статус:** в работе. Спека — `docs/superpowers/specs/2026-11-03-settings-expansion-design.md`.
+**Статус:** реализовано, живая проверка частичная (`scripts/smoke-settings.md`, `docs/backlog.md`). Спека — `docs/superpowers/specs/2026-11-03-settings-expansion-design.md`.
 
 **Цель:** мониторы с разрешением, частотой, расположением, поворотом и VRR; новые разделы «Мышь и тачпад», «Клавиатура», «Дата и время», «Приложения по умолчанию», «Панель и док»; сроки блокировки и сна; микрофон и громкость приложений; страницы шире и по центру.
 
@@ -18,18 +18,20 @@
 | `shell/quietline/inputs/ShellSelect.qml` | выпадающий список |
 | `shell/quietline/panels/AudioControls.qml`, `PowerControls.qml` | микрофоны, приложения, 150 %; сроки простоя |
 | `shell/quietline/dock/Dock.qml`, `shell/quietline/Appearance.qml` | док без автоскрытия |
+| `shell/quietline/system/DisplayService.qml` | мониторы и откат режима вне окна: окно может закрыться вместе со сменой режима своего монитора |
 | `shell/quietline/logic/Models.js`, `Strings.js` | разрешения и частоты, подписи, разделы, строки в обеих таблицах |
 | `tests/helper/`, `tests/shell/` | тесты бэкенда и моделей |
+| `tests/engine/test_server.py` | запуск hypridle с файлом из «Настроек» |
 | `DESIGN.md`, `CHANGELOG.md`, `AGENTS.md`, `docs/backlog.md`, `scripts/smoke-settings.md` | документы |
 
 ## Шаги
 
-- [ ] 1. Бэкенд `display` v2 и `quietline.lua`; тесты.
-- [ ] 2. Бэкенд `input` и `quietline.lua`; тесты.
-- [ ] 3. Бэкенд `idle settings`, `hypridle.conf` и `quietline.lua`; тесты.
-- [ ] 4. Бэкенд `time` с правилом polkit и `defaults`; тесты.
-- [ ] 5. `dockAutohide` в `appearance`, `Appearance.qml`, `Dock.qml`.
-- [ ] 6. Оболочка: деление `settings/`, вёрстка по центру, `ShellSelect`, разделы, строки и модели; тесты Node.
-- [ ] 7. Страницы: «Экран» с подтверждением, «Мышь и тачпад», «Клавиатура», «Питание», «Дата и время», «Приложения по умолчанию», «Панель и док», «Звук».
-- [ ] 8. Живая проверка снимками; LG на 75 Гц с подтверждением и откатом.
-- [ ] 9. Документы, `uv run --python 3.14 pytest`, `node --test 'tests/shell/*.test.cjs'`, слияние в `main`.
+- [x] 1. Бэкенд `display` v2 и `quietline.lua`; тесты.
+- [x] 2. Бэкенд `input` и `quietline.lua`; тесты.
+- [x] 3. Бэкенд `idle settings`, `hypridle.conf` и `quietline.lua`; тесты.
+- [x] 4. Бэкенд `time` с правилом polkit и `defaults`; тесты.
+- [x] 5. `dockAutohide` в `appearance`, `Appearance.qml`, `Dock.qml`.
+- [x] 6. Оболочка: деление `settings/`, вёрстка по центру, `ShellSelect`, разделы, строки и модели; тесты Node.
+- [x] 7. Страницы: «Экран» с подтверждением, «Мышь и тачпад», «Клавиатура», «Питание», «Дата и время», «Приложения по умолчанию», «Панель и док», «Звук».
+- [x] 8. Живая проверка снимками; LG на 75 Гц с подтверждением и откатом.
+- [x] 9. Документы, `uv run --python 3.14 pytest`, `node --test 'tests/shell/*.test.cjs'`, слияние в `main`.
