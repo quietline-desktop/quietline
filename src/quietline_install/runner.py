@@ -226,13 +226,16 @@ class Ctx:
     system: object
     home: Path
     repo: Path
-    ask: Callable[[str], bool]
+    # Вопрос «да / нет»: `ask(question, default=False)`; Enter без выбора даёт `default`.
+    ask: Callable[..., bool]
     out: Callable[[str], None] = print
     dry_run: bool = False
     root: Path = Path('/')
     language: str = 'en'
     state: State = field(default_factory=State)
     log: Callable[[str], None] = field(default=lambda line: None)
+    # Просмотр инструкций пакета AUR: `review(name, lines)` — True, если собирать; None — печать и вопрос.
+    review: Callable[[str, list[str]], bool] | None = None
 
     def t(self, key: str, **values) -> str:
         """Текст экрана на языке установщика."""

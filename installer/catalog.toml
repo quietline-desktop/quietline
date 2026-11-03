@@ -176,7 +176,11 @@ recommended = true
 [[section.item]]
 id = "docker-desktop"
 name = "Docker Desktop"
-source = "manual"
+source = "aur"
+packages = ["docker-desktop"]
+# Пакет содержит docker-compose и docker-buildx и конфликтует с ними.
+provides = ["docker-compose", "docker-buildx"]
+desktop = "docker-desktop"
 
 [[section]]
 id = "dotnet"

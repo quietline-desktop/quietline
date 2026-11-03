@@ -22,7 +22,6 @@ GREETD_MARK = '# Quietline:'
 PAM_GREETD = '/etc/pam.d/greetd'
 KEYRING_AUTH = 'auth       optional     pam_gnome_keyring.so'
 KEYRING_SESSION = 'session    optional     pam_gnome_keyring.so auto_start'
-DOCKER_DESKTOP_DOCS = 'https://docs.docker.com/desktop/setup/install/linux/archlinux/'
 AMNEZIA_RELEASES = 'https://github.com/amnezia-vpn/amnezia-client/releases'
 AMNEZIA_SITE = 'https://amnezia.org/en/downloads'
 
@@ -127,7 +126,7 @@ def default_shell_step() -> Step:
         return current(ctx) == '/usr/bin/fish' or declined(ctx, 'default-shell')
 
     def run(ctx: Ctx) -> None:
-        if ctx.ask(ctx.t('session.shellQuestion')):
+        if ctx.ask(ctx.t('session.shellQuestion'), default=True):
             previous = current(ctx)
             ctx.system.run(['chsh', '-s', '/usr/bin/fish'], interactive=True)
             # Откат возвращает прежнюю оболочку до удаления fish, иначе вход станет невозможен.
@@ -146,7 +145,7 @@ def docker_group_step() -> Step:
 
     def run(ctx: Ctx) -> None:
         ctx.out(ctx.t('session.dockerRoot'))
-        if ctx.ask(ctx.t('session.dockerQuestion')):
+        if ctx.ask(ctx.t('session.dockerQuestion'), default=False):
             ctx.system.run(['usermod', '-aG', 'docker', getpass.getuser()], sudo=True)
             ctx.out(ctx.t('session.dockerRelogin'))
         else:
@@ -159,16 +158,19 @@ def docker_group_step() -> Step:
 
 
 def _manual(ctx: Ctx, step_id: str, instructions: str, question: str, present, missing: str) -> None:
-    """Инструкции ручного шага; без установленной программы шаг можно пропустить — id попадает в `state.skipped`."""
+    """Инструкции ручного шага; без установленной программы шаг можно пропустить — id попадает в `state.skipped`.
+
+    Enter отвечает «да» на оба вопроса: программа установлена, а если её нет — шаг пропускается.
+    """
     for line in instructions.splitlines():
         ctx.out(line)
-    if not ctx.ask(question):
+    if not ctx.ask(question, default=True):
         failure = StepFailed(f'{missing} is not installed yet', 'Follow the steps above, then run ./install.sh again.')
     elif not present(ctx):
         failure = StepFailed(f'{missing} was not found', 'Check that its installer finished, then run ./install.sh again.')
     else:
         return
-    if not ctx.ask(ctx.t('manual.skip', step=step_id)):
+    if not ctx.ask(ctx.t('manual.skip', step=step_id), default=True):
         raise failure
     ctx.state.skipped.append(step_id)
     ctx.state.save()
@@ -176,18 +178,6 @@ def _manual(ctx: Ctx, step_id: str, instructions: str, question: str, present, m
 
 def _manual_check(step_id: str, present):
     return lambda ctx: step_id in ctx.state.skipped or present(ctx)
-
-
-def docker_desktop_step() -> Step:
-    def present(ctx: Ctx) -> bool:
-        return ctx.system.ok(['pacman', '-Q', 'docker-desktop'])
-
-    def run(ctx: Ctx) -> None:
-        _manual(ctx, 'docker-desktop', ctx.t('manual.dockerDesktop', docs=DOCKER_DESKTOP_DOCS),
-                ctx.t('manual.dockerDesktopQuestion'), present, 'Docker Desktop')
-
-    return Step('docker-desktop', 'step.docker-desktop', 'docker.com', _manual_check('docker-desktop', present), run,
-                manual=True)
 
 
 def amneziavpn_step() -> Step:

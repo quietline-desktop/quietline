@@ -51,8 +51,9 @@ def ctx(tmp_path, system):
     lines = []
     questions = []
 
-    def ask(question):
+    def ask(question, default=False):
         questions.append(question)
+        context.defaults.append(default)
         return answers.pop(0) if answers else False
 
     context = Ctx(system=system, home=tmp_path / 'home', repo=Path(__file__).resolve().parents[2],
@@ -62,4 +63,5 @@ def ctx(tmp_path, system):
     context.answers = answers
     context.lines = lines
     context.questions = questions
+    context.defaults = []
     return context

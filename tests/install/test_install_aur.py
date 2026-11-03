@@ -27,6 +27,33 @@ def test_pkgbuild_is_shown_and_must_be_confirmed(ctx, system):
     assert ctx.state.changes == []
 
 
+def test_long_pkgbuild_is_shown_whole_and_asked_once(ctx, system):
+    clone_with_pkgbuild(ctx, 'google-chrome', ''.join(f'line{index}\n' for index in range(60)))
+    ctx.answers.append(True)
+    aur.aur_install(ctx, 'google-chrome')
+    assert 'line59' in ctx.lines
+    assert ctx.questions == [ctx.t('aur.confirm', name='google-chrome')] and ctx.defaults == [True]
+
+
+def test_review_screen_replaces_terminal_question(ctx, system):
+    clone_with_pkgbuild(ctx, 'google-chrome', 'pkgname=google-chrome\n')
+    reviewed = []
+    ctx.review = lambda name, lines: reviewed.append((name, lines)) or False
+    with pytest.raises(StepFailed, match='google-chrome'):
+        aur.aur_install(ctx, 'google-chrome')
+    assert reviewed == [('google-chrome', ['---- google-chrome/PKGBUILD ----', 'pkgname=google-chrome'])]
+    assert ctx.questions == [] and ctx.lines == []
+    assert not any(command[0] == 'makepkg' for command in system.commands())
+
+
+def test_docker_desktop_build_explains_terms_and_contexts(ctx, system):
+    clone_with_pkgbuild(ctx, 'docker-desktop')
+    ctx.answers.append(True)
+    aur.aur_install(ctx, 'docker-desktop')
+    assert ctx.lines[-1] == ctx.t('aur.dockerDesktop')
+    assert 'desktop-linux' in ctx.lines[-1]
+
+
 def test_other_files_in_clone_are_listed(ctx, system):
     directory = clone_with_pkgbuild(ctx, 'slack-desktop')
     (directory / 'slack.patch').write_text('--- a\n+++ b\n')

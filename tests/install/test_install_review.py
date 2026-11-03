@@ -155,17 +155,17 @@ def test_progress_is_shown_in_the_installer_language(ctx, tmp_path):
     assert 'fish [Quietline]: done' in (tmp_path / 'install.log').read_text()
 
 
-# Важное 10: длинные инструкции AUR показываются по страницам
+# Важное 10: длинные инструкции AUR показываются целиком, вопрос один
 
-def test_long_aur_instructions_are_paged(ctx, system):
+def test_long_aur_instructions_are_shown_whole(ctx, system):
     directory = ctx.home / '.cache/quietline/aur/google-chrome'
     directory.mkdir(parents=True)
     (directory / 'PKGBUILD').write_text(''.join(f'line {n}\n' for n in range(100)))
-    ctx.answers.extend([True, False, False])
+    ctx.answers.append(False)
     with pytest.raises(StepFailed):
         aur.aur_install(ctx, 'google-chrome')
     shown = [line for line in ctx.lines if line.startswith('line ')]
-    assert len(shown) == 2 * aur.PAGE
+    assert len(shown) == 100 and len(ctx.questions) == 1
 
 
 # Важное 11: откат подтверждается и не выполняется при --dry-run
@@ -183,7 +183,7 @@ def rollback_env(tmp_path, system, monkeypatch):
 
 def test_rollback_refuses_dry_run(tmp_path, system, monkeypatch):
     home, done = rollback_env(tmp_path, system, monkeypatch)
-    code = main_module.main(['rollback', '--dry-run'], system=system, home=home, ask=lambda q: True,
+    code = main_module.main(['rollback', '--dry-run'], system=system, home=home, ask=lambda q, default=False: True,
                             out=lambda line: None)
     assert code != 0 and done == []
 
@@ -192,10 +192,10 @@ def test_rollback_command_asks_for_confirmation(tmp_path, system, monkeypatch):
     home, done = rollback_env(tmp_path, system, monkeypatch)
     questions = []
     code = main_module.main(['rollback'], system=system, home=home,
-                            ask=lambda q: questions.append(q) or False, out=lambda line: None)
+                            ask=lambda q, default=False: questions.append(q) or False, out=lambda line: None)
     assert code != 0 and done == []
     assert any('quietline-pre-20261028-120000' in question for question in questions)
-    assert main_module.main(['rollback'], system=system, home=home, ask=lambda q: True,
+    assert main_module.main(['rollback'], system=system, home=home, ask=lambda q, default=False: True,
                             out=lambda line: None) == 0
     assert done == ['quietline-pre-20261028-120000']
 

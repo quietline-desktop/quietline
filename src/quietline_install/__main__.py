@@ -54,6 +54,9 @@ class CursesScreens:
     def ask_resume(self, ctx, failed_step, reason=''):
         return self._show(screen_module.ask_resume, ctx, failed_step, reason)
 
+    def review_package(self, ctx, name, lines):
+        return self._show(screen_module.review_package, ctx, name, lines)
+
 
 def preflight(ctx: Ctx, info: snapshot.RootInfo) -> list[CheckResult]:
     """Arch, не root, сеть, sudo, не загруженный снимок — обязательны; Btrfs — предупреждение с причиной."""
@@ -111,6 +114,8 @@ def _questions(ctx: Ctx, screens) -> tuple[set[str], set[str]] | None:
     kind = snapshot.snapshot_plan(info)[0]
     screen = 0
     selection: set[str] = set()
+    # Один список на все заходы: возврат со сводки показывает прежние отметки.
+    programs = checklist(ctx, catalog, previous)
     while True:
         try:
             if screen == 0:
@@ -123,8 +128,12 @@ def _questions(ctx: Ctx, screens) -> tuple[set[str], set[str]] | None:
                                                         else ctx.language)
                 ctx.state.system_language = screens.ask_system_language(ctx, current)
             elif screen == 3:
-                chosen = screens.choose_programs(ctx, checklist(ctx, catalog, previous))
-                selection = catalog.recommended() if chosen == 'recommended' else set(chosen)
+                chosen = screens.choose_programs(ctx, programs)
+                if chosen == 'recommended':
+                    programs.apply_recommended(catalog.recommended())
+                    selection = catalog.recommended()
+                else:
+                    selection = set(chosen)
             else:
                 if screens.confirm_summary(ctx, summary(ctx, catalog, selection | previous, previous, kind)):
                     return selection, previous
@@ -169,7 +178,7 @@ def rollback(ctx: Ctx, confirm: bool = True) -> int:
     if confirm:
         question = (ctx.t('rollback.confirmSnapshot', name=state.snapshot['name'])
                     if kind in ('btrfs-ro', 'btrfs-rw') else ctx.t('rollback.confirm'))
-        if not ctx.ask(question):
+        if not ctx.ask(question, default=False):
             ctx.out(ctx.t('rollback.declined'))
             return 1
     try:
@@ -225,18 +234,8 @@ def _install(ctx: Ctx, screens, runner_log: Path, start: str | None) -> int:
     return 0
 
 
-def _terminal_ask(ctx: Ctx):
-    def ask(question: str) -> bool:
-        try:
-            answer = input(f'{question} {ctx.t("ask.suffix")} ').strip().lower()
-        except EOFError:
-            return False
-        return answer in ('y', 'yes', ctx.t('ask.yes'), 'да')
-    return ask
-
-
 def main(argv=None, screens=None, system=None, home: Path | None = None, root: Path = Path('/'),
-         ask=None, out=print) -> int:
+         ask=None, out=print, review=None) -> int:
     parser = argparse.ArgumentParser(prog='install.sh', description='Install the Quietline desktop on Arch Linux.')
     parser.add_argument('command', nargs='?', default='run', choices=['run', 'status', 'check', 'rollback', 'update'])
     parser.add_argument('--dry-run', action='store_true', help='show the steps without changing anything')
@@ -247,11 +246,14 @@ def main(argv=None, screens=None, system=None, home: Path | None = None, root: P
     home = home or Path.home()
     state_dir = home / '.local/state/quietline'
     state = State.load(state_dir / 'install.json')
-    ctx = Ctx(system=None, home=home, repo=args.repo, ask=lambda question: False, out=out,
+    ctx = Ctx(system=None, home=home, repo=args.repo, ask=lambda question, default=False: False, out=out,
               dry_run=args.dry_run, root=root, language=state.installer_language or 'en', state=state)
     logger = Runner([], ctx, state_dir / 'install.log')
     ctx.system = system or System(log=lambda line: ctx.log(line))
-    ctx.ask = ask or _terminal_ask(ctx)
+    ctx.ask = ask or (lambda question, default=False: screen_module.ask_yes_no(ctx, question, default))
+    if review is None and screens is None:
+        review = lambda name, lines: CursesScreens().review_package(ctx, name, lines)
+    ctx.review = review
     screens = screens or CursesScreens()
     catalog_path = args.repo / 'installer/catalog.toml'
 

@@ -25,6 +25,6 @@ def build_steps(plan: Plan) -> list[Step]:
     steps.append(session.hyprbars_step())
     if 'docker' in plan.repo:
         steps.append(session.docker_group_step())
-    manual = {'docker-desktop': session.docker_desktop_step, 'amneziavpn': session.amneziavpn_step}
+    manual = {'amneziavpn': session.amneziavpn_step}
     steps += [manual[item]() for item in plan.manual if item in manual]
     return steps

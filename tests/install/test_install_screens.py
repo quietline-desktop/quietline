@@ -3,7 +3,9 @@ import re
 import pytest
 
 from quietline_install import texts
-from quietline_install.screens import Checklist, Choice, Item, clip, scroll_top
+from quietline_install import screens
+from quietline_install.screens import (Checklist, Choice, Item, answer_key, answer_text, choose_answer,
+                                         clip, scroll_top)
 
 PLACEHOLDER = re.compile(r'\{(\w+)\}')
 
@@ -15,7 +17,7 @@ SECTION_KEYS = [
 STEP_IDS = [
     'system-upgrade', 'repo-packages', 'graphics', 'locales', 'quietline-package', 'services',
     'hyprland-config', 'fish', 'tide', 'micro', 'quickshell-link', 'user-dirs', 'region', 'pins', 'greetd',
-    'keyring', 'boot-theme', 'flatpak', 'fnm', 'uv', 'aur', 'default-shell', 'docker-group', 'docker-desktop',
+    'keyring', 'boot-theme', 'flatpak', 'fnm', 'uv', 'aur', 'default-shell', 'docker-group',
     'amneziavpn', 'snapshot-prepare', 'snapshot',
 ]
 
@@ -171,9 +173,71 @@ def test_scroll_top_keeps_cursor_visible():
 def test_every_hint_fits_two_lines_of_an_80_column_console():
     from quietline_install.screens import FOOTER_LINES, wrap
 
-    hints = [(lang, key) for lang in texts.TEXTS for key in texts.TEXTS[lang] if key.startswith(('hint.', 'final.hint'))]
+    hints = [(lang, key) for lang in texts.TEXTS for key in texts.TEXTS[lang] if key.startswith(('hint.', 'final.hint', 'aur.reviewHint'))]
     assert hints
     for lang, key in hints:
         lines = wrap(texts.TEXTS[lang][key], 78)
         assert len(lines) <= FOOTER_LINES, (lang, key)
         assert all(len(line) <= 78 for line in lines), (lang, key)
+
+
+def test_enter_takes_the_default_answer():
+    assert choose_answer(['enter'], default=True) is True
+    assert choose_answer(['enter'], default=False) is False
+
+
+def test_arrows_choose_and_enter_confirms():
+    shown = []
+    assert choose_answer(['right', 'enter'], default=True, show=shown.append) is False
+    assert choose_answer(['left', 'enter'], default=False) is True
+    assert choose_answer(['down', 'enter'], default=False) is True
+    assert choose_answer(['up', 'up', 'enter'], default=True) is True
+    assert choose_answer(['tab', 'enter'], default=True) is False
+    assert shown == [True, False, False]
+
+
+@pytest.mark.parametrize('key, answer', [('y', True), ('Y', True), ('д', True), ('Д', True),
+                                         ('n', False), ('N', False), ('т', False), ('Т', False)])
+def test_letters_of_both_layouts_answer_at_once(key, answer):
+    assert choose_answer([key, 'enter'], default=not answer) is answer
+
+
+def test_ambiguous_and_other_keys_change_nothing():
+    for key in ('н', 'Н', 'x', 'esc', ' '):
+        assert answer_key(key, True) == (True, False)
+        assert answer_key(key, False) == (False, False)
+
+
+def test_ended_input_means_no():
+    assert choose_answer([], default=True) is False
+
+
+@pytest.mark.parametrize('line, answer', [('', True), ('  ', True), ('y', True), ('Yes', True), ('д', True),
+                                          ('Да', True), ('n', False), ('no', False), ('т', False),
+                                          ('Нет', False), ('н', None), ('maybe', None)])
+def test_typed_answers(line, answer):
+    assert answer_text(line, default=True) is answer
+
+
+class Pipe:
+    """Поток без терминала."""
+
+    def isatty(self):
+        return False
+
+
+def test_without_a_terminal_the_answer_is_typed_and_repeated_until_clear(monkeypatch):
+    from quietline_install.runner import Ctx
+
+    ctx = Ctx(system=None, home=None, repo=None, ask=None, language='ru')
+    replies = iter(['н', 'да'])
+    prompts = []
+    monkeypatch.setattr('builtins.input', lambda prompt: prompts.append(prompt) or next(replies))
+    assert screens.ask_yes_no(ctx, 'Продолжить?', default=False, stdin=Pipe(), stdout=Pipe()) is True
+    assert prompts == ['Продолжить? (Да / Нет, Enter — Нет): '] * 2
+
+    def closed(prompt):
+        raise EOFError
+
+    monkeypatch.setattr('builtins.input', closed)
+    assert screens.ask_yes_no(ctx, 'Продолжить?', default=True, stdin=Pipe(), stdout=Pipe()) is False

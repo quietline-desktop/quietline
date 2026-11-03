@@ -24,6 +24,8 @@
     services                  # службы systemd варианта
     pin                       # files | browser | code | terminal | messenger | пусто
     advanced                  # вариант «Расширенных»: экран показывает его вложенным в раздел
+    provides                  # необязательно: пакеты репозитория, которые вариант заменяет собой;
+                              # при его выборе они не ставятся, даже если их просит другой вариант
 
 «Расширенные» версии (.NET 8.0/9.0, Node.js 22/24/26, Python 3.12/3.13) — обычные варианты раздела
 с `advanced = true`: `Section.basic_items` и `Section.advanced_items` делят `Section.items` для экрана,
@@ -54,6 +56,7 @@ class Item:
     services: list[str] = field(default_factory=list)
     pin: str = ''
     advanced: bool = False
+    provides: list[str] = field(default_factory=list)
 
 
 @dataclass
@@ -150,6 +153,8 @@ class Catalog:
             else:
                 getattr(plan, item.source).extend(item.packages)
             plan.services.extend(item.services)
+        provided = {name for item in chosen for name in item.provides}
+        plan.repo = [name for name in plan.repo if name not in provided]
         for name in ('repo', 'flatpak', 'aur', 'manual', 'fnm', 'uv', 'services'):
             setattr(plan, name, list(dict.fromkeys(getattr(plan, name))))
         plan.pins = self._pins(chosen)
@@ -174,7 +179,7 @@ def _item(raw: dict) -> Item:
             packages=list(raw.get('packages', [])), repo_packages=list(raw.get('repo_packages', [])),
             desktop=raw.get('desktop', ''), recommended=raw.get('recommended', False),
             services=list(raw.get('services', [])), pin=raw.get('pin', ''),
-            advanced=raw.get('advanced', False),
+            advanced=raw.get('advanced', False), provides=list(raw.get('provides', [])),
         )
     except KeyError as error:
         raise ValueError(f'{raw.get("id", "?")}: missing field {error}') from None

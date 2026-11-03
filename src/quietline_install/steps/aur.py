@@ -1,6 +1,7 @@
 """Пакеты AUR: собираются только после того, как пользователь прочитал инструкции сборки.
 
-Перед вопросом печатаются `PKGBUILD`, все `*.install` и список остальных файлов клона.
+Инструкции — `PKGBUILD`, все `*.install` и список остальных файлов клона — уходят в `ctx.review`
+(прокручиваемый экран); без него печатаются в терминал и подтверждаются вопросом.
 `git` обрывает зависшую загрузку по `GIT_TIMEOUT`; `makepkg` запускается в терминале пользователя
 без `--noconfirm`, чтобы pacman показал свои вопросы.
 """
@@ -17,8 +18,6 @@ from quietline_install.runner import Ctx, Step, StepFailed
 ONEPASSWORD_KEY = 'https://downloads.1password.com/linux/keys/1password.asc'
 # Передача медленнее 1 КБ/с дольше 30 секунд прерывается.
 GIT_TIMEOUT = {'GIT_HTTP_LOW_SPEED_LIMIT': '1000', 'GIT_HTTP_LOW_SPEED_TIME': '30'}
-# Строк инструкций на одной странице консоли.
-PAGE = 20
 
 
 def _clone(ctx: Ctx, name: str) -> Path:
@@ -35,34 +34,33 @@ def _clone(ctx: Ctx, name: str) -> Path:
     return directory
 
 
-def _show(ctx: Ctx, name: str, directory: Path) -> None:
-    """Инструкции по страницам `PAGE` строк: в консоли без прокрутки длинный текст иначе не прочитать."""
+def instructions(ctx: Ctx, name: str, directory: Path) -> list[str]:
+    """Строки инструкций: `PKGBUILD`, `*.install` с заголовками и список остальных файлов клона без `.git`."""
     shown = [directory / 'PKGBUILD', *sorted(directory.glob('*.install'))]
     lines = []
     for path in shown:
         if path.exists():
             lines.append(f'---- {name}/{path.name} ----')
             lines += path.read_text(encoding='utf-8', errors='replace').splitlines()
-    printed = 0
-    for line in lines:
-        if line.startswith('---- ') or printed < PAGE:
-            ctx.out(line)
-            printed += 0 if line.startswith('---- ') else 1
-            continue
-        if not ctx.ask(ctx.t('aur.more', name=name)):
-            break
-        ctx.out(line)
-        printed = 1
     others = sorted(str(path.relative_to(directory)) for path in directory.rglob('*')
                     if path.is_file() and path not in shown and '.git' not in path.relative_to(directory).parts)
     if others:
-        ctx.out(ctx.t('aur.files', name=name, files=', '.join(others)))
+        lines += ['', ctx.t('aur.files', name=name, files=', '.join(others))]
+    return lines
+
+
+def _approved(ctx: Ctx, name: str, lines: list[str]) -> bool:
+    """Согласие собрать пакет: экран `ctx.review` или печать в терминал и вопрос (Enter — «да»)."""
+    if ctx.review is not None:
+        return ctx.review(name, lines)
+    for line in lines:
+        ctx.out(line)
+    return ctx.ask(ctx.t('aur.confirm', name=name), default=True)
 
 
 def aur_install(ctx: Ctx, name: str) -> None:
     directory = _clone(ctx, name)
-    _show(ctx, name, directory)
-    if not ctx.ask(ctx.t('aur.confirm', name=name)):
+    if not _approved(ctx, name, instructions(ctx, name, directory)):
         raise StepFailed(f'building {name} was declined',
                          f'Review the package at https://aur.archlinux.org/packages/{name}.')
     try:
@@ -74,6 +72,8 @@ def aur_install(ctx: Ctx, name: str) -> None:
     except subprocess.CalledProcessError as exc:
         raise StepFailed(f'makepkg did not build {name}', 'See the makepkg output above.') from exc
     ctx.record({'kind': 'package', 'name': name})
+    if name == 'docker-desktop':
+        ctx.out(ctx.t('aur.dockerDesktop'))
 
 
 def aur_step(name: str) -> Step:

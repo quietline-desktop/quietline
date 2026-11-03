@@ -87,7 +87,7 @@ def env(tmp_path, system, monkeypatch):
 
     monkeypatch.setattr(main_module, 'build_steps', steps)
 
-    def call(argv, screens, ask=lambda question: True):
+    def call(argv, screens, ask=lambda question, default=False: True):
         return main_module.main(argv, screens=screens, system=system, home=home, root=tmp_path / 'root',
                                 ask=ask, out=lambda line: None)
 
@@ -117,6 +117,26 @@ def test_declined_summary_returns_to_programs(env):
     screens.confirm_summary = lambda ctx, lines: (screens.calls.append('summary'), next(answers))[1]
     assert env['call']([], screens) == 0
     assert screens.calls[:6] == ['language', 'checks', 'system-language', 'programs', 'summary', 'programs']
+
+
+def test_back_from_summary_keeps_program_marks(env):
+    answers = iter([False, True])
+    screens = FakeScreens(programs={'firefox'})
+    lists = []
+
+    def choose(ctx, checklist):
+        lists.append(checklist)
+        if len(lists) == 1:
+            firefox = next(child for group in checklist.items for child in group.children if child.id == 'firefox')
+            firefox.checked = True
+        return checklist.selected()
+
+    screens.choose_programs = choose
+    screens.confirm_summary = lambda ctx, lines: next(answers)
+    assert env['call']([], screens) == 0
+    assert len(lists) == 2 and lists[0] is lists[1]
+    assert 'firefox' in lists[1].selected()
+    assert 'firefox' in State.load(env['state']).selection['ids']
 
 
 def test_snapshot_is_taken_before_first_changing_step(env):

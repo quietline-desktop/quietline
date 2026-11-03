@@ -1,14 +1,21 @@
-"""Экраны установщика: чистые модели выбора и тонкая отрисовка на curses.
+"""Экраны установщика: чистые модели выбора, тонкая отрисовка на curses и вопрос «да / нет» в терминале.
 
-Модели (`Choice`, `Checklist`, `Item`, `clip`, `scroll_top`) не знают о curses и проверяются
-тестами; функции `ask_*`, `show_*`, `choose_*`, `confirm_*` только рисуют и читают клавиши.
+Модели (`Choice`, `Checklist`, `Item`, `clip`, `scroll_top`, `answer_key`, `answer_text`, `choose_answer`)
+не знают о curses и терминале и проверяются тестами; функции `ask_*`, `show_*`, `choose_*`,
+`confirm_*`, `review_*` только рисуют и читают клавиши.
 
 Клавиши: стрелки, Пробел — отметить, Enter — дальше или раскрыть, `r` — рекомендуемый набор,
 Esc — назад (`GoBack`), `q` — выход без изменений (`Quit`).
 """
 
 import curses
+import os
+import select
+import sys
+import termios
+import tty
 from dataclasses import dataclass, field
+from typing import Callable, Iterable
 
 from quietline_install.texts import TEXTS
 
@@ -363,6 +370,16 @@ def show_final(stdscr, ctx, lines: list[str]) -> bool:
     return True
 
 
+def review_package(stdscr, ctx, name: str, lines: list[str]) -> bool:
+    """Инструкции сборки пакета AUR; Enter — собрать (True), Esc или q — не собирать (False)."""
+    try:
+        _read_text_screen(stdscr, ctx.t('aur.reviewTitle', name=name),
+                          lines + ['', ctx.t('aur.confirm', name=name)], ctx.t('aur.reviewHint'))
+    except (GoBack, Quit):
+        return False
+    return True
+
+
 def ask_resume(stdscr, ctx, failed_step: str, reason: str = '') -> str:
     """Незавершённая установка: 'continue', 'rollback' или 'quit'; `reason` — причина сбоя шага."""
     title = ctx.t(f'step.{failed_step}') if f'step.{failed_step}' in TEXTS['en'] else failed_step
@@ -376,3 +393,123 @@ def ask_resume(stdscr, ctx, failed_step: str, reason: str = '') -> str:
         return 'quit'
     return ['continue', 'rollback', 'quit'][index]
 
+
+
+# --- вопрос «да / нет» в терминале ---
+
+# Буквы в обеих раскладках: д — «да»; т — клавиша N в русской раскладке. «н» (клавиша Y в русской
+# раскладке и начало «нет») ответом не считается.
+YES_KEYS = ('y', 'Y', 'д', 'Д')
+NO_KEYS = ('n', 'N', 'т', 'Т')
+YES_WORDS = ('y', 'yes', 'д', 'да')
+NO_WORDS = ('n', 'no', 'т', 'нет')
+
+
+def answer_key(key: str, answer: bool) -> tuple[bool, bool]:
+    """Ответ после клавиши и принят ли он: ←/→ выбирают «Да» / «Нет», ↑/↓ и Tab переключают,
+    Enter принимает выбранный, буквы отвечают сразу; прочие клавиши ничего не меняют."""
+    if key == 'enter':
+        return answer, True
+    if key == 'left':
+        return True, False
+    if key == 'right':
+        return False, False
+    if key in ('up', 'down', 'tab'):
+        return not answer, False
+    if key in YES_KEYS:
+        return True, True
+    if key in NO_KEYS:
+        return False, True
+    return answer, False
+
+
+def answer_text(line: str, default: bool) -> bool | None:
+    """Ответ строкой: пустая — `default`, слова «да» и «нет» обоих языков; непонятная — None."""
+    word = line.strip().lower()
+    if not word:
+        return default
+    if word in YES_WORDS:
+        return True
+    if word in NO_WORDS:
+        return False
+    return None
+
+
+def choose_answer(keys: Iterable[str], default: bool, show: Callable[[bool], None] = lambda answer: None) -> bool:
+    """Выбор ответа по клавишам, начиная с `default`; `show` рисует выбранный. Клавиши кончились — «нет»."""
+    answer = default
+    show(answer)
+    for key in keys:
+        answer, done = answer_key(key, answer)
+        show(answer)
+        if done:
+            return answer
+    return False
+
+
+_ESCAPES = {b'[A': 'up', b'[B': 'down', b'[C': 'right', b'[D': 'left',
+            b'OA': 'up', b'OB': 'down', b'OC': 'right', b'OD': 'left'}
+
+
+def _terminal_keys(fd: int):
+    """Клавиши терминала: 'enter', стрелки, 'tab', 'esc' или символ; конец ввода завершает поток."""
+    while True:
+        byte = os.read(fd, 1)
+        if not byte:
+            return
+        if byte in (b'\r', b'\n'):
+            yield 'enter'
+        elif byte == b'\t':
+            yield 'tab'
+        elif byte == b'\x1b':
+            sequence = b''
+            while len(sequence) < 2 and select.select([fd], [], [], 0.05)[0]:
+                sequence += os.read(fd, 1)
+            yield _ESCAPES.get(sequence, 'esc')
+        else:
+            # Ведущий байт UTF-8 задаёт длину символа: кириллица — два байта.
+            size = 2 if byte[0] >= 0xC0 else 1
+            size = 3 if byte[0] >= 0xE0 else size
+            size = 4 if byte[0] >= 0xF0 else size
+            while len(byte) < size:
+                byte += os.read(fd, 1)
+            yield byte.decode('utf-8', errors='replace')
+
+
+def ask_yes_no(ctx, question: str, default: bool = False, stdin=None, stdout=None) -> bool:
+    """Вопрос под выводом шагов: строка «Да / Нет» со стрелками и Enter; без терминала — ответ строкой.
+
+    Нажатое до вопроса (например, Enter во время сборки) сбрасывается и ответом не считается.
+    """
+    stdin, stdout = stdin or sys.stdin, stdout or sys.stdout
+    yes, no = ctx.t('ask.yes'), ctx.t('ask.no')
+    if not (stdin.isatty() and stdout.isatty()):
+        while True:
+            try:
+                line = input(f'{question} ({yes} / {no}, Enter — {yes if default else no}): ')
+            except EOFError:
+                return False
+            answer = answer_text(line, default)
+            if answer is not None:
+                return answer
+
+    def show(answer: bool, final: bool = False) -> None:
+        def button(label: str, on: bool) -> str:
+            return f'\x1b[7m {label} \x1b[0m' if on else f' {label} '
+        hint = '' if final else f'   \x1b[2m{ctx.t("ask.hint")}\x1b[0m'
+        stdout.write(f'\r\x1b[K  {button(yes, answer)} {button(no, not answer)}{hint}')
+        stdout.flush()
+
+    fd = stdin.fileno()
+    saved = termios.tcgetattr(fd)
+    stdout.write(question + '\n')
+    try:
+        tty.setcbreak(fd)
+        termios.tcflush(fd, termios.TCIFLUSH)
+        answer = choose_answer(_terminal_keys(fd), default, show)
+    finally:
+        termios.tcsetattr(fd, termios.TCSADRAIN, saved)
+    show(answer, final=True)
+    stdout.write('\n')
+    stdout.flush()
+    return answer

@@ -113,33 +113,30 @@ def test_keyring_step_needs_greetd_pam(ctx, system, root):
     assert not system.calls
 
 
-def test_manual_steps_wait_for_confirmation_and_verify(ctx, system):
-    step = session.docker_desktop_step()
-    assert step.manual
-    system.answer(['pacman', '-Q', 'docker-desktop'], code=1)
-    ctx.answers.append(False)
+def test_manual_steps_wait_for_confirmation_and_verify(ctx, root, monkeypatch):
+    monkeypatch.setattr(session.shutil, 'which', lambda name: None)
+    step = session.amneziavpn_step()
+    ctx.answers.extend([False, False])
     with pytest.raises(StepFailed) as failure:
         step.run(ctx)
-    shown = '\n'.join(ctx.lines)
-    assert 'https://docs.docker.com/desktop/setup/install/linux/archlinux/' in shown
-    assert 'sudo pacman -U ./docker-desktop-x86_64.pkg.tar.zst' in shown and 'desktop-linux' in shown
     assert failure.value.action
-    ctx.answers.append(True)
-    with pytest.raises(StepFailed, match='Docker Desktop'):
+    ctx.answers.extend([True, False])
+    with pytest.raises(StepFailed, match='AmneziaVPN'):
         step.run(ctx)
-    system.answer(['pacman', '-Q', 'docker-desktop'], 'docker-desktop 4.97.0-1\n')
+    assert ctx.defaults == [True, True, True, True]
+    (root / 'opt/AmneziaVPN').mkdir(parents=True)
     assert step.check(ctx) is True
 
 
 @pytest.mark.parametrize('installed_answer', [False, True])
-def test_manual_step_can_be_skipped(ctx, system, installed_answer):
-    system.answer(['pacman', '-Q', 'docker-desktop'], code=1)
-    step = session.docker_desktop_step()
+def test_manual_step_can_be_skipped(ctx, root, monkeypatch, installed_answer):
+    monkeypatch.setattr(session.shutil, 'which', lambda name: None)
+    step = session.amneziavpn_step()
     ctx.answers.extend([installed_answer, True])
     step.run(ctx)
-    assert ctx.state.skipped == ['docker-desktop']
+    assert ctx.state.skipped == ['amneziavpn']
     assert step.check(ctx) is True
-    assert any('./install.sh --from docker-desktop' in line for line in ctx.questions)
+    assert any('./install.sh --from amneziavpn' in line for line in ctx.questions)
 
 
 def test_amneziavpn_is_a_guided_manual_step(ctx, root, monkeypatch):
@@ -168,6 +165,7 @@ def test_docker_group_asks_and_explains_root_equivalence(ctx, system, monkeypatc
     usermod = next(call for call in system.calls if call['args'][:2] == ['usermod', '-aG'])
     assert usermod['sudo'] and usermod['args'] == ['usermod', '-aG', 'docker', 'kiryl']
     assert any(ctx.t('session.dockerContext', context='default') in line for line in ctx.lines)
+    assert ctx.defaults == [False]
 
 
 def test_declined_optional_step_is_not_asked_again(ctx, system):
@@ -192,6 +190,7 @@ def test_default_shell_changes_only_with_consent(ctx, system):
     step.run(ctx)
     chsh = system.calls[-1]
     assert chsh['args'] == ['chsh', '-s', '/usr/bin/fish'] and chsh['interactive']
+    assert ctx.defaults == [True, True]
 
 
 def ready_system(ctx, system, root):
@@ -238,7 +237,7 @@ def test_check_needs_both_locales_and_lock_screen(ctx, system, root):
 
 
 FULL = Plan(repo=['fish', 'docker'], flatpak=['com.brave.Browser'], aur=['google-chrome', '1password'],
-            manual=['docker-desktop', 'amneziavpn'], fnm=['lts-latest'], uv=['3.12'],
+            manual=['amneziavpn'], fnm=['lts-latest'], uv=['3.12'],
             services=['NetworkManager.service', 'docker.socket'], pins=['org.kde.dolphin'])
 
 
@@ -247,14 +246,14 @@ def test_login_session_comes_before_aur_and_manual_steps_last():
     assert ids == ['system-upgrade', 'repo-packages', 'graphics', 'locales', 'quietline-package', 'services',
                    'hyprland-config', 'fish', 'tide', 'micro', 'quickshell-link', 'user-dirs', 'region', 'pins', 'greetd',
                    'keyring', 'boot-theme', 'flatpak', 'fnm', 'uv', 'aur-google-chrome', 'aur-1password', 'default-shell', 'hyprbars', 'docker-group',
-                   'docker-desktop', 'amneziavpn']
+                   'amneziavpn']
     steps = {step.id: step for step in build_steps(FULL)}
-    assert all(steps[name].manual for name in ('docker-desktop', 'amneziavpn'))
+    assert steps['amneziavpn'].manual
 
 
 def test_unselected_programs_have_no_steps():
     ids = [step.id for step in build_steps(Plan(repo=['fish'], services=['NetworkManager.service']))]
-    for absent in ('flatpak', 'fnm', 'uv', 'docker-group', 'docker-desktop', 'amneziavpn'):
+    for absent in ('flatpak', 'fnm', 'uv', 'docker-group', 'amneziavpn'):
         assert absent not in ids
     assert not any(name.startswith('aur-') for name in ids)
     assert 'greetd' in ids and 'keyring' in ids and 'boot-theme' in ids and 'default-shell' in ids

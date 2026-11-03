@@ -7,11 +7,10 @@
 | Пакеты Arch, включая Hyprland и Quickshell | `sudo pacman -Syu` |
 | Quietline | `git pull` в клоне, затем `./install.sh update`: пересобирает пакет `quietline`, если он собран не из текущего коммита клона (версия — `<версия>.r<число коммитов>.g<хеш>`); то же делает шаг «Пакет Quietline» полного `./install.sh` |
 | Пакеты Arch и все программы из AUR, в том числе поставленные вами | `yay` — обновляет всё сразу, перед сборкой пакета AUR показывает изменения его инструкций |
-| Программы из AUR каталога (Chrome, VS Code, 1Password, Slack, yay) | тот же `./install.sh update` — показывает обновлённые инструкции сборки и собирает только после подтверждения |
+| Программы из AUR каталога (Chrome, VS Code, 1Password, Slack, Docker Desktop, yay) | тот же `./install.sh update` — показывает обновлённые инструкции сборки и собирает только после подтверждения |
 | Программы из Flathub (Brave, ONLYOFFICE) | `flatpak update --user` |
 | Версии Node.js | `fnm install <версия>`, `fnm default <версия>` |
 | Версии Python | `uv python install <версия>` |
-| Docker Desktop | новый пакет со страницы Docker для Arch: `sudo pacman -U ./docker-desktop-x86_64.pkg.tar.zst` |
 | AmneziaVPN | новый стабильный `.run` со страницы выпусков AmneziaVPN |
 
 После обновления пакета `quietline` Hyprland и оболочка продолжают работать со старыми файлами: Hyprland не следит за `/usr/share/quietline/hyprland/quietline.lua`, подключённым через `dofile`. Новая конфигурация (клавиши, заголовки окон, тени) применяется командой `hyprctl reload`, оболочка — перезапуском `pkill -fx 'qs -c quietline'; hyprctl dispatch 'hl.dsp.exec_cmd("qs -c quietline")'` (не `pkill -x qs`: экран блокировки — тоже процесс `qs`, и заблокированный сеанс остался бы без него). Надёжнее всего выйти из сеанса и войти снова: тогда же подхватываются новые правила fontconfig.

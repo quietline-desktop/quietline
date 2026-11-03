@@ -58,11 +58,20 @@ def test_empty_selection_installs_only_core(catalog):
 
 
 def test_plan_splits_sources(catalog):
-    plan = catalog.plan({'brave', 'slack', 'docker-desktop'})
+    plan = catalog.plan({'brave', 'slack', 'amneziavpn'})
     assert plan.flatpak == ['com.brave.Browser']
     assert plan.aur == ['yay-bin', 'slack-desktop']
-    assert plan.manual == ['docker-desktop']
+    assert plan.manual == ['amneziavpn']
     assert 'slack-desktop' not in plan.repo and 'com.brave.Browser' not in plan.repo
+
+
+def test_docker_desktop_comes_from_aur_and_replaces_compose_and_buildx(catalog):
+    plan = catalog.plan({'docker', 'docker-desktop'})
+    assert plan.aur == ['yay-bin', 'docker-desktop'] and plan.manual == []
+    assert 'docker' in plan.repo
+    assert 'docker-compose' not in plan.repo and 'docker-buildx' not in plan.repo
+    engine = catalog.plan({'docker'})
+    assert 'docker-compose' in engine.repo and 'docker-buildx' in engine.repo
 
 
 def test_mixed_sources_in_one_item(catalog):
@@ -273,6 +282,7 @@ def test_aur_only_for_the_documented_apps(catalog):
         'slack': ['slack-desktop'],
         'vscode': ['visual-studio-code-bin'],
         '1password': ['1password'],
+        'docker-desktop': ['docker-desktop'],
     }
     assert catalog.core_aur == ['yay-bin']
 
