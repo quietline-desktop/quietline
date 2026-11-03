@@ -10,9 +10,15 @@
 файла сохраняются) и `quietline/keyboard.lua` с раскладками для Hyprland. Тексты уведомлений
 `quietline-shell` — `NOTIFICATION_TEXTS` на языке из region.
 
-Масштаб мониторов — `display.json` вида `{"version": 1, "scales": {"<монитор>": <масштаб>}}`, где
-монитор — правило вывода Hyprland (`desc:<описание>` или имя разъёма). Рядом пишется `display.lua`,
-который читает конфигурация Hyprland Quietline.
+Мониторы — `display.json` вида `{"version": 2, "monitors": {"<монитор>": {"mode", "position", "scale",
+"transform", "vrr"}}}` (любое поле может отсутствовать), где монитор — правило вывода Hyprland
+(`desc:<описание>` или имя разъёма); версия 1 `{"scales": {"<монитор>": <масштаб>}}` читается как
+масштабы. Рядом пишется `display.lua`, который читает конфигурация Hyprland Quietline.
+
+Мышь, тачпад и повтор клавиш — `input.json` вида `{"version": 1, "pointerSpeed", "acceleration",
+"naturalScroll", "scrollSpeed", "leftHanded", "tapToClick", "touchpadNaturalScroll",
+"disableWhileTyping", "touchpadScrollSpeed", "repeatDelay", "repeatRate", "numlock"}`; рядом пишется
+`input.lua` с таблицей раздела `input` Hyprland.
 
 Оформление — `appearance.json` вида `{"version": 1, "theme", "cursor", "cursorSize", "batteryPercent"}`:
 тема окружения и цвет указателя (`dark` | `light`), размер указателя (24, 36 или 48), процент
@@ -195,16 +201,8 @@ def apply_keyboard(region: dict[str, Any]) -> bool:
 
     Вне сеанса Hyprland, без `hyprctl` и по таймауту возвращает `False`.
     """
-    if not os.environ.get("HYPRLAND_INSTANCE_SIGNATURE"):
-        return False
     layout = ",".join(region["layouts"])
-    expression = f'hl.config({{ input = {{ kb_layout = "{layout}", kb_options = "{region["toggle"]}" }} }})'
-    try:
-        result = subprocess.run(["hyprctl", "eval", expression], capture_output=True, text=True,
-                                timeout=_HYPRCTL_TIMEOUT, check=False)
-    except (OSError, subprocess.TimeoutExpired):
-        return False
-    return result.returncode == 0
+    return _hyprctl_eval(f'hl.config({{ input = {{ kb_layout = "{layout}", kb_options = "{region["toggle"]}" }} }})')
 
 
 def _locale_conf(existing: str, language: str) -> str | None:
@@ -243,8 +241,13 @@ def save_region(path: Path, region: dict[str, Any], config_home: Path) -> None:
 # Монитор в правиле Hyprland: `desc:<описание>` без кавычек, обратной косой черты и управляющих
 # символов (строка попадает в Lua-литерал) или имя разъёма вида `eDP-1`.
 _DISPLAY_OUTPUT = re.compile(r'desc:[^"\\\x00-\x1f\x7f]{1,200}|[A-Za-z0-9_.-]{1,64}')
+# Режим монитора `ШИРИНАxВЫСОТА@ЧАСТОТА`, как его принимает `hl.monitor`.
+_DISPLAY_MODE = re.compile(r"[1-9][0-9]{1,4}x[1-9][0-9]{1,4}@[0-9]{1,3}(\.[0-9]{1,3})?")
 SCALE_MIN = 0.5
 SCALE_MAX = 4.0
+DISPLAY_POSITIONS = ("auto-left", "auto-right", "auto-up", "auto-down")
+# Поля монитора в порядке записи в `display.lua` и правило Hyprland.
+_DISPLAY_FIELDS = ("mode", "position", "scale", "transform", "vrr")
 
 
 def default_display_path() -> Path:
@@ -265,63 +268,283 @@ def _checked_scale(scale: object) -> float:
     return float(scale)
 
 
-def load_display(path: Path) -> dict[str, float]:
-    """Масштабы мониторов из файла; без файла — пусто. Повреждённый файл — `ValueError`, файл не меняется."""
+def _checked_choice(name: str, value: object, choices: range) -> int:
+    if isinstance(value, bool) or not isinstance(value, int) or value not in choices:
+        raise ValueError(f"{name} must be an integer from {choices.start} to {choices.stop - 1} or \"auto\": {value!r}")
+    return value
+
+
+def _checked_monitor_field(name: str, value: object) -> Any:
+    """Проверенное значение поля монитора; неизвестное поле или значение — `ValueError`."""
+    match name:
+        case "scale":
+            return _checked_scale(value)
+        case "mode":
+            if not isinstance(value, str) or not _DISPLAY_MODE.fullmatch(value):
+                raise ValueError(f"mode must look like 2560x1440@74.96 or be \"auto\": {value!r}")
+            return value
+        case "position":
+            if value not in DISPLAY_POSITIONS:
+                raise ValueError(f"position must be one of auto, {', '.join(DISPLAY_POSITIONS)}: {value!r}")
+            return value
+        case "transform":
+            return _checked_choice("transform", value, range(4))
+        case "vrr":
+            return _checked_choice("vrr", value, range(3))
+    raise ValueError(f"unknown monitor field: {name}")
+
+
+def _checked_monitor(record: object) -> dict[str, Any]:
+    if not isinstance(record, dict):
+        raise ValueError(f"monitor settings must be an object: {record!r}")
+    return {name: _checked_monitor_field(name, value) for name, value in record.items()}
+
+
+def load_display(path: Path) -> dict[str, dict[str, Any]]:
+    """Настройки мониторов из файла: «монитор → поля»; без файла — пусто. Версия 1 (только
+    масштабы) читается как поле `scale`. Повреждённый файл — `ValueError`, файл не меняется."""
     if not path.exists():
         return {}
     try:
         data = json.loads(path.read_text(encoding="utf-8"))
     except (json.JSONDecodeError, UnicodeError) as error:
         raise ValueError(f"cannot read display settings from {path}") from error
-    if not isinstance(data, dict) or data.get("version") != 1 or not isinstance(data.get("scales"), dict):
+    if isinstance(data, dict) and data.get("version") == 1 and isinstance(data.get("scales"), dict):
+        monitors = {output: {"scale": scale} for output, scale in data["scales"].items()}
+    elif isinstance(data, dict) and data.get("version") == 2 and isinstance(data.get("monitors"), dict):
+        monitors = data["monitors"]
+    else:
         raise ValueError(f"unknown display file format in {path}")
     try:
-        return {_checked_output(output): _checked_scale(scale) for output, scale in data["scales"].items()}
+        return {_checked_output(output): _checked_monitor(record) for output, record in monitors.items()}
     except ValueError as error:
         raise ValueError(f"invalid display settings in {path}: {error}") from error
 
 
-def updated_display(change: object, scales: dict[str, float]) -> tuple[str, float | None, dict[str, float]]:
-    """Применяет `{"output", "scale"}` к `scales`: `(монитор, масштаб или None для "auto", новые масштабы)`."""
-    if not isinstance(change, dict) or set(change) != {"output", "scale"}:
-        raise ValueError('display change must be {"output": ..., "scale": ...}')
+def display_scales(monitors: dict[str, dict[str, Any]]) -> dict[str, float]:
+    """Масштабы мониторов, у которых он выбран: «монитор → масштаб»."""
+    return {output: record["scale"] for output, record in monitors.items() if "scale" in record}
+
+
+def updated_display(change: object, monitors: dict[str, dict[str, Any]]) -> tuple[str, dict[str, dict[str, Any]]]:
+    """Применяет `{"output", <поля>}` к `monitors`: `(монитор, новые настройки)`. `"auto"`, поворот 0
+    и положение `auto` убирают поле; монитор без полей убирается целиком."""
+    if not isinstance(change, dict) or "output" not in change or len(change) < 2:
+        raise ValueError('display change must be {"output": ..., "<field>": ...} with at least one field')
     output = _checked_output(change["output"])
-    result = dict(scales)
-    if change["scale"] == "auto":
-        result.pop(output, None)
-        return output, None, result
-    scale = _checked_scale(change["scale"])
-    result[output] = scale
-    return output, scale, result
+    record = dict(monitors.get(output, {}))
+    for name, value in change.items():
+        if name == "output":
+            continue
+        if name not in _DISPLAY_FIELDS:
+            raise ValueError(f"unknown monitor field: {name}")
+        if value == "auto" or (name == "transform" and value == 0):
+            record.pop(name, None)
+        else:
+            record[name] = _checked_monitor_field(name, value)
+    result = {key: value for key, value in monitors.items() if key != output}
+    if record:
+        result[output] = record
+    return output, result
 
 
-def display_lua(scales: dict[str, float]) -> str:
-    """Содержимое `display.lua`: таблица «монитор → масштаб» для конфигурации Hyprland."""
-    lines = [f'    ["{output}"] = {scale!r},' for output, scale in sorted(scales.items())]
-    return "return {\n" + "".join(line + "\n" for line in lines) + "}\n"
+def _lua_value(value: Any) -> str:
+    return f'"{value}"' if isinstance(value, str) else repr(value)
 
 
-def save_display(path: Path, scales: dict[str, float]) -> None:
-    """Пишет `display.lua` рядом с `path` и последним атомарно `display.json`."""
-    checked = {_checked_output(output): _checked_scale(scale) for output, scale in scales.items()}
+def display_lua(monitors: dict[str, dict[str, Any]]) -> str:
+    """Содержимое `display.lua`: таблица «монитор → поля правила» для конфигурации Hyprland."""
+    lines = []
+    for output, record in sorted(monitors.items()):
+        fields = ", ".join(f"{name} = {_lua_value(record[name])}" for name in _DISPLAY_FIELDS if name in record)
+        lines.append(f'    ["{output}"] = {{ {fields} }},\n')
+    return "return {\n" + "".join(lines) + "}\n"
+
+
+def save_display(path: Path, monitors: dict[str, dict[str, Any]]) -> None:
+    """Пишет `display.lua` рядом с `path` и последним атомарно `display.json` версии 2."""
+    checked = {_checked_output(output): _checked_monitor(record) for output, record in monitors.items() if record}
     _atomic_write_text(path.with_name("display.lua"), display_lua(checked))
-    atomic_write_json(path, {"version": 1, "scales": checked})
+    atomic_write_json(path, {"version": 2, "monitors": checked})
 
 
-def apply_display(output: str, scale: float | None) -> bool:
-    """Применяет масштаб монитора `output` в работающем Hyprland (`None` — масштаб по умолчанию);
-    `True` только при коде 0 `hyprctl`. Вне сеанса Hyprland, без `hyprctl` и по таймауту — `False`."""
+def monitor_rule(output: str, record: dict[str, Any]) -> str:
+    """Выражение `hl.monitor` для `hyprctl eval`: все поля монитора, отсутствующие — `preferred`,
+    `auto` и масштаб `auto`."""
+    checked = _checked_monitor(record)
+    scale = repr(checked["scale"]) if "scale" in checked else '"auto"'
+    fields = [f'output = "{_checked_output(output)}"', f'mode = "{checked.get("mode", "preferred")}"',
+              f'position = "{checked.get("position", "auto")}"', f"scale = {scale}"]
+    fields += [f"{name} = {checked[name]}" for name in ("transform", "vrr") if name in checked]
+    return "hl.monitor({ " + ", ".join(fields) + " })"
+
+
+def _hyprctl_eval(expression: str) -> bool:
+    """`hyprctl eval EXPRESSION` в работающем Hyprland; `True` только при коде 0. Вне сеанса
+    Hyprland, без `hyprctl` и по таймауту — `False`."""
     if not os.environ.get("HYPRLAND_INSTANCE_SIGNATURE"):
         return False
-    value = '"auto"' if scale is None else repr(_checked_scale(scale))
-    expression = (f'hl.monitor({{ output = "{_checked_output(output)}", mode = "preferred", '
-                  f'position = "auto", scale = {value} }})')
     try:
         result = subprocess.run(["hyprctl", "eval", expression], capture_output=True, text=True,
                                 timeout=_HYPRCTL_TIMEOUT, check=False)
     except (OSError, subprocess.TimeoutExpired):
         return False
     return result.returncode == 0
+
+
+def apply_display(output: str, record: dict[str, Any]) -> bool:
+    """Применяет настройки монитора `output` в работающем Hyprland; `True` только при коде 0 `hyprctl`."""
+    return _hyprctl_eval(monitor_rule(output, record))
+
+
+_MODE_TEXT = re.compile(r"([0-9]+)x([0-9]+)@([0-9]+(?:\.[0-9]+)?)Hz")
+
+
+def display_outputs() -> list[dict[str, Any]]:
+    """Подключённые мониторы из `hyprctl monitors -j`: имя, описание, правило (`output`), текущий
+    режим, масштаб, поворот, VRR, положение и доступные режимы `{width, height, refresh}` без
+    повторов. Вне сеанса Hyprland и при ошибке `hyprctl` — пусто."""
+    if not os.environ.get("HYPRLAND_INSTANCE_SIGNATURE"):
+        return []
+    try:
+        result = subprocess.run(["hyprctl", "monitors", "-j"], capture_output=True, text=True,
+                                timeout=_HYPRCTL_TIMEOUT, check=False)
+        monitors = json.loads(result.stdout) if result.returncode == 0 else []
+    except (OSError, subprocess.TimeoutExpired, json.JSONDecodeError):
+        return []
+    outputs = []
+    for monitor in monitors if isinstance(monitors, list) else []:
+        if not isinstance(monitor, dict) or not isinstance(monitor.get("name"), str):
+            continue
+        description = monitor.get("description") or ""
+        rule = f"desc:{description}" if description and _DISPLAY_OUTPUT.fullmatch(f"desc:{description}") else monitor["name"]
+        modes = []
+        for text in monitor.get("availableModes") or []:
+            found = _MODE_TEXT.fullmatch(str(text))
+            mode = found and {"width": int(found[1]), "height": int(found[2]), "refresh": float(found[3])}
+            if mode and mode not in modes:
+                modes.append(mode)
+        outputs.append({
+            "name": monitor["name"], "description": description, "output": rule,
+            "width": monitor.get("width"), "height": monitor.get("height"),
+            "refreshRate": monitor.get("refreshRate"), "scale": monitor.get("scale"),
+            "transform": monitor.get("transform"), "vrr": bool(monitor.get("vrr")),
+            "x": monitor.get("x"), "y": monitor.get("y"), "modes": modes,
+        })
+    return outputs
+
+
+# Мышь, тачпад и клавиатура: поле → (по умолчанию, допустимые значения). Числа с плавающей точкой —
+# диапазон `(от, до)`, целые — `range`, флаги — `bool`. Значения по умолчанию — значения Hyprland.
+_INPUT_FIELDS: dict[str, tuple[Any, Any]] = {
+    "pointerSpeed": (0.0, (-1.0, 1.0)),
+    "acceleration": (True, bool),
+    "naturalScroll": (False, bool),
+    "scrollSpeed": (1.0, (0.25, 3.0)),
+    "leftHanded": (False, bool),
+    "tapToClick": (True, bool),
+    "touchpadNaturalScroll": (False, bool),
+    "disableWhileTyping": (True, bool),
+    "touchpadScrollSpeed": (1.0, (0.25, 3.0)),
+    "repeatDelay": (600, range(150, 1001)),
+    "repeatRate": (25, range(10, 61)),
+    "numlock": (False, bool),
+}
+INPUT_DEFAULTS = {name: default for name, (default, _) in _INPUT_FIELDS.items()}
+
+
+def default_input_path() -> Path:
+    """`$XDG_CONFIG_HOME/quietline/input.json`, без переменной — `~/.config/quietline/input.json`."""
+    directory = os.environ.get("XDG_CONFIG_HOME") or Path.home() / ".config"
+    return Path(directory) / "quietline" / "input.json"
+
+
+def _checked_input(values: dict[str, Any]) -> dict[str, Any]:
+    """Все поля ввода с допустимыми значениями (дробные округляются до сотых); иначе `ValueError`."""
+    result = {}
+    for name, (_, allowed) in _INPUT_FIELDS.items():
+        value = values.get(name)
+        if allowed is bool:
+            valid = isinstance(value, bool)
+        elif isinstance(allowed, range):
+            valid = isinstance(value, int) and not isinstance(value, bool) and value in allowed
+        else:
+            valid = isinstance(value, (int, float)) and not isinstance(value, bool) and allowed[0] <= value <= allowed[1]
+            value = round(float(value), 2) if valid else value
+        if not valid:
+            raise ValueError(f"invalid {name}: {value!r}")
+        result[name] = value
+    return result
+
+
+def load_input(path: Path) -> dict[str, Any]:
+    """Настройки ввода из файла; без файла — значения Hyprland по умолчанию. Повреждённый файл — `ValueError`."""
+    if not path.exists():
+        return dict(INPUT_DEFAULTS)
+    try:
+        data = json.loads(path.read_text(encoding="utf-8"))
+    except (json.JSONDecodeError, UnicodeError) as error:
+        raise ValueError(f"cannot read input settings from {path}") from error
+    if not isinstance(data, dict) or data.get("version") != 1:
+        raise ValueError(f"unknown input file format in {path}")
+    try:
+        return _checked_input({**INPUT_DEFAULTS, **{key: data[key] for key in INPUT_DEFAULTS if key in data}})
+    except ValueError as error:
+        raise ValueError(f"invalid input settings in {path}: {error}") from error
+
+
+def updated_input(change: object, current: dict[str, Any]) -> dict[str, Any]:
+    """Применяет часть полей `change` к `current`; неизвестное поле или значение — `ValueError`."""
+    if not isinstance(change, dict) or not change:
+        raise ValueError("input change must be a non-empty JSON object")
+    unknown = set(change) - set(INPUT_DEFAULTS)
+    if unknown:
+        raise ValueError(f"unknown input fields: {', '.join(sorted(unknown))}")
+    return _checked_input({**current, **change})
+
+
+def _lua_bool(value: bool) -> str:
+    return "true" if value else "false"
+
+
+def input_table(values: dict[str, Any]) -> str:
+    """Таблица Lua раздела `input` Hyprland из настроек ввода (ключи с подчёркиванием, как в Lua API)."""
+    checked = _checked_input(values)
+    touchpad = (f'tap_to_click = {_lua_bool(checked["tapToClick"])}, '
+                f'natural_scroll = {_lua_bool(checked["touchpadNaturalScroll"])}, '
+                f'disable_while_typing = {_lua_bool(checked["disableWhileTyping"])}, '
+                f'scroll_factor = {checked["touchpadScrollSpeed"]!r}')
+    return (f'{{ sensitivity = {checked["pointerSpeed"]!r}, '
+            f'accel_profile = "{"adaptive" if checked["acceleration"] else "flat"}", '
+            f'natural_scroll = {_lua_bool(checked["naturalScroll"])}, scroll_factor = {checked["scrollSpeed"]!r}, '
+            f'left_handed = {_lua_bool(checked["leftHanded"])}, repeat_delay = {checked["repeatDelay"]}, '
+            f'repeat_rate = {checked["repeatRate"]}, numlock_by_default = {_lua_bool(checked["numlock"])}, '
+            f'touchpad = {{ {touchpad} }} }}')
+
+
+def save_input(path: Path, values: dict[str, Any]) -> None:
+    """Пишет `input.lua` рядом с `path` и последним атомарно `input.json`."""
+    checked = _checked_input(values)
+    _atomic_write_text(path.with_name("input.lua"), f"return {input_table(checked)}\n")
+    atomic_write_json(path, {"version": 1, **checked})
+
+
+def apply_input(values: dict[str, Any]) -> bool:
+    """Применяет настройки ввода в работающем Hyprland; `True` только при коде 0 `hyprctl`."""
+    return _hyprctl_eval(f"hl.config({{ input = {input_table(values)} }})")
+
+
+def has_touchpad() -> bool:
+    """Есть ли тачпад среди указателей `hyprctl devices -j`; вне Hyprland и при ошибке — `False`."""
+    if not os.environ.get("HYPRLAND_INSTANCE_SIGNATURE"):
+        return False
+    try:
+        result = subprocess.run(["hyprctl", "devices", "-j"], capture_output=True, text=True,
+                                timeout=_HYPRCTL_TIMEOUT, check=False)
+        mice = json.loads(result.stdout).get("mice", []) if result.returncode == 0 else []
+    except (OSError, subprocess.TimeoutExpired, json.JSONDecodeError, AttributeError):
+        return False
+    return any(isinstance(mouse, dict) and "touchpad" in str(mouse.get("name", "")).lower() for mouse in mice)
 
 
 APPEARANCE_DEFAULTS = {"theme": "dark", "cursor": "dark", "cursorSize": 24, "batteryPercent": "off"}

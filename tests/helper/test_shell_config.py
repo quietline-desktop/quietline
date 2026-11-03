@@ -200,22 +200,40 @@ def no_hyprland(monkeypatch):
     monkeypatch.delenv("HYPRLAND_INSTANCE_SIGNATURE", raising=False)
 
 
-def test_missing_file_means_no_scales(tmp_path, capsys, no_hyprland):
+def test_missing_file_means_no_monitors(tmp_path, capsys, no_hyprland):
     assert load_display(tmp_path / "display.json") == {}
-    assert run_display(capsys, "--path", str(tmp_path / "display.json")) == (0, {"scales": {}})
+    assert run_display(capsys, "--path", str(tmp_path / "display.json")) == (
+        0, {"monitors": {}, "scales": {}, "outputs": []})
 
 
-def test_set_and_reset_scale_writes_json_and_lua(tmp_path, capsys, no_hyprland):
+def test_set_and_reset_fields_write_json_and_lua(tmp_path, capsys, no_hyprland):
     path = tmp_path / "quietline" / "display.json"
     code, response = run_display(capsys, "--path", str(path), "--set", json.dumps({"output": BUILTIN, "scale": 1.25}))
-    assert (code, response) == (0, {"scales": {BUILTIN: 1.25}, "applied": False})
-    assert json.loads(path.read_text(encoding="utf-8")) == {"version": 1, "scales": {BUILTIN: 1.25}}
-    assert path.with_name("display.lua").read_text(encoding="utf-8") == 'return {\n    ["desc:BOE 0x0B76"] = 1.25,\n}\n'
+    assert (code, response) == (0, {"monitors": {BUILTIN: {"scale": 1.25}}, "scales": {BUILTIN: 1.25},
+                                     "outputs": [], "applied": False})
+    assert json.loads(path.read_text(encoding="utf-8")) == {"version": 2, "monitors": {BUILTIN: {"scale": 1.25}}}
+    assert path.with_name("display.lua").read_text(encoding="utf-8") == 'return {\n    ["desc:BOE 0x0B76"] = { scale = 1.25 },\n}\n'
 
-    run_display(capsys, "--path", str(path), "--set", json.dumps({"output": "DP-2", "scale": 2}))
+    change = {"output": "DP-2", "mode": "2560x1440@74.96", "position": "auto-right", "transform": 1, "vrr": 2}
+    run_display(capsys, "--path", str(path), "--set", json.dumps(change))
     code, response = run_display(capsys, "--path", str(path), "--set", json.dumps({"output": BUILTIN, "scale": "auto"}))
-    assert (code, response["scales"]) == (0, {"DP-2": 2.0})
-    assert path.with_name("display.lua").read_text(encoding="utf-8") == 'return {\n    ["DP-2"] = 2.0,\n}\n'
+    assert (code, response["monitors"], response["scales"]) == (0, {"DP-2": {
+        "mode": "2560x1440@74.96", "position": "auto-right", "transform": 1, "vrr": 2}}, {})
+    assert path.with_name("display.lua").read_text(encoding="utf-8") == (
+        'return {\n    ["DP-2"] = { mode = "2560x1440@74.96", position = "auto-right", transform = 1, vrr = 2 },\n}\n')
+
+    run_display(capsys, "--path", str(path), "--set", json.dumps(
+        {"output": "DP-2", "mode": "auto", "position": "auto", "transform": 0}))
+    assert load_display(path) == {"DP-2": {"vrr": 2}}
+
+
+def test_version_one_file_is_read_as_scales_and_upgraded(tmp_path, capsys, no_hyprland):
+    path = tmp_path / "display.json"
+    path.write_text(json.dumps({"version": 1, "scales": {BUILTIN: 1.25}}), encoding="utf-8")
+    assert load_display(path) == {BUILTIN: {"scale": 1.25}}
+    run_display(capsys, "--path", str(path), "--set", json.dumps({"output": "DP-1", "vrr": 0}))
+    assert json.loads(path.read_text(encoding="utf-8")) == {
+        "version": 2, "monitors": {BUILTIN: {"scale": 1.25}, "DP-1": {"vrr": 0}}}
 
 
 @pytest.mark.parametrize("change", [
@@ -227,7 +245,13 @@ def test_set_and_reset_scale_writes_json_and_lua(tmp_path, capsys, no_hyprland):
     {"output": "desc:back\\slash", "scale": 1},
     {"output": "DP 1", "scale": 1},
     {"output": BUILTIN},
-    {"output": BUILTIN, "scale": 1, "mode": "preferred"},
+    {"output": BUILTIN, "mode": "preferred"},
+    {"output": BUILTIN, "mode": '2560x1440@60" })'},
+    {"output": BUILTIN, "position": "0x0"},
+    {"output": BUILTIN, "transform": 4},
+    {"output": BUILTIN, "transform": True},
+    {"output": BUILTIN, "vrr": 3},
+    {"output": BUILTIN, "mirror": "DP-1"},
     [BUILTIN, 1],
 ])
 def test_invalid_changes_are_rejected_without_writing(tmp_path, capsys, change, no_hyprland):
@@ -245,13 +269,22 @@ def test_corrupt_file_is_reported_without_overwriting(tmp_path, capsys, no_hyprl
     assert json.loads(path.read_text(encoding="utf-8"))["scales"] == {"DP-1": 9}
 
 
-def test_display_lua_is_sorted_and_empty_without_scales():
+def test_display_lua_is_sorted_and_empty_without_monitors():
     assert display_lua({}) == "return {\n}\n"
-    assert display_lua({"eDP-1": 1.5, "DP-1": 1.0}) == 'return {\n    ["DP-1"] = 1.0,\n    ["eDP-1"] = 1.5,\n}\n'
+    assert display_lua({"eDP-1": {"scale": 1.5}, "DP-1": {"vrr": 1, "mode": "1920x1080@60.0"}}) == (
+        'return {\n    ["DP-1"] = { mode = "1920x1080@60.0", vrr = 1 },\n    ["eDP-1"] = { scale = 1.5 },\n}\n')
 
 
 def test_updated_display_keeps_other_monitors():
-    assert updated_display({"output": "DP-1", "scale": "auto"}, {"DP-1": 2.0, "eDP-1": 1.25}) == ("DP-1", None, {"eDP-1": 1.25})
+    assert updated_display({"output": "DP-1", "scale": "auto"}, {"DP-1": {"scale": 2.0}, "eDP-1": {"scale": 1.25}}) == (
+        "DP-1", {"eDP-1": {"scale": 1.25}})
+
+
+def test_monitor_rule_fills_defaults():
+    assert config.monitor_rule(BUILTIN, {}) == (
+        'hl.monitor({ output = "desc:BOE 0x0B76", mode = "preferred", position = "auto", scale = "auto" })')
+    assert config.monitor_rule("DP-1", {"mode": "2560x1440@74.96", "scale": 1.0, "transform": 3, "vrr": 0}) == (
+        'hl.monitor({ output = "DP-1", mode = "2560x1440@74.96", position = "auto", scale = 1.0, transform = 3, vrr = 0 })')
 
 
 def test_apply_runs_monitor_rule_in_hyprland(monkeypatch):
@@ -263,8 +296,8 @@ def test_apply_runs_monitor_rule_in_hyprland(monkeypatch):
         return subprocess.CompletedProcess(args, 0, "ok", "")
 
     monkeypatch.setattr(config.subprocess, "run", succeeding)
-    assert config.apply_display(BUILTIN, 1.25) is True
-    assert config.apply_display(BUILTIN, None) is True
+    assert config.apply_display(BUILTIN, {"scale": 1.25}) is True
+    assert config.apply_display(BUILTIN, {}) is True
     assert [args for args, _ in calls] == [
         ["hyprctl", "eval", 'hl.monitor({ output = "desc:BOE 0x0B76", mode = "preferred", position = "auto", scale = 1.25 })'],
         ["hyprctl", "eval", 'hl.monitor({ output = "desc:BOE 0x0B76", mode = "preferred", position = "auto", scale = "auto" })'],
@@ -275,7 +308,7 @@ def test_apply_runs_monitor_rule_in_hyprland(monkeypatch):
         raise FileNotFoundError("hyprctl")
 
     monkeypatch.setattr(config.subprocess, "run", missing)
-    assert config.apply_display(BUILTIN, 1.25) is False
+    assert config.apply_display(BUILTIN, {"scale": 1.25}) is False
 
 
 def test_apply_failure_still_saves(tmp_path, capsys, monkeypatch):
@@ -283,8 +316,81 @@ def test_apply_failure_still_saves(tmp_path, capsys, monkeypatch):
     monkeypatch.setattr(config.subprocess, "run", lambda args, **kwargs: subprocess.CompletedProcess(args, 1, "", ""))
     path = tmp_path / "display.json"
     code, response = run_display(capsys, "--path", str(path), "--set", json.dumps({"output": "eDP-1", "scale": 1.5}))
-    assert (code, response["applied"]) == (0, False)
-    assert load_display(path) == {"eDP-1": 1.5}
+    assert (code, response["applied"], response["outputs"]) == (0, False, [])
+    assert load_display(path) == {"eDP-1": {"scale": 1.5}}
+
+
+def test_outputs_come_from_hyprctl_monitors(monkeypatch):
+    monkeypatch.setenv("HYPRLAND_INSTANCE_SIGNATURE", "test")
+    monitors = [{
+        "name": "HDMI-A-1", "description": "LG Electronics LG HDR QHD 309NTLE8V592", "width": 2560, "height": 1440,
+        "refreshRate": 59.951, "scale": 1.0, "transform": 0, "vrr": False, "x": 1536, "y": 0,
+        "availableModes": ["2560x1440@59.95Hz", "2560x1440@74.96Hz", "1920x1080@60.00Hz", "1920x1080@60.00Hz", "junk"],
+    }, {"name": "DP-9", "description": 'Bad "quote"', "availableModes": []}, "junk"]
+    monkeypatch.setattr(config.subprocess, "run",
+                        lambda args, **kwargs: subprocess.CompletedProcess(args, 0, json.dumps(monitors), ""))
+    outputs = config.display_outputs()
+    assert [item["output"] for item in outputs] == ["desc:LG Electronics LG HDR QHD 309NTLE8V592", "DP-9"]
+    assert outputs[0]["modes"] == [{"width": 2560, "height": 1440, "refresh": 59.95},
+                                   {"width": 2560, "height": 1440, "refresh": 74.96},
+                                   {"width": 1920, "height": 1080, "refresh": 60.0}]
+    assert (outputs[0]["refreshRate"], outputs[0]["x"], outputs[0]["vrr"]) == (59.951, 1536, False)
+    monkeypatch.setattr(config.subprocess, "run", lambda args, **kwargs: subprocess.CompletedProcess(args, 1, "", ""))
+    assert config.display_outputs() == []
+
+
+# Мышь, тачпад и повтор клавиш: `input.json`, `input.lua` и CLI `input`.
+
+def run_input(capsys, *argv):
+    code = main(["input", *argv])
+    return code, json.loads(capsys.readouterr().out)
+
+
+def test_input_defaults_are_hyprland_defaults(tmp_path, capsys, no_hyprland):
+    code, response = run_input(capsys, "--path", str(tmp_path / "input.json"))
+    assert code == 0
+    assert response == {**config.INPUT_DEFAULTS, "touchpad": False}
+    assert (response["repeatDelay"], response["repeatRate"], response["tapToClick"]) == (600, 25, True)
+
+
+def test_input_set_writes_json_and_lua(tmp_path, capsys, no_hyprland):
+    path = tmp_path / "quietline" / "input.json"
+    change = {"pointerSpeed": -0.3000001, "acceleration": False, "touchpadNaturalScroll": True, "repeatRate": 40}
+    code, response = run_input(capsys, "--path", str(path), "--set", json.dumps(change))
+    assert code == 0 and response["applied"] is False
+    assert (response["pointerSpeed"], response["acceleration"], response["repeatRate"]) == (-0.3, False, 40)
+    assert json.loads(path.read_text(encoding="utf-8"))["touchpadNaturalScroll"] is True
+    lua = path.with_name("input.lua").read_text(encoding="utf-8")
+    assert lua.startswith('return { sensitivity = -0.3, accel_profile = "flat", natural_scroll = false,')
+    assert "repeat_rate = 40" in lua and "touchpad = { tap_to_click = true, natural_scroll = true," in lua
+    assert run_input(capsys, "--path", str(path))[1]["pointerSpeed"] == -0.3
+
+
+@pytest.mark.parametrize("change", [
+    {}, {"pointerSpeed": 2}, {"pointerSpeed": True}, {"scrollSpeed": 0.1}, {"repeatDelay": 100},
+    {"repeatRate": 25.5}, {"repeatRate": True}, {"tapToClick": 1}, {"sensitivity": 0}, ["pointerSpeed"],
+])
+def test_invalid_input_changes_are_rejected(tmp_path, capsys, change, no_hyprland):
+    path = tmp_path / "input.json"
+    code, response = run_input(capsys, "--path", str(path), "--set", json.dumps(change))
+    assert code == 1 and "error" in response
+    assert not path.exists() and not path.with_name("input.lua").exists()
+
+
+def test_input_applies_in_hyprland_and_finds_touchpad(tmp_path, capsys, monkeypatch):
+    monkeypatch.setenv("HYPRLAND_INSTANCE_SIGNATURE", "test")
+    calls = []
+
+    def fake(args, **kwargs):
+        calls.append(args)
+        out = json.dumps({"mice": [{"name": "logitech-wireless-mouse"}, {"name": "syna2ba6:00-06cb:cefe-touchpad"}]})
+        return subprocess.CompletedProcess(args, 0, out if args[1] == "devices" else "ok", "")
+
+    monkeypatch.setattr(config.subprocess, "run", fake)
+    code, response = run_input(capsys, "--path", str(tmp_path / "input.json"), "--set", '{"numlock": true}')
+    assert (code, response["applied"], response["touchpad"]) == (0, True, True)
+    evals = [args[2] for args in calls if args[1] == "eval"]
+    assert evals == ["hl.config({ input = " + config.input_table({**config.INPUT_DEFAULTS, "numlock": True}) + " })"]
 
 
 # Оформление: `appearance.json`, `appearance.lua` и CLI `appearance`.

@@ -33,15 +33,34 @@ if loaded and type(chosen) == "table"
 end
 hl.config({ input = { kb_layout = keyboard.kb_layout, kb_options = keyboard.kb_options } })
 
--- Масштаб мониторов, выбранный в «Настройках» → «Экран»: оболочка пишет quietline/display.lua
--- каталога настроек — таблицу «монитор → масштаб», где монитор — `desc:<описание>` или имя
--- разъёма. У монитора без записи масштаб выбирает Hyprland. Правило монитора из hyprland.lua
--- после подключения этого файла главнее.
-local scales_loaded, scales = pcall(dofile, config_home .. "/quietline/display.lua")
-if scales_loaded and type(scales) == "table" then
-    for output, scale in pairs(scales) do
-        if type(output) == "string" and type(scale) == "number" then
-            hl.monitor({ output = output, mode = "preferred", position = "auto", scale = scale })
+-- Мышь, тачпад и повтор клавиш из «Настроек»: оболочка пишет quietline/input.lua каталога
+-- настроек — таблицу раздела input. Без файла или при ошибке в нём — значения Hyprland.
+local input_loaded, chosen_input = pcall(dofile, config_home .. "/quietline/input.lua")
+if input_loaded and type(chosen_input) == "table" then
+    pcall(hl.config, { input = chosen_input })
+end
+
+-- Мониторы, настроенные в «Настройках» → «Экран»: оболочка пишет quietline/display.lua каталога
+-- настроек — таблицу «монитор → поля правила» (mode, position, scale, transform, vrr), где
+-- монитор — `desc:<описание>` или имя разъёма; прежний вид «монитор → масштаб» тоже читается.
+-- Без поля — режим preferred, положение и масштаб auto. Монитор без записи настраивает Hyprland;
+-- правило монитора из hyprland.lua после подключения этого файла главнее.
+local monitors_loaded, monitors = pcall(dofile, config_home .. "/quietline/display.lua")
+if monitors_loaded and type(monitors) == "table" then
+    for output, fields in pairs(monitors) do
+        if type(fields) == "number" then
+            fields = { scale = fields }
+        end
+        if type(output) == "string" and type(fields) == "table" then
+            local rule = {
+                output = output,
+                mode = type(fields.mode) == "string" and fields.mode or "preferred",
+                position = type(fields.position) == "string" and fields.position or "auto",
+                scale = type(fields.scale) == "number" and fields.scale or "auto",
+            }
+            if type(fields.transform) == "number" then rule.transform = fields.transform end
+            if type(fields.vrr) == "number" then rule.vrr = fields.vrr end
+            pcall(hl.monitor, rule)
         end
     end
 end

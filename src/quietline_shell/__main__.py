@@ -7,11 +7,21 @@
   обновление проверяется и пишется в `region.json`, а `locale.conf` и `quietline/keyboard.lua`
   — в каталог на два уровня выше `PATH` (`PATH/../../`; по умолчанию `$XDG_CONFIG_HOME`), раскладки применяются в Hyprland,
   в ответ добавляется `"applied": true | false`;
-- `display [--set JSON] [--path PATH]` — `{"scales": {"<монитор>": <масштаб>}}`: масштабы
-  мониторов, выбранные в «Настройках» (монитор — `desc:<описание>` или имя разъёма); с `--set
-  {"output", "scale"}` масштаб (число от 0.5 до 4 или `"auto"` — убрать запись) пишется в
-  `display.json` и `display.lua` рядом с ним и применяется в Hyprland, в ответ добавляется
-  `"applied": true | false`;
+- `display [--set JSON] [--path PATH]` — `{"monitors": {"<монитор>": {"mode", "position", "scale",
+  "transform", "vrr"}}, "scales": {"<монитор>": <масштаб>}, "outputs": [...]}`: настройки мониторов,
+  выбранные в «Настройках» (монитор — `desc:<описание>` или имя разъёма; любое поле может
+  отсутствовать), их масштабы и подключённые мониторы из Hyprland (`name`, `description`, `output`,
+  `width`, `height`, `refreshRate`, `scale`, `transform`, `vrr`, `x`, `y`, `modes: [{width, height,
+  refresh}]`; вне Hyprland — `[]`); с `--set {"output", <поля>}` поля (`scale` 0.5–4, `mode`
+  `"WxH@R"`, `position` `auto-left|auto-right|auto-up|auto-down`, `transform` 0–3, `vrr` 0–2;
+  `"auto"` убирает поле) пишутся в `display.json` и `display.lua` рядом с ним, монитор применяется
+  в Hyprland, в ответ добавляется `"applied": true | false`;
+- `input [--set JSON] [--path PATH]` — `{"pointerSpeed", "acceleration", "naturalScroll", "scrollSpeed",
+  "leftHanded", "tapToClick", "touchpadNaturalScroll", "disableWhileTyping", "touchpadScrollSpeed",
+  "repeatDelay", "repeatRate", "numlock", "touchpad"}`: мышь, тачпад и повтор клавиш (скорость
+  указателя −1…1, скорости прокрутки 0.25–3, задержка повтора 150–1000 мс, частота 10–60 в секунду),
+  `touchpad` — есть ли тачпад; с `--set` часть полей проверяется и пишется в `input.json` и
+  `input.lua` рядом с ним, применяется в Hyprland, в ответ добавляется `"applied": true | false`;
 - `appearance [--set JSON] [--path PATH]` — `{"theme", "cursor", "cursorSize", "batteryPercent"}`:
   тема окружения и цвет указателя (`dark` | `light`), размер указателя (24, 36, 48), процент
   заряда на панели (`off` | `beside` | `inside`); с `--set` часть полей
@@ -59,7 +69,8 @@ from typing import Any
 
 from quietline_shell import capture, clipboard, network, search, session
 from quietline_shell.config import (
-    about, apply_appearance, apply_display, apply_keyboard, default_appearance_path, default_display_path,
+    about, apply_appearance, apply_display, apply_keyboard, default_appearance_path, default_display_path, display_outputs,
+    display_scales, default_input_path, load_input, updated_input, save_input, apply_input, has_touchpad,
     default_pins_path, default_region_path, load_appearance, load_display, load_pins, load_region, reduced_motion,
     notification_text, save_appearance, save_display, save_pins, save_region, updated_appearance, updated_display,
     validated_region,
@@ -75,9 +86,12 @@ def _parser() -> argparse.ArgumentParser:
     region = commands.add_parser("region", help="print the language and region settings as JSON")
     region.add_argument("--set", dest="new_region", metavar="JSON", help="apply this JSON object of fields first")
     region.add_argument("--path", type=Path, help="region file (default: $XDG_CONFIG_HOME/quietline/region.json); locale.conf and quietline/keyboard.lua are written two directories above it")
-    display = commands.add_parser("display", help="print the monitor scales chosen in the settings as JSON")
-    display.add_argument("--set", dest="change", metavar="JSON", help='apply {"output": ..., "scale": NUMBER | "auto"} first')
+    display = commands.add_parser("display", help="print the monitor settings and connected monitors as JSON")
+    display.add_argument("--set", dest="change", metavar="JSON", help='apply {"output": ..., "scale" | "mode" | "position" | "transform" | "vrr": VALUE | "auto"} first')
     display.add_argument("--path", type=Path, help="display file (default: $XDG_CONFIG_HOME/quietline/display.json); display.lua is written next to it")
+    pointer = commands.add_parser("input", help="print the mouse, touchpad and key repeat settings as JSON")
+    pointer.add_argument("--set", dest="change", metavar="JSON", help="apply this JSON object of fields first")
+    pointer.add_argument("--path", type=Path, help="input file (default: $XDG_CONFIG_HOME/quietline/input.json); input.lua is written next to it")
     appearance = commands.add_parser("appearance", help="print the theme and pointer settings as JSON")
     appearance.add_argument("--set", dest="change", metavar="JSON", help='apply {"theme", "cursor", "cursorSize", "batteryPercent"} (any of them) first')
     appearance.add_argument("--path", type=Path, help="appearance file (default: $XDG_CONFIG_HOME/quietline/appearance.json); appearance.lua is written next to it")
@@ -135,12 +149,21 @@ def _run(args: argparse.Namespace) -> dict[str, Any]:
             return {**updated, "applied": apply_keyboard(updated)}
         case "display":
             path = args.path or default_display_path()
-            scales = load_display(path)
+            monitors = load_display(path)
             if args.change is None:
-                return {"scales": scales}
-            output, scale, scales = updated_display(json.loads(args.change), scales)
-            save_display(path, scales)
-            return {"scales": scales, "applied": apply_display(output, scale)}
+                return {"monitors": monitors, "scales": display_scales(monitors), "outputs": display_outputs()}
+            output, monitors = updated_display(json.loads(args.change), monitors)
+            save_display(path, monitors)
+            applied = apply_display(output, monitors.get(output, {}))
+            return {"monitors": monitors, "scales": display_scales(monitors), "outputs": display_outputs(), "applied": applied}
+        case "input":
+            path = args.path or default_input_path()
+            current = load_input(path)
+            if args.change is None:
+                return {**current, "touchpad": has_touchpad()}
+            updated = updated_input(json.loads(args.change), current)
+            save_input(path, updated)
+            return {**updated, "touchpad": has_touchpad(), "applied": apply_input(updated)}
         case "appearance":
             path = args.path or default_appearance_path()
             current = load_appearance(path)
