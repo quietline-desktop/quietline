@@ -664,3 +664,36 @@ test('month grid starts the week on the locale day and marks today',()=>{
  assert.equal(sunday.filter(c=>c.today).length,0);
  assert.equal(sunday[41].current,false);
 });
+test('search menu lists groups and their items',()=>{
+ const apps=[{id:'tg',name:'Telegram'},{id:'code',name:'code'},{id:'d',name:'Dolphin',icon:'dolphin'}];
+ const groups=plain(M.searchGroups(ru));
+ assert.deepEqual(groups.map(g=>g.id),['apps','actions','power','settings']);
+ assert.deepEqual(groups[2],{kind:'group',id:'power',key:'group:power',title:'Питание',subtitle:ru.searchGroupPowerHint,symbol:'power_settings_new'});
+ assert.equal(M.searchSymbol(groups[0]),'apps');
+ assert.deepEqual(plain(M.searchGroupItems('apps',apps,en)).map(i=>i.title),['code','Dolphin','Telegram']);
+ assert.equal(M.searchGroupItems('apps',apps,en)[1].icon,'dolphin');
+ assert.deepEqual(plain(M.searchGroupItems('actions',apps,ru)).map(i=>i.key),['action:lock','action:screenshot','action:clipboard']);
+ assert.deepEqual(plain(M.searchGroupItems('power',apps,ru)).map(i=>i.id),['logout','reboot','poweroff']);
+ const settings=plain(M.searchGroupItems('settings',apps,en));
+ assert.equal(settings.length,M.SETTINGS_SECTIONS.length); assert.equal(settings[0].kind,'settings'); assert.equal(settings[0].title,'Network');
+ assert.deepEqual(plain(M.searchGroupItems('nope',apps,ru)),[]);
+ const root=plain(M.searchBrowseRows('',apps,ru));
+ assert.deepEqual(root.map(r=>[r.key,r.index,r.header]),[['group:apps',0,false],['group:actions',1,false],['group:power',2,false],['group:settings',3,false]]);
+ assert.deepEqual(plain(M.searchBrowseRows('power',apps,ru)).map(r=>r.key),['action:logout','action:reboot','action:poweroff']);
+});
+test('search rows keep stable keys',()=>{
+ const rows=plain(M.searchSections([{kind:'calc',id:'calc',title:'= 4'},{kind:'app',id:'a',title:'A'},{kind:'file',id:'/h/a.txt',title:'a.txt'}],'2+2',ru));
+ assert.deepEqual(rows.map(r=>r.key),['#best','calc:calc','#app','app:a','#file','file:/h/a.txt']);
+});
+test('earlier file results are narrowed to the new query',()=>{
+ const files=['/home/k/Документы/Телефоны.txt','/home/k/tel/notes.md','/home/k/hotel.png'];
+ assert.deepEqual(plain(M.searchFileMatches(files,'тел')),['/home/k/Документы/Телефоны.txt']);
+ assert.deepEqual(plain(M.searchFileMatches(files,' TEL ')),['/home/k/hotel.png']);
+ assert.deepEqual(plain(M.searchFileMatches(files,'t')),[]);
+ assert.deepEqual(plain(M.searchFileMatches(null,'tel')),[]);
+});
+test('search list height follows its rows',()=>{
+ assert.equal(M.searchListHeight([],420),0);
+ assert.equal(M.searchListHeight([{header:true},{item:{kind:'calc'}},{item:{kind:'app'}}],420),14+26+48+40);
+ assert.equal(M.searchListHeight(Array.from({length:30},()=>({item:{kind:'app'}})),420),420);
+});

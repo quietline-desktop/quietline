@@ -809,13 +809,14 @@ function layoutLabel(code, s) {
     return key ? s[key] : String(code);
 }
 
+// Системные действия поиска; `group` — группа меню при пустом поле.
 var SEARCH_ACTIONS = [
-    {id: "lock", title: "actionLock", keywords: "actionLockKeywords"},
-    {id: "logout", title: "actionLogout", keywords: "actionLogoutKeywords"},
-    {id: "reboot", title: "actionReboot", keywords: "actionRebootKeywords"},
-    {id: "poweroff", title: "actionPoweroff", keywords: "actionPoweroffKeywords"},
-    {id: "screenshot", title: "actionScreenshot", keywords: "actionScreenshotKeywords"},
-    {id: "clipboard", title: "actionClipboard", keywords: "actionClipboardKeywords"}
+    {id: "lock", group: "actions", title: "actionLock", keywords: "actionLockKeywords"},
+    {id: "logout", group: "power", title: "actionLogout", keywords: "actionLogoutKeywords"},
+    {id: "reboot", group: "power", title: "actionReboot", keywords: "actionRebootKeywords"},
+    {id: "poweroff", group: "power", title: "actionPoweroff", keywords: "actionPoweroffKeywords"},
+    {id: "screenshot", group: "actions", title: "actionScreenshot", keywords: "actionScreenshotKeywords"},
+    {id: "clipboard", group: "actions", title: "actionClipboard", keywords: "actionClipboardKeywords"}
 ];
 
 // Насколько `text` подходит под `needle`: начало строки — 3, начало слова — 2, где-то внутри — 1.
@@ -830,6 +831,8 @@ function matchScore(text, needle) {
 // сгруппированы по виду (вычисление — к лучшему совпадению, разделы настроек — к действиям);
 // без запроса — только приложения. Порядок внутри раздела сохраняется, `index` — номер
 // результата в исходном списке (по нему идёт выбор стрелками).
+// У каждой строки — ключ `key` (заголовок — «#вид», результат — «вид:идентификатор»): по нему
+// список сохраняет строку при обновлении результатов.
 var SEARCH_SECTION_KEYS = {best: "searchBest", app: "searchApps", action: "searchActions", file: "searchFiles"};
 function searchSections(results, query, s) {
     var order = ["best", "app", "action", "file"];
@@ -843,8 +846,8 @@ function searchSections(results, query, s) {
     var rows = [];
     order.forEach(function(kind) {
         if (!groups[kind].length) return;
-        rows.push({header: true, title: s[SEARCH_SECTION_KEYS[kind]]});
-        groups[kind].forEach(function(entry) { rows.push({header: false, item: entry.item, index: entry.index}); });
+        rows.push({header: true, key: "#" + kind, title: s[SEARCH_SECTION_KEYS[kind]]});
+        groups[kind].forEach(function(entry) { rows.push({header: false, key: entry.item.kind + ":" + entry.item.id, item: entry.item, index: entry.index}); });
     });
     return rows;
 }
@@ -854,6 +857,7 @@ var SEARCH_ACTION_SYMBOLS = {lock: "lock", screenshot: "screenshot_region", clip
     logout: "logout", reboot: "restart_alt", poweroff: "power_settings_new"};
 function searchSymbol(item) {
     if (!item) return "search";
+    if (item.kind === "group") return item.symbol;
     if (item.kind === "calc") return "calculate";
     if (item.kind === "settings") return "settings";
     if (item.kind === "action") return SEARCH_ACTION_SYMBOLS[item.id] || "bolt";
@@ -895,6 +899,62 @@ function searchResults(query, apps, files, home, limit, s) {
         results.push({kind: "file", id: path, title: path.slice(slash + 1), subtitle: folder, path: path});
     });
     return results.slice(0, max);
+}
+
+// Группы меню поиска при пустом поле: значок, ключи названия и пояснения таблицы строк.
+var SEARCH_GROUPS = [
+    {id: "apps", symbol: "apps", title: "searchApps", hint: "searchGroupAppsHint"},
+    {id: "actions", symbol: "bolt", title: "searchActions", hint: "searchGroupActionsHint"},
+    {id: "power", symbol: "power_settings_new", title: "searchGroupPower", hint: "searchGroupPowerHint"},
+    {id: "settings", symbol: "settings", title: "searchSettings", hint: "searchGroupSettingsHint"}
+];
+function searchGroups(s) {
+    return SEARCH_GROUPS.map(function(group) {
+        return {kind: "group", id: group.id, key: "group:" + group.id, title: s[group.title], subtitle: s[group.hint], symbol: group.symbol};
+    });
+}
+
+// Пункты группы `id`: приложения по алфавиту, действия группы, разделы «Настроек».
+// Неизвестная группа — пустой список.
+function searchGroupItems(id, apps, s) {
+    var items = [];
+    if (id === "apps") {
+        items = (apps || []).slice().sort(function(a, b) { return String(a.name).localeCompare(String(b.name)); })
+            .map(function(app) { return {kind: "app", id: app.id, title: app.name, subtitle: s.searchApp, icon: app.icon || ""}; });
+    } else if (id === "settings") {
+        items = SETTINGS_SECTIONS.map(function(section) { return {kind: "settings", id: section.id, title: s[section.label], subtitle: s.searchSettings}; });
+    } else {
+        items = SEARCH_ACTIONS.filter(function(action) { return action.group === id; })
+            .map(function(action) { return {kind: "action", id: action.id, title: s[action.title], subtitle: s.searchAction}; });
+    }
+    return items.map(function(item) { item.key = item.kind + ":" + item.id; return item; });
+}
+
+// Строки меню поиска при пустом поле: группы или пункты открытой группы `group`, в том же
+// виде, что строки результатов (`header`, `key`, `item`, `index`).
+function searchBrowseRows(group, apps, s) {
+    var items = group ? searchGroupItems(group, apps, s) : searchGroups(s);
+    return items.map(function(item, index) { return {header: false, key: item.key, item: item, index: index}; });
+}
+
+// Найденные раньше файлы, подходящие под новый запрос по правилу `quietline-shell files`
+// (`plocate -b -i`: имя файла содержит запрос без учёта регистра). Запрос короче двух символов
+// файлов не ищет.
+function searchFileMatches(files, query) {
+    var needle = String(query || "").trim().toLowerCase();
+    if (needle.length < 2) return [];
+    return (files || []).filter(function(path) {
+        return String(path).slice(String(path).lastIndexOf("/") + 1).toLowerCase().indexOf(needle) >= 0;
+    });
+}
+
+// Высота списка поиска по строкам: заголовок раздела 26, вычисление 48, остальные 40 px,
+// поля списка сверху 6 и снизу 8; не больше `max`. Пустой список — 0.
+function searchListHeight(rows, max) {
+    if (!rows || !rows.length) return 0;
+    var height = 14;
+    rows.forEach(function(row) { height += row.header ? 26 : row.item && row.item.kind === "calc" ? 48 : 40; });
+    return Math.min(height, max);
 }
 
 // Стопки центра уведомлений: записи истории (новые сверху) одного приложения подряд не
