@@ -1,5 +1,6 @@
 """Порядок экранов и шагов установщика, продолжение, откат, проверки install.sh."""
 
+import getpass
 import os
 import subprocess
 from pathlib import Path
@@ -46,6 +47,16 @@ class FakeScreens:
             raise self.programs
         return self.programs
 
+    def choose_options(self, ctx, checklist, intro):
+        """Первый заход: отмеченное по умолчанию или `self.options`; исключение в `self.options` — бросается."""
+        self.calls.append('options')
+        self.option_lists = getattr(self, 'option_lists', []) + [checklist]
+        self.option_intro = intro
+        answer = getattr(self, 'options', None)
+        if isinstance(answer, Exception):
+            raise answer
+        return checklist.selected() if answer is None else answer
+
     def confirm_summary(self, ctx, lines):
         self.calls.append('summary')
         self.summary_lines = lines
@@ -77,7 +88,7 @@ def env(tmp_path, system, monkeypatch):
 
     monkeypatch.setattr(main_module.snapshot, 'take', take)
     monkeypatch.setattr(main_module, 'preflight', lambda ctx, info: [])
-    monkeypatch.setattr(main_module, 'run_checks', lambda ctx, plan: (['all — ready'], True))
+    monkeypatch.setattr(main_module, 'readiness', lambda ctx, plan: [('all', True)])
 
     def steps(plan):
         def run(name):
@@ -98,9 +109,38 @@ def env(tmp_path, system, monkeypatch):
 def test_first_run_walks_screens_in_spec_order(env):
     screens = FakeScreens()
     assert env['call']([], screens) == 0
-    assert screens.calls == ['language', 'checks', 'system-language', 'programs', 'summary', 'final']
+    assert screens.calls == ['language', 'checks', 'system-language', 'programs', 'options', 'summary', 'final']
     state = State.load(env['state'])
     assert state.installer_language == 'en' and state.system_language == 'ru' and state.finished
+    # Docker Engine входит в рекомендуемый набор: спрашиваются оба параметра, отмечен только fish.
+    assert state.selection['options'] == {'default-shell': True, 'docker-group': False}
+    assert 'docker' in screens.option_intro
+    assert any('fish' in line for line in screens.summary_lines)
+
+
+def test_options_screen_is_skipped_without_open_questions(env, system):
+    system.answer(['getent', 'passwd'], 'kiryl:x:1000:1000::/home/kiryl:/usr/bin/fish\n')
+    screens = FakeScreens(programs={'firefox'})
+    assert env['call']([], screens) == 0
+    assert 'options' not in screens.calls
+    assert State.load(env['state']).selection['options'] == {}
+
+
+def test_docker_question_only_with_docker_engine(env):
+    screens = FakeScreens(programs={'firefox'})
+    env['call']([], screens)
+    assert [item.id for item in screens.option_lists[0].items] == ['default-shell']
+    assert State.load(env['state']).selection['options'] == {'default-shell': True}
+
+
+def test_esc_from_summary_returns_to_options_and_keeps_answers(env):
+    answers = iter([False, True])
+    screens = FakeScreens()
+    screens.options = set()
+    screens.confirm_summary = lambda ctx, lines: (screens.calls.append('summary'), next(answers))[1]
+    env['call']([], screens)
+    assert screens.calls[4:8] == ['options', 'summary', 'options', 'summary']
+    assert [item.checked for item in screens.option_lists[1].items] == [False, False]
 
 
 def test_quit_before_summary_changes_nothing(env, system):
@@ -111,15 +151,30 @@ def test_quit_before_summary_changes_nothing(env, system):
     assert not env['state'].exists()
 
 
-def test_declined_summary_returns_to_programs(env):
-    answers = iter([False, True])
+def test_esc_from_options_returns_to_programs(env):
+    from quietline_install.screens import GoBack
+
     screens = FakeScreens()
-    screens.confirm_summary = lambda ctx, lines: (screens.calls.append('summary'), next(answers))[1]
+    responses = iter([GoBack(), None])
+
+    def options(ctx, checklist, intro):
+        screens.calls.append('options')
+        response = next(responses)
+        if response is not None:
+            raise response
+        return checklist.selected()
+
+    screens.choose_options = options
     assert env['call']([], screens) == 0
-    assert screens.calls[:6] == ['language', 'checks', 'system-language', 'programs', 'summary', 'programs']
+    assert screens.calls[:7] == ['language', 'checks', 'system-language', 'programs', 'options', 'programs',
+                                 'options']
 
 
-def test_back_from_summary_keeps_program_marks(env):
+def test_back_to_programs_keeps_program_marks(env, system):
+    # fish уже оболочка по умолчанию, пользователь уже в группе docker: «Параметров» нет, Esc со сводки
+    # ведёт к программам.
+    system.answer(['getent', 'passwd'], 'kiryl:x:1000:1000::/home/kiryl:/usr/bin/fish\n')
+    system.answer(['getent', 'group', 'docker'], f'docker:x:968:{getpass.getuser()}\n')
     answers = iter([False, True])
     screens = FakeScreens(programs={'firefox'})
     lists = []
@@ -297,3 +352,67 @@ def test_resume_screen_shows_the_failure_reason(env, monkeypatch):
     screens = FakeScreens(resume='quit')
     env['call']([], screens)
     assert 'network is down' in screens.reason
+
+
+def test_sudo_password_is_asked_once_before_the_snapshot(env, system):
+    env['call']([], FakeScreens())
+    commands = system.commands()
+    first = commands.index(['sudo', '-v'])
+    assert system.calls[first]['interactive']
+    assert not any(call['sudo'] for call in system.calls[:first])
+
+
+def test_dry_run_does_not_ask_for_sudo(env, system):
+    env['call'](['--dry-run'], FakeScreens())
+    assert ['sudo', '-v'] not in system.commands()
+
+
+def test_rejected_sudo_password_stops_before_any_change(env, system):
+    system.answer(['sudo', '-v'], code=1)
+    assert env['call']([], FakeScreens()) != 0
+    assert env['events'] == []
+
+
+def test_sudo_is_refreshed_while_the_block_runs(system, tmp_path):
+    import time
+
+    from quietline_install.runner import Ctx
+
+    ctx = Ctx(system=system, home=tmp_path, repo=REPO, ask=None, out=lambda line: None)
+    with main_module.sudo_kept(ctx, interval=0.01):
+        time.sleep(0.1)
+    refreshes = system.commands().count(['sudo', '-n', '-v'])
+    assert refreshes >= 2
+    time.sleep(0.05)
+    assert system.commands().count(['sudo', '-n', '-v']) == refreshes
+
+
+def test_final_screen_shows_only_what_is_missing(env, monkeypatch, system, tmp_path):
+    from quietline_install.catalog import Plan
+    from quietline_install.runner import Ctx
+
+    ctx = Ctx(system=system, home=tmp_path, repo=REPO, ask=None, language='en')
+    monkeypatch.setattr(main_module, 'readiness', lambda ctx, plan: [('git', True), ('fish', True)])
+    assert main_module.final_lines(ctx, Plan()) == [ctx.t('final.done'), '', ctx.t('final.ready', count=2)]
+    monkeypatch.setattr(main_module, 'readiness', lambda ctx, plan: [('git', True), ('ru_RU.utf8', False)])
+    lines = main_module.final_lines(ctx, Plan())
+    assert '  - ru_RU.utf8' in lines and '  - git' not in lines
+    assert ctx.t('final.missing', count=1, total=2) in lines and lines[-1] == ctx.t('final.fullCheck')
+
+
+def test_esc_on_checks_returns_to_language(env):
+    from quietline_install.screens import GoBack
+
+    screens = FakeScreens()
+    responses = iter([GoBack(), True])
+
+    def checks(ctx, results):
+        screens.calls.append('checks')
+        response = next(responses)
+        if isinstance(response, Exception):
+            raise response
+        return response
+
+    screens.show_checks = checks
+    assert env['call']([], screens) == 0
+    assert screens.calls[:4] == ['language', 'checks', 'language', 'checks']

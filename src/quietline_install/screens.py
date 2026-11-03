@@ -70,14 +70,18 @@ class Row:
 
 
 class Checklist:
-    """Список пунктов с курсором; первая строка — рекомендуемый набор, последняя — «Далее»."""
+    """Список пунктов с курсором; первая строка — рекомендуемый набор (если `recommended` задан), последняя — «Далее».
 
-    def __init__(self, items: list[Item]):
+    `recommended` — id рекомендуемого набора для кнопки и клавиши `r`; None — без кнопки.
+    """
+
+    def __init__(self, items: list[Item], recommended: frozenset[str] | set[str] | None = frozenset()):
         self.items = items
+        self.recommended = recommended
         self.cursor = 0
 
     def rows(self) -> list[Row]:
-        rows = [Row('recommended')]
+        rows = [] if self.recommended is None else [Row('recommended')]
 
         def walk(items: list[Item], depth: int) -> None:
             for item in items:
@@ -100,6 +104,14 @@ class Checklist:
         item = self.current().item
         if item is not None and not item.locked and not item.group:
             item.checked = not item.checked
+
+    def activate(self) -> None:
+        """Enter на пункте: раскрывает заголовок и пункт с вложенными, остальные отмечает."""
+        item = self.current().item
+        if item is not None and (item.group or item.children):
+            self.expand()
+        else:
+            self.toggle()
 
     def expand(self) -> None:
         """Раскрывает или сворачивает пункт под курсором, если у него есть вложенные."""
@@ -275,7 +287,10 @@ def ask_language(stdscr) -> str:
 
 
 def show_checks(stdscr, ctx, results: list[CheckResult]) -> bool:
-    """Показывает проверки; True — можно продолжать. Без Btrfs просит подтверждение (Enter)."""
+    """Показывает проверки; True — можно продолжать. Без Btrfs просит подтверждение (Enter).
+
+    Esc возвращает к выбору языка (`GoBack`).
+    """
     lines = []
     for result in results:
         status = 'ok' if result.ok else ('fail' if result.blocking else 'warn')
@@ -289,10 +304,7 @@ def show_checks(stdscr, ctx, results: list[CheckResult]) -> bool:
     if any(not r.ok for r in results):
         lines += ['', ctx.t('checks.noBtrfs'), '', ctx.t('checks.noBtrfsConfirm')]
         footer = ctx.t('hint.confirm')
-    try:
-        _read_text_screen(stdscr, ctx.t('checks.title'), lines, footer)
-    except GoBack:
-        return False
+    _read_text_screen(stdscr, ctx.t('checks.title'), lines, footer)
     return True
 
 
@@ -324,7 +336,10 @@ def _row_label(ctx, row: Row) -> str:
 
 
 def choose_programs(stdscr, ctx, checklist: Checklist):
-    """Выбор программ: набор идентификаторов или строка 'recommended' (кнопка или клавиша r)."""
+    """Выбор программ: набор идентификаторов по «Далее» или строка 'recommended' по кнопке набора.
+
+    Клавиша `r` только отмечает рекомендуемый набор и оставляет экран открытым.
+    """
     _prepare(stdscr)
     top = 0
     while True:
@@ -342,14 +357,38 @@ def choose_programs(stdscr, ctx, checklist: Checklist):
         elif key == ord(' '):
             checklist.toggle()
         elif key in (ord('r'), ord('R')):
-            return 'recommended'
+            checklist.apply_recommended(set(checklist.recommended or ()))
         elif key in ENTER_KEYS:
             kind = checklist.current().kind
             if kind == 'recommended':
                 return 'recommended'
             if kind == 'next':
                 return checklist.selected()
-            checklist.expand()
+            checklist.activate()
+
+
+def choose_options(stdscr, ctx, checklist: Checklist, intro: str) -> set[str]:
+    """Экран «Параметры»: отмеченные id по «Далее»; Пробел или Enter отмечают пункт."""
+    _prepare(stdscr)
+    top = 0
+    while True:
+        height, width = stdscr.getmaxyx()
+        head = [(line, False) for line in wrap(intro, width - 2)] + [('', False)]
+        rows = checklist.rows()
+        body = head + [(_row_label(ctx, row), i == checklist.cursor) for i, row in enumerate(rows)]
+        top = scroll_top(len(head) + checklist.cursor, top, body_room(height))
+        _paint(stdscr, ctx.t('options.title'), body, ctx.t('hint.options'), top)
+        key = _key(stdscr)
+        if key == curses.KEY_UP:
+            checklist.move(-1)
+        elif key == curses.KEY_DOWN:
+            checklist.move(1)
+        elif key == ord(' '):
+            checklist.toggle()
+        elif key in ENTER_KEYS:
+            if checklist.current().kind == 'next':
+                return checklist.selected()
+            checklist.activate()
 
 
 def confirm_summary(stdscr, ctx, lines: list[str]) -> bool:
@@ -362,12 +401,13 @@ def confirm_summary(stdscr, ctx, lines: list[str]) -> bool:
 
 
 def show_final(stdscr, ctx, lines: list[str]) -> bool:
-    """Итог установки; Enter — перезагрузиться (True), Esc — позже (False)."""
+    """Итог установки и меню «Перезагрузить сейчас / Позже»; True — перезагрузиться. Esc и q — позже."""
     try:
-        _read_text_screen(stdscr, ctx.t('final.title'), lines + ['', ctx.t('final.reboot')], ctx.t('final.hint'))
+        index = _menu(stdscr, ctx.t('final.title'), '\n'.join(lines + ['', ctx.t('final.reboot')]),
+                      [ctx.t('final.rebootNow'), ctx.t('final.later')], ctx.t('hint.final'))
     except (GoBack, Quit):
         return False
-    return True
+    return index == 0
 
 
 def review_package(stdscr, ctx, name: str, lines: list[str]) -> bool:

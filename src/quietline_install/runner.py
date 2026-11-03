@@ -276,12 +276,13 @@ class Runner:
         self.log(line)
 
     def _report(self, step: Step, status: str, **values) -> None:
-        """Ход шага: на экран — на языке установщика, в журнал — по-английски с id шага."""
+        """Ход шага: на экран — с номером «[7/25]» на языке установщика, в журнал — по-английски с id шага."""
         try:
             title = self.ctx.t(step.title_key)
         except KeyError:
             title = step.id
-        self.ctx.out(redact(self.ctx.t(f'progress.{status}', step=f'{title} [{step.source}]', **values)))
+        number = f'[{self.steps.index(step) + 1}/{len(self.steps)}] '
+        self.ctx.out(number + redact(self.ctx.t(f'progress.{status}', step=f'{title} [{step.source}]', **values)))
         self.log(text('en', f'progress.{status}', step=f'{step.id} [{step.source}]', **values))
 
     def _done(self, step: Step) -> bool:

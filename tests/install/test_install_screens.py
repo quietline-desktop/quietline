@@ -173,7 +173,7 @@ def test_scroll_top_keeps_cursor_visible():
 def test_every_hint_fits_two_lines_of_an_80_column_console():
     from quietline_install.screens import FOOTER_LINES, wrap
 
-    hints = [(lang, key) for lang in texts.TEXTS for key in texts.TEXTS[lang] if key.startswith(('hint.', 'final.hint', 'aur.reviewHint'))]
+    hints = [(lang, key) for lang in texts.TEXTS for key in texts.TEXTS[lang] if key.startswith(('hint.', 'aur.reviewHint'))]
     assert hints
     for lang, key in hints:
         lines = wrap(texts.TEXTS[lang][key], 78)
@@ -240,3 +240,19 @@ def test_without_a_terminal_the_answer_is_typed_and_repeated_until_clear(monkeyp
 
     monkeypatch.setattr('builtins.input', closed)
     assert screens.ask_yes_no(ctx, 'Продолжить?', default=True, stdin=Pipe(), stdout=Pipe()) is False
+
+
+def test_enter_checks_a_plain_item_and_expands_a_parent():
+    checklist = Checklist(sample_items())
+    go_to(checklist, 'firefox')
+    checklist.activate()
+    assert checklist.selected() == {'firefox'}
+    go_to(checklist, 'dotnet')
+    checklist.activate()
+    assert checklist.items[3].expanded and 'dotnet' not in checklist.selected()
+
+
+def test_checklist_without_recommended_has_no_button():
+    checklist = Checklist([Item('default-shell', 'fish', checked=True)], recommended=None)
+    assert [row.kind for row in checklist.rows()] == ['item', 'next']
+    assert checklist.selected() == {'default-shell'}

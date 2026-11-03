@@ -151,7 +151,7 @@ def test_progress_is_shown_in_the_installer_language(ctx, tmp_path):
     step.check = lambda c: done['value']
     step.run = lambda c: done.update(value=True)
     Runner([step], ctx, tmp_path / 'install.log').run()
-    assert ctx.t('progress.done', step=f"{ctx.t('step.fish')} [Quietline]") in ctx.lines
+    assert '[1/1] ' + ctx.t('progress.done', step=f"{ctx.t('step.fish')} [Quietline]") in ctx.lines
     assert 'fish [Quietline]: done' in (tmp_path / 'install.log').read_text()
 
 

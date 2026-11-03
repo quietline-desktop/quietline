@@ -313,3 +313,28 @@ def test_hyprbars_step_replaces_official_repository_with_fork(ctx, system):
     assert system.commands() == [['hyprpm', 'update'], ['hyprpm', 'list'], ['hyprpm', 'remove', 'hyprland-plugins'],
                                  ['hyprpm', 'add', session.HYPRLAND_PLUGINS], ['hyprpm', 'enable', 'hyprbars']]
     assert all(call['interactive'] for call in system.calls if call['args'][1] != 'list')
+
+
+def test_answers_from_options_screen_are_not_asked_again(ctx, system, monkeypatch):
+    monkeypatch.setattr(session.getpass, 'getuser', lambda: 'kiryl')
+    system.answer(['getent', 'passwd'], 'kiryl:x:1000:1000::/home/kiryl:/bin/bash\n')
+    system.answer(['getent', 'group', 'docker'], 'docker:x:968:\n')
+    ctx.state.selection = {'options': {'default-shell': True, 'docker-group': False}}
+    session.default_shell_step().run(ctx)
+    session.docker_group_step().run(ctx)
+    assert ctx.questions == []
+    assert any(call['args'] == ['chsh', '-s', '/usr/bin/fish'] for call in system.calls)
+    assert not any(call['args'][:2] == ['usermod', '-aG'] for call in system.calls)
+    assert session.declined(ctx, 'docker-group')
+    assert not any(ctx.t('session.dockerRoot') in line for line in ctx.lines)
+
+
+def test_open_questions_skip_done_and_declined(ctx, system, monkeypatch):
+    monkeypatch.setattr(session.getpass, 'getuser', lambda: 'kiryl')
+    system.answer(['getent', 'passwd'], 'kiryl:x:1000:1000::/home/kiryl:/bin/bash\n')
+    system.answer(['getent', 'group', 'docker'], 'docker:x:968:\n')
+    assert session.open_questions(ctx, docker=True) == ['default-shell', 'docker-group']
+    assert session.open_questions(ctx, docker=False) == ['default-shell']
+    session.decline(ctx, 'docker-group')
+    system.answer(['getent', 'passwd'], 'kiryl:x:1000:1000::/home/kiryl:/usr/bin/fish\n')
+    assert session.open_questions(ctx, docker=True) == []

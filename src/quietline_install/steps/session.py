@@ -1,7 +1,8 @@
 """Экран входа Quietline через greetd, хранилище паролей, fish по умолчанию, доступ к Docker и программы, которые ставятся вручную.
 
-Необязательные вопросы (оболочка, группа docker) после отказа больше не задаются: отказ помечается
-файлом `~/.local/state/quietline/declined-<id>`. Ручные шаги показывают официальные инструкции,
+Необязательные вопросы (оболочка, группа docker) задаёт экран «Параметры» до сводки; ответ лежит в
+`state.selection['options']`, без него шаг спрашивает в терминале. После отказа вопрос больше не
+задаётся: отказ помечается файлом `~/.local/state/quietline/declined-<id>`. Ручные шаги показывают официальные инструкции,
 ждут подтверждения и проверяют, что программа действительно появилась.
 """
 
@@ -118,16 +119,40 @@ def keyring_step() -> Step:
     return Step('keyring', 'step.keyring', 'Arch repositories: gnome-keyring', check, run)
 
 
-def default_shell_step() -> Step:
-    def current(ctx: Ctx) -> str:
-        return ctx.system.run(['getent', 'passwd', getpass.getuser()], check=False).strip().rsplit(':', 1)[-1]
+def current_shell(ctx: Ctx) -> str:
+    return ctx.system.run(['getent', 'passwd', getpass.getuser()], check=False).strip().rsplit(':', 1)[-1]
 
+
+def docker_member(ctx: Ctx) -> bool:
+    line = ctx.system.run(['getent', 'group', 'docker'], check=False).strip()
+    return getpass.getuser() in line.rsplit(':', 1)[-1].split(',') if line else False
+
+
+def open_questions(ctx: Ctx, docker: bool) -> list[str]:
+    """Id необязательных шагов, которые ещё нужно спросить: не сделаны и не отклонены раньше."""
+    ids = []
+    if current_shell(ctx) != '/usr/bin/fish' and not declined(ctx, 'default-shell'):
+        ids.append('default-shell')
+    if docker and not docker_member(ctx) and not declined(ctx, 'docker-group'):
+        ids.append('docker-group')
+    return ids
+
+
+def _answer(ctx: Ctx, step_id: str, question: str, default: bool) -> bool:
+    """Ответ с экрана «Параметры»; без него — вопрос в терминале."""
+    options = ctx.state.selection.get('options', {})
+    if step_id in options:
+        return bool(options[step_id])
+    return ctx.ask(question, default=default)
+
+
+def default_shell_step() -> Step:
     def check(ctx: Ctx) -> bool:
-        return current(ctx) == '/usr/bin/fish' or declined(ctx, 'default-shell')
+        return current_shell(ctx) == '/usr/bin/fish' or declined(ctx, 'default-shell')
 
     def run(ctx: Ctx) -> None:
-        if ctx.ask(ctx.t('session.shellQuestion'), default=True):
-            previous = current(ctx)
+        if _answer(ctx, 'default-shell', ctx.t('session.shellQuestion'), default=True):
+            previous = current_shell(ctx)
             ctx.system.run(['chsh', '-s', '/usr/bin/fish'], interactive=True)
             # Откат возвращает прежнюю оболочку до удаления fish, иначе вход станет невозможен.
             if previous:
@@ -139,13 +164,10 @@ def default_shell_step() -> Step:
 
 
 def docker_group_step() -> Step:
-    def member(ctx: Ctx) -> bool:
-        line = ctx.system.run(['getent', 'group', 'docker'], check=False).strip()
-        return getpass.getuser() in line.rsplit(':', 1)[-1].split(',') if line else False
-
     def run(ctx: Ctx) -> None:
-        ctx.out(ctx.t('session.dockerRoot'))
-        if ctx.ask(ctx.t('session.dockerQuestion'), default=False):
+        if 'docker-group' not in ctx.state.selection.get('options', {}):
+            ctx.out(ctx.t('session.dockerRoot'))
+        if _answer(ctx, 'docker-group', ctx.t('session.dockerQuestion'), default=False):
             ctx.system.run(['usermod', '-aG', 'docker', getpass.getuser()], sudo=True)
             ctx.out(ctx.t('session.dockerRelogin'))
         else:
@@ -154,7 +176,7 @@ def docker_group_step() -> Step:
         ctx.out(ctx.t('session.dockerContext', context=context))
 
     return Step('docker-group', 'step.docker-group', 'Quietline',
-                lambda ctx: member(ctx) or declined(ctx, 'docker-group'), run)
+                lambda ctx: docker_member(ctx) or declined(ctx, 'docker-group'), run)
 
 
 def _manual(ctx: Ctx, step_id: str, instructions: str, question: str, present, missing: str) -> None:

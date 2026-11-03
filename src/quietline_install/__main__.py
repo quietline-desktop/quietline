@@ -11,6 +11,8 @@ import os
 import shutil
 import subprocess
 import sys
+import threading
+from contextlib import contextmanager, nullcontext
 from pathlib import Path
 
 from quietline_install import screens as screen_module
@@ -18,9 +20,9 @@ from quietline_install import snapshot
 from quietline_install.catalog import Catalog, Plan, load_catalog
 from quietline_install.runner import Ctx, Runner, State, StepFailed, System, read_system_file
 from quietline_install.screens import CheckResult, Checklist, GoBack, Item, Quit
-from quietline_install.steps import build_steps
+from quietline_install.steps import build_steps, session
 from quietline_install.steps.aur import aur_install, aur_outdated
-from quietline_install.steps.checks import run_checks
+from quietline_install.steps.checks import readiness, run_checks
 from quietline_install.steps.packages import quietline_package_step
 
 REPO = Path(__file__).resolve().parents[2]
@@ -44,6 +46,9 @@ class CursesScreens:
 
     def choose_programs(self, ctx, checklist):
         return self._show(screen_module.choose_programs, ctx, checklist)
+
+    def choose_options(self, ctx, checklist, intro):
+        return self._show(screen_module.choose_options, ctx, checklist, intro)
 
     def confirm_summary(self, ctx, lines):
         return self._show(screen_module.confirm_summary, ctx, lines)
@@ -85,16 +90,38 @@ def checklist(ctx: Ctx, catalog: Catalog, previous: set[str]) -> Checklist:
         advanced = [item(entry) for entry in section.advanced_items]
         children = [item(entry, advanced if index == 0 else ()) for index, entry in enumerate(basic)]
         groups.append(Item(section.id, ctx.t(section.title_key), group=True, expanded=True, children=children))
-    return Checklist(groups)
+    return Checklist(groups, catalog.recommended())
 
 
-def summary(ctx: Ctx, catalog: Catalog, selection: set[str], previous: set[str], kind: str) -> list[str]:
+# Пункты экрана «Параметры»: id шага, ключ подписи, отмечен ли по умолчанию.
+OPTIONS = {'default-shell': ('options.shell', True), 'docker-group': ('options.docker', False)}
+
+
+def options_checklist(ctx: Ctx, ids: list[str], answers: dict) -> Checklist:
+    """Пункты «Параметров»; прежний ответ сохраняет отметку, иначе — значение по умолчанию."""
+    return Checklist([Item(option, ctx.t(OPTIONS[option][0]), checked=answers.get(option, OPTIONS[option][1]))
+                      for option in ids], recommended=None)
+
+
+def options_intro(ctx: Ctx, ids: list[str]) -> str:
+    intro = ctx.t('options.intro')
+    if 'docker-group' in ids:
+        intro += '\n\n' + ctx.t('session.dockerRoot')
+    return intro
+
+
+def summary(ctx: Ctx, catalog: Catalog, selection: set[str], previous: set[str], kind: str,
+            options: dict | None = None) -> list[str]:
     chosen = [entry for entry in catalog.items() if entry.id in selection - previous]
     lines = [ctx.t('summary.install')]
     lines += [f'  - {entry.name}' for entry in chosen if entry.source != 'manual']
     manual = [entry for entry in chosen if entry.source == 'manual']
     if manual:
         lines += ['', ctx.t('summary.manual')] + [f'  - {entry.name}' for entry in manual]
+    if options:
+        lines += ['', ctx.t('options.title') + ':']
+        lines += [f'  - {ctx.t(OPTIONS[option][0])}: {ctx.t("ask.yes") if answer else ctx.t("ask.no")}'
+                  for option, answer in options.items()]
     lines.append('')
     lines.append(ctx.t('summary.snapshotNone') if kind == 'none' else ctx.t('summary.snapshot', kind=kind))
     return lines
@@ -105,8 +132,11 @@ def _plan(catalog: Catalog, state: State) -> Plan:
     return catalog.plan(ids)
 
 
-def _questions(ctx: Ctx, screens) -> tuple[set[str], set[str]] | None:
-    """Экраны до сводки; None — пользователь вышел. Esc возвращает на предыдущий экран."""
+def _questions(ctx: Ctx, screens) -> tuple[set[str], set[str], dict] | None:
+    """Экраны до сводки: выбор, установленное раньше и ответы «Параметров»; None — пользователь вышел.
+
+    Esc возвращает на предыдущий экран; «Параметры» без вопросов пропускаются в обе стороны.
+    """
     previous = set(ctx.state.selection.get('ids', [])) | set(ctx.state.selection.get('previous', [])) \
         if ctx.state.finished else set()
     catalog = load_catalog(ctx.repo / 'installer/catalog.toml')
@@ -116,6 +146,8 @@ def _questions(ctx: Ctx, screens) -> tuple[set[str], set[str]] | None:
     selection: set[str] = set()
     # Один список на все заходы: возврат со сводки показывает прежние отметки.
     programs = checklist(ctx, catalog, previous)
+    options: dict = {}
+    forward = True
     while True:
         try:
             if screen == 0:
@@ -134,14 +166,25 @@ def _questions(ctx: Ctx, screens) -> tuple[set[str], set[str]] | None:
                     selection = catalog.recommended()
                 else:
                     selection = set(chosen)
+            elif screen == 4:
+                ids = session.open_questions(ctx, 'docker' in catalog.plan(selection | previous).repo)
+                if not ids:
+                    options = {}
+                    screen = 5 if forward else 3
+                    continue
+                marked = screens.choose_options(ctx, options_checklist(ctx, ids, options), options_intro(ctx, ids))
+                options = {option: option in marked for option in ids}
             else:
-                if screens.confirm_summary(ctx, summary(ctx, catalog, selection | previous, previous, kind)):
-                    return selection, previous
-                screen = 3
+                if screens.confirm_summary(ctx, summary(ctx, catalog, selection | previous, previous, kind,
+                                                        options)):
+                    return selection, previous, options
+                screen, forward = 4, False
                 continue
             screen += 1
+            forward = True
         except GoBack:
             screen = max(0, screen - 1)
+            forward = False
         except Quit:
             return None
 
@@ -201,6 +244,44 @@ def _missing_packages(ctx: Ctx, plan: Plan) -> list[str]:
     return [name for name in plan.repo if not ctx.system.ok(['pacman', '-Si', name])]
 
 
+# Как часто продлевается отметка sudo, пока идут шаги: заметно меньше пяти минут sudo по умолчанию.
+SUDO_REFRESH = 60
+
+
+@contextmanager
+def sudo_kept(ctx: Ctx, interval: float = SUDO_REFRESH):
+    """Пароль sudo спрашивается один раз; пока работает блок, отметка sudo продлевается без вопросов."""
+    ctx.out(ctx.t('sudo.once'))
+    try:
+        ctx.system.run(['sudo', '-v'], interactive=True)
+    except subprocess.CalledProcessError as exc:
+        raise StepFailed('sudo did not accept the password', 'Run ./install.sh again.') from exc
+    stop = threading.Event()
+
+    def refresh() -> None:
+        while not stop.wait(interval):
+            ctx.system.ok(['sudo', '-n', '-v'])
+
+    thread = threading.Thread(target=refresh, daemon=True)
+    thread.start()
+    try:
+        yield
+    finally:
+        stop.set()
+        thread.join()
+
+
+def final_lines(ctx: Ctx, plan: Plan) -> list[str]:
+    """Итог: одна строка «всё готово» или только отсутствующее; полный список — `./install.sh check`."""
+    items = readiness(ctx, plan)
+    missing = [name for name, ok in items if not ok]
+    lines = [ctx.t('final.done'), '']
+    if not missing:
+        return lines + [ctx.t('final.ready', count=len(items))]
+    return lines + [ctx.t('final.missing', count=len(missing), total=len(items))] + \
+        [f'  - {name}' for name in missing] + ['', ctx.t('final.fullCheck')]
+
+
 def _install(ctx: Ctx, screens, runner_log: Path, start: str | None) -> int:
     """Снимок (если его ещё нет) и шаги; без снимка или его явного отсутствия шаги не начинаются."""
     catalog = load_catalog(ctx.repo / 'installer/catalog.toml')
@@ -210,26 +291,27 @@ def _install(ctx: Ctx, screens, runner_log: Path, start: str | None) -> int:
         if missing:
             ctx.out(ctx.t('checks.missingPackages', names=', '.join(missing)))
             return 1
-        _snapshot(ctx)
-    while True:
-        runner = Runner(build_steps(plan), ctx, runner_log)
-        try:
-            finished = runner.run(start)
-        except StepFailed as exc:
-            ctx.out(f'{exc} {exc.action}')
-            return 1
-        if finished:
-            break
-        choice = screens.ask_resume(ctx, ctx.state.failed, ctx.state.error or '')
-        if choice == 'rollback':
-            return rollback(ctx, confirm=False)
-        if choice != 'continue':
-            return 1
-        start = ctx.state.failed
+    with nullcontext() if ctx.dry_run else sudo_kept(ctx):
+        if not ctx.dry_run and ctx.state.snapshot is None:
+            _snapshot(ctx)
+        while True:
+            runner = Runner(build_steps(plan), ctx, runner_log)
+            try:
+                finished = runner.run(start)
+            except StepFailed as exc:
+                ctx.out(f'{exc} {exc.action}')
+                return 1
+            if finished:
+                break
+            choice = screens.ask_resume(ctx, ctx.state.failed, ctx.state.error or '')
+            if choice == 'rollback':
+                return rollback(ctx, confirm=False)
+            if choice != 'continue':
+                return 1
+            start = ctx.state.failed
     if ctx.dry_run:
         return 0
-    lines, _ = run_checks(ctx, plan)
-    if screens.show_final(ctx, [ctx.t('final.done'), '', ctx.t('final.checks'), *lines]):
+    if screens.show_final(ctx, final_lines(ctx, plan)):
         ctx.system.run(['systemctl', 'reboot'], check=False)
     return 0
 
@@ -308,11 +390,11 @@ def main(argv=None, screens=None, system=None, home: Path | None = None, root: P
         answers = _questions(ctx, screens)
         if answers is None:
             return 1
-        selection, previous = answers
+        selection, previous, options = answers
         system_language = state.system_language
         state = State(path=None if args.dry_run else state.path, installer_language=ctx.language,
                       system_language=system_language,
-                      selection={'ids': sorted(selection), 'previous': sorted(previous)})
+                      selection={'ids': sorted(selection), 'previous': sorted(previous), 'options': options})
         ctx.state = state
         if not args.dry_run:
             state.save()
