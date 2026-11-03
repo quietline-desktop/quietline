@@ -69,7 +69,7 @@ shell/quietline/session/  — меню кнопки питания и дейст
 shell/quietline/notifications/ — сервер уведомлений и история сеанса, всплывающие карточки, центр уведомлений
 shell/quietline/osd/      — индикатор громкости, микрофона, яркости и раскладки
 shell/quietline/clipboard/ — история буфера `Super+V`
-shell/quietline/search/   — поиск `Super+Space`: приложения, файлы, действия, вычисления
+shell/quietline/search/   — поиск `Super+Space`: меню групп, приложения, файлы, действия, вычисления
 shell/quietline/lock/     — поверхность экрана блокировки и общие с экраном входа часы, состояние, инициал и поле пароля; корень его отдельного процесса — `shell/quietline/LockScreen.qml` (`qs -p …/LockScreen.qml`)
 shell/quietline/greeter/  — экран входа: поверхность, списки пользователей и сеансов, обои Quietline; корень его процесса — `shell/quietline/Greeter.qml` (`qs -p …/Greeter.qml`, запускает `quietline-greeter`)
 shell/quietline/Lang.qml  — синглтон языка: читает `quietline-shell region` и отдаёт таблицу строк `Lang.s`

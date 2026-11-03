@@ -1,6 +1,6 @@
 # План: группы и плавный список поиска `Super+Space`
 
-**Статус:** в работе. Спека — `docs/superpowers/specs/2026-11-03-search-groups-design.md`.
+**Статус:** реализовано, живая проверка частичная (R41 в `scripts/smoke-shell-redesign.md`, `docs/backlog.md`). Спека — `docs/superpowers/specs/2026-11-03-search-groups-design.md`.
 
 **Цель:** при пустом поле — меню групп в стиле Omarchy, при вводе — глобальный поиск без скачков, с анимациями и уважением к ограничению анимаций.
 
@@ -20,7 +20,7 @@
 ## Шаги
 
 - [x] 1. Логика и строки: функции `Models.js`, тексты в обеих таблицах, тесты `node --test 'tests/shell/*.test.cjs'`.
-- [ ] 2. `SearchService` и `ShellPopup`: файлы без сброса, высота поверхности и плавная высота карточки.
-- [ ] 3. `SearchPanel`: группы, результаты на `ScriptModel`, подсветка, переходы, клавиши, указатель.
-- [ ] 4. Живая проверка: перезапуск `qs -c quietline`, снимки `grim` корня, группы и результатов; ограничение анимаций.
-- [ ] 5. Документы: `DESIGN.md`, `CHANGELOG.md`, `docs/backlog.md`, `scripts/smoke-shell-redesign.md`; тесты `uv run --python 3.14 pytest`; слияние в `main`.
+- [x] 2. `SearchService` и `ShellPopup`: файлы без сброса, высота поверхности и плавная высота карточки.
+- [x] 3. `SearchPanel`: группы, результаты на `ScriptModel`, подсветка, переходы, клавиши, указатель.
+- [x] 4. Живая проверка: перезапуск `qs -c quietline`, снимки `grim` корня, группы и результатов; ограничение анимаций.
+- [x] 5. Документы: `DESIGN.md`, `CHANGELOG.md`, `docs/backlog.md`, `scripts/smoke-shell-redesign.md`; тесты `uv run --python 3.14 pytest`; слияние в `main`.
