@@ -56,7 +56,7 @@ WlSessionLockSurface {
         spacing: 10
         UserAvatar { Layout.alignment: Qt.AlignHCenter; name: root.user }
         Text {
-            renderType: Theme.textRenderType(QsWindow.window)
+            renderType: Theme.textRenderType(QsWindow.window, Screen.name)
             Layout.alignment: Qt.AlignHCenter
             text: root.user.charAt(0).toUpperCase() + root.user.slice(1)
             color: "#ffffff"
@@ -71,7 +71,7 @@ WlSessionLockSurface {
             onSubmitted: text => root.context.submit(text)
         }
         Text {
-            renderType: Theme.textRenderType(QsWindow.window)
+            renderType: Theme.textRenderType(QsWindow.window, Screen.name)
             Layout.fillWidth: true
             visible: text.length > 0
             text: root.context.message

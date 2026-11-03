@@ -1,5 +1,6 @@
 pragma Singleton
 import QtQuick
+import Quickshell.Hyprland
 import "logic/Models.js" as Models
 
 // Единственный источник цветов, шрифтов, размеров и длительностей оболочки: вариант B
@@ -110,9 +111,15 @@ QtObject {
     readonly property var emphasizedCurve: [0.2, 0.9, 0.3, 1, 1, 1]
     readonly property real hoverLift: 4
     readonly property real hoverScale: 1.06
-    // Тип отрисовки текста для окна (`QsWindow.window` элемента): при целом масштабе — нативный с хинтингом,
-    // при дробном или без окна — кривыми.
-    function textRenderType(window) {
-        return Models.integerScale(window ? window.devicePixelRatio : 0) ? Text.NativeRendering : Text.CurveRendering;
+    // Тип отрисовки текста: при целом масштабе — нативный с хинтингом, при дробном или неизвестном — кривыми.
+    // Масштаб берётся у окна Quickshell элемента (`QsWindow.window`), а вне окон Quickshell (экран
+    // блокировки) — у монитора `screenName` (`Screen.name`) в Hyprland.
+    function textRenderType(window, screenName) {
+        return Models.integerScale(window ? window.devicePixelRatio : monitorScale(screenName)) ? Text.NativeRendering : Text.CurveRendering;
+    }
+    // Масштаб монитора `name` в Hyprland; 0 — монитор не найден.
+    function monitorScale(name) {
+        var monitor = name ? Hyprland.monitors.values.find(item => item.name === name) : null;
+        return monitor ? monitor.scale : 0;
     }
 }

@@ -40,17 +40,20 @@ RowLayout {
         onTriggered: if (!devices.running) devices.running = true
     }
 
+    // Раскладка в рамке: кривыми подпись опущена до центра рамки, нативно отрисованная — по центру рамки высотой 15.
     Rectangle {
+        id: layoutBadge
+        readonly property bool hinted: layoutText.renderType === Text.NativeRendering
         visible: root.layout.length > 0
-        implicitWidth: layoutText.implicitWidth + 8; implicitHeight: 16
+        implicitWidth: Math.round(layoutText.implicitWidth) + 8; implicitHeight: hinted ? 15 : 16
         radius: 4
         color: "transparent"
         border.width: 1.5; border.color: "#ffffff"
         Text {
             id: layoutText
-            renderType: Theme.textRenderType(QsWindow.window)
+            renderType: Theme.textRenderType(QsWindow.window, Screen.name)
             anchors.centerIn: parent
-            anchors.verticalCenterOffset: 0.75
+            anchors.verticalCenterOffset: layoutBadge.hinted ? 0 : 0.75
             text: root.layout
             color: "#ffffff"
             font.family: Theme.sans; font.pixelSize: 10; font.weight: Font.Bold

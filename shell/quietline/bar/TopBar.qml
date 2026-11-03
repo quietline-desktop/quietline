@@ -318,17 +318,19 @@ PanelWindow {
                             implicitWidth: layoutBadge.width + 4; implicitHeight: layoutBadge.height
                             Rectangle {
                                 id: layoutBadge
+                                readonly property bool hinted: layoutText.renderType === Text.NativeRendering
                                 anchors.centerIn: parent
-                                width: Math.round(layoutText.implicitWidth) + 8; height: 16
+                                width: Math.round(layoutText.implicitWidth) + 8; height: hinted ? 15 : 16
                                 radius: 4
                                 color: "transparent"
                                 border.width: 1.5; border.color: Theme.text
-                                // Заглавные Inter стоят выше середины строки: подпись опущена до центра рамки.
+                                // Заглавные Inter стоят выше середины строки: кривыми подпись опущена до центра
+                                // рамки, нативно отрисованные (к пикселю) заглавные по центру рамки высотой 15.
                                 Text {
                                     renderType: Theme.textRenderType(QsWindow.window)
                                     id: layoutText
                                     anchors.centerIn: parent
-                                    anchors.verticalCenterOffset: 0.75
+                                    anchors.verticalCenterOffset: layoutBadge.hinted ? 0 : 0.75
                                     text: root.desktop.keyboardLayout
                                     color: Theme.text
                                     font.family: Theme.sans; font.pixelSize: 10; font.weight: Font.Bold

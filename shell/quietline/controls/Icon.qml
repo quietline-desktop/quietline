@@ -11,7 +11,7 @@ Text {
     property int weight: 400
     property real size: Theme.iconSize
     text: name
-    renderType: Theme.textRenderType(QsWindow.window)
+    renderType: Theme.textRenderType(QsWindow.window, Screen.name)
     color: Theme.text
     font.family: Theme.symbols
     font.pixelSize: size

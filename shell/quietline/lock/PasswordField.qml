@@ -16,7 +16,7 @@ TextField {
     echoMode: echo ? TextInput.Normal : TextInput.Password
     enabled: !busy
     focus: true
-    renderType: Theme.textRenderType(QsWindow.window)
+    renderType: Theme.textRenderType(QsWindow.window, Screen.name)
     font.family: Theme.sans; font.pixelSize: Theme.fontSize
     color: "#ffffff"; placeholderTextColor: Qt.rgba(1, 1, 1, 0.55)
     selectionColor: Theme.accent

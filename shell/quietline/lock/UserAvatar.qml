@@ -13,7 +13,7 @@ Rectangle {
         GradientStop { position: 1; color: "#b06aff" }
     }
     Text {
-        renderType: Theme.textRenderType(QsWindow.window)
+        renderType: Theme.textRenderType(QsWindow.window, Screen.name)
         anchors.centerIn: parent
         text: parent.name.charAt(0).toUpperCase()
         color: "#ffffff"
