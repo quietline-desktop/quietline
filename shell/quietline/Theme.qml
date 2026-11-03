@@ -64,8 +64,7 @@ QtObject {
     readonly property color shadow: light ? Qt.rgba(0, 0, 0, 0.18) : Qt.rgba(0, 0, 0, 0.42)
     // Ползунки, показатели и полоса прокрутки.
     readonly property color track: light ? Qt.rgba(0, 0, 0, 0.09) : Qt.rgba(1, 1, 1, 0.12)
-    readonly property color sliderFill: light ? "#ffffff" : "#eef0f4"
-    readonly property color sliderIcon: "#3a3a40"
+    readonly property color sliderFill: light ? Qt.rgba(29 / 255, 29 / 255, 31 / 255, 0.72) : "#eef0f4"
     readonly property color knob: "#ffffff"
     readonly property color knobBorder: Qt.rgba(0, 0, 0, 0.12)
     readonly property color scrollHandle: light ? Qt.rgba(0, 0, 0, 0.22) : Qt.rgba(1, 1, 1, 0.22)

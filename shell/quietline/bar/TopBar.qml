@@ -7,6 +7,7 @@ import Quickshell.Wayland
 import Quickshell.Services.SystemTray
 import ".."
 import "../controls"
+import "../inputs"
 import "../surfaces"
 import "../panels"
 import "../session"
