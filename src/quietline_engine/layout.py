@@ -22,7 +22,12 @@
   пространство, окно сохраняет роль и подчиняется его режиму, как перенесённое;
 - `pending` — `{адрес: {"floating": bool | None, "at": [x, y] | None, "size": [w, h] | None}}`,
   целевое состояние окон, действия сверки для которых Hyprland отклонил; каждая сверка
-  повторяет их, пока окно не придёт в это состояние или не исчезнет с пространства.
+  повторяет их, пока окно не придёт в это состояние или не исчезнет с пространства;
+- `maximized` — `{адрес: {"at": [x, y], "size": [w, h]}}`, геометрия окон до разворачивания
+  размером (см. `LayoutPlanner.maximize`): окно развёрнуто, пока оно здесь записано и стоит
+  в рамке разворачивания (`_frame`);
+- `maximizing` — адреса окон, которые сверка вывела из `maximized` Hyprland и развернёт
+  размером, когда Hyprland вернёт им прежнюю геометрию.
 
 Переход меняет только управляемые окна, которые видимы, не закреплены и не в
 полноэкранном режиме.
@@ -36,12 +41,14 @@ from quietline_engine.types import (
     Column,
     CompositorSnapshot,
     FocusWindow,
+    FrameExtents,
     HyprAction,
     Monitor,
     MoveWindow,
     ResizeColumn,
     ResizeWindow,
     SetFloating,
+    SetMaximized,
     Window,
 )
 from quietline_engine.workspaces import Mode, WorkspaceRef
@@ -53,6 +60,10 @@ GEOMETRY = "geometry"
 COLUMNS = "columns"
 WORK_AREA = "work_area"
 PENDING = "pending"
+MAXIMIZED = "maximized"
+MAXIMIZING = "maximizing"
+# Насколько окно может отойти от рамки разворачивания и всё ещё считаться развёрнутым (пиксели).
+MAXIMIZE_TOLERANCE = 2
 # Доля рабочей области по каждой оси для окна без сохранённой геометрии.
 DEFAULT_SIZE_FRACTION = 0.6
 
@@ -103,6 +114,14 @@ class WindowTarget:
             "at": None if geometry is None else list(geometry.at),
             "size": None if geometry is None else list(geometry.size),
         }
+
+
+@dataclass(frozen=True, slots=True)
+class MaximizePlan:
+    """Переключение разворачивания окна: действия и данные записи пространства после них."""
+
+    actions: tuple[HyprAction, ...]
+    extra: dict[str, Any]
 
 
 @dataclass(frozen=True, slots=True)
@@ -171,6 +190,38 @@ class LayoutPlanner:
             if update.changes or update.extra != ref.extra:
                 updates.append(update)
         return tuple(updates)
+
+    def maximize(self, workspace: WorkspaceRef, snapshot: CompositorSnapshot, address: str) -> MaximizePlan:
+        """Развернуть окно `address` пространства `workspace` или вернуть ему прежний размер.
+
+        Плавающее окно растягивается на рамку разворачивания (`_frame`), его геометрия
+        запоминается в `maximized`; развёрнутое (записано и стоит в рамке с допуском
+        `MAXIMIZE_TOLERANCE`) возвращается к запомненной геометрии, ограниченной рабочей
+        областью. Плавающее окно в `maximized` Hyprland из него выводится. Тайловое окно
+        переключает `maximized` Hyprland: в колонках геометрией управляет раскладка. Окно
+        в настоящем полноэкранном режиме — `LayoutError`.
+        """
+        window = next((w for w in snapshot.windows if w.address == address), None)
+        if window is None or window.workspace_id != workspace.workspace_id:
+            raise LayoutError(f"window {address} is not on workspace {workspace.workspace_id}")
+        if window.fullscreen not in (0, 1):
+            raise LayoutError("window is in full screen")
+        extra = dict(workspace.extra)
+        if not window.floating:
+            return MaximizePlan((SetMaximized(address, not window.maximized),), extra)
+        monitor = _workspace_monitor(snapshot, workspace.workspace_id)
+        maximized = _saved_geometry(workspace.extra, MAXIMIZED)
+        maximizing = [a for a in _addresses(workspace.extra.get(MAXIMIZING)) if a != address]
+        current = Geometry(window.at, window.size)
+        if window.maximized:
+            actions: tuple[HyprAction, ...] = (SetMaximized(address, False),)
+            maximized.pop(address, None)
+        elif address in maximized and _near(current, _frame(monitor, snapshot.frame)):
+            actions = _place(address, _clamp(maximized.pop(address), monitor))
+        else:
+            maximized[address] = current
+            actions = _place(address, _frame(monitor, snapshot.frame))
+        return MaximizePlan(actions, _with_maximize(extra, maximized, maximizing))
 
     def to_tiles(self, workspace: WorkspaceRef, snapshot: CompositorSnapshot) -> TransitionPlan:
         """Переход в «Тайлы»: управляемые плавающие окна возвращаются в раскладку.
@@ -325,9 +376,9 @@ def _pair(value: object) -> tuple[int, int] | None:
     return None
 
 
-def _saved_geometry(extra: Mapping[str, Any]) -> dict[str, Geometry]:
-    """Сохранённая геометрия окон; повреждённые записи пропускаются."""
-    value = extra.get(GEOMETRY)
+def _saved_geometry(extra: Mapping[str, Any], key: str = GEOMETRY) -> dict[str, Geometry]:
+    """Сохранённая геометрия окон из записи `key`; повреждённые записи пропускаются."""
+    value = extra.get(key)
     if not isinstance(value, dict):
         return {}
     result = {}
@@ -477,6 +528,11 @@ def _reconcile_workspace(
 
     # Окна этого пространства, ушедшие на специальное пространство, помнятся вместе с ролью.
     special = {w.address for w in snapshot.windows if w.workspace_id < 0}
+    maximized = {a: g for a, g in _saved_geometry(ref.extra, MAXIMIZED).items() if a in windows or a in special}
+    maximizing = [a for a in _addresses(ref.extra.get(MAXIMIZING)) if a in windows]
+    if ref.mode == "windows":
+        changes = _maximize_changes(windows, changes, maximized, maximizing, monitor,
+                                    _frame(monitor, snapshot.frame), area_changed)
     known = {a: MANAGED for a in _addresses(ref.extra.get(MANAGED))}
     known.update({a: DIALOGS for a in _addresses(ref.extra.get(DIALOGS)) if a not in known})
     known.update({a: r for a, r in _hidden(ref.extra).items() if a not in known})
@@ -501,7 +557,86 @@ def _reconcile_workspace(
             for c in _saved_columns(ref.extra)
             if (kept := [a for a in c.addresses if a in managed])
         ]
-    return WorkspaceUpdate(ref, tuple(changes), extra)
+    return WorkspaceUpdate(ref, tuple(changes), _with_maximize(extra, maximized, maximizing))
+
+
+def _maximize_changes(
+    windows: Mapping[str, Window],
+    changes: list[WindowChange],
+    maximized: dict[str, Geometry],
+    maximizing: list[str],
+    monitor: Monitor,
+    frame: Geometry,
+    area_changed: bool,
+) -> list[WindowChange]:
+    """Разворачивание размером на пространстве «Окна»; `maximized` и `maximizing` меняются на месте.
+
+    Окно в `maximized` Hyprland (запрос приложения или окно, открывшееся развёрнутым)
+    выводится из него и попадает в `maximizing`; уже развёрнутое размером окно с таким
+    запросом возвращается к запомненной геометрии. Окно из `maximizing`, которому Hyprland
+    вернул прежнюю геометрию, запоминает её (или цель своего появления на пространстве) и
+    встаёт в рамку. При смене рабочей области развёрнутое окно встаёт в новую рамку.
+    Изменение окна заменяет его изменение из основной сверки. Закреплённые и скрытые окна
+    не трогаются.
+    """
+    by_address = {c.address: c for c in changes}
+    for window in windows.values():
+        address = window.address
+        if not window.mapped or window.hidden or window.pinned:
+            continue
+        if window.maximized:
+            if address in maximized:
+                target = WindowTarget(True, _clamp(maximized.pop(address), monitor))
+                actions = (SetMaximized(address, False), *_target_actions(address, target, window))
+            else:
+                if address not in maximizing:
+                    maximizing.append(address)
+                target, actions = WindowTarget(None, None), (SetMaximized(address, False),)
+        elif window.fullscreen != 0:
+            continue
+        elif address in maximizing:
+            maximizing.remove(address)
+            arrival = by_address.get(address)
+            restore = arrival.target.geometry if arrival is not None and arrival.target.geometry else None
+            maximized[address] = restore or Geometry(window.at, window.size)
+            target = WindowTarget(True, frame)
+            actions = _target_actions(address, target, window)
+        elif address in maximized and area_changed:
+            target = WindowTarget(True, frame)
+            actions = _target_actions(address, target, window)
+        else:
+            continue
+        by_address.pop(address, None)
+        if actions:
+            by_address[address] = WindowChange(address, actions, target)
+    return list(by_address.values())
+
+
+def _with_maximize(extra: dict[str, Any], maximized: Mapping[str, Geometry], maximizing: Sequence[str]) -> dict[str, Any]:
+    """`extra` с записями разворачивания; пустые записи убираются."""
+    extra = {k: v for k, v in extra.items() if k not in (MAXIMIZED, MAXIMIZING)}
+    if maximized:
+        extra[MAXIMIZED] = {a: g.to_json() for a, g in maximized.items()}
+    if maximizing:
+        extra[MAXIMIZING] = list(maximizing)
+    return extra
+
+
+def _frame(monitor: Monitor, extents: FrameExtents) -> Geometry:
+    """Рамка разворачивания: рабочая область без рамки окна со всех сторон и без заголовка сверху.
+
+    Та же геометрия содержимого, что у окна в `maximized` Hyprland.
+    """
+    x0, y0, width, height = _work_area(monitor)
+    border, title = extents.border, extents.title
+    return Geometry((x0 + border, y0 + border + title), (width - 2 * border, height - 2 * border - title))
+
+
+def _near(geometry: Geometry, target: Geometry) -> bool:
+    """Геометрия совпадает с `target` с допуском `MAXIMIZE_TOLERANCE` по каждой координате."""
+    values = (*geometry.at, *geometry.size)
+    expected = (*target.at, *target.size)
+    return all(abs(a - b) <= MAXIMIZE_TOLERANCE for a, b in zip(values, expected))
 
 
 def _target_actions(address: str, target: WindowTarget, window: Window) -> tuple[HyprAction, ...]:

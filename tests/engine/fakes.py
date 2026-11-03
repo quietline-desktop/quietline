@@ -3,7 +3,7 @@
 from collections.abc import Iterable, Sequence
 
 from quietline_engine.hyprland import HyprlandError
-from quietline_engine.types import CompositorSnapshot, HyprAction, Monitor, Window, Workspace
+from quietline_engine.types import CompositorSnapshot, FrameExtents, HyprAction, Monitor, Window, Workspace
 
 
 def monitor(
@@ -76,8 +76,9 @@ def window(
     )
 
 
-def snapshot(monitors, workspaces, windows, *, active=None, cursor=(10, 10)):
-    """Снимок; `active` — адрес активного окна или готовое окно (может отсутствовать в `windows`)."""
+def snapshot(monitors, workspaces, windows, *, active=None, cursor=(10, 10), frame=FrameExtents()):
+    """Снимок; `active` — адрес активного окна или готовое окно (может отсутствовать в `windows`);
+    `frame` — декорации плавающих окон."""
     windows = tuple(windows)
     if isinstance(active, str):
         active = next(w for w in windows if w.address == active)
@@ -87,6 +88,7 @@ def snapshot(monitors, workspaces, windows, *, active=None, cursor=(10, 10)):
         windows=windows,
         active_window=active,
         cursor_position=cursor,
+        frame=frame,
     )
 
 
