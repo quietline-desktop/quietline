@@ -449,19 +449,51 @@ test('texts follow the English table',()=>{
  assert.equal(network[0].id,'network'); assert.equal(network[0].title,'Сеть');
 });
 
-test('settings: region replaces keyboard and keyboard is an alias',()=>{
- assert.equal(M.SETTINGS_SECTIONS.some(item=>item.id==='keyboard'),false);
- assert.equal(M.SETTINGS_SECTIONS.some(item=>item.id==='region'),true);
- assert.equal(M.resolveSection('keyboard'),'region');
+test('settings: keyboard is a section of its own, layouts are found there',()=>{
+ const ids=M.SETTINGS_SECTIONS.map(item=>item.id);
+ assert.deepEqual(plain(ids),['network','bluetooth','audio','display','mouse','keyboard','power','appearance','dock','notifications','region','datetime','apps','shortcuts','about']);
+ for(const section of M.SETTINGS_SECTIONS){
+  assert.ok(ru[section.label]&&en[section.label],section.id);
+  assert.ok(ru[section.keywords],section.id);
+  assert.match(section.color,/^#[0-9a-f]{6}$/,section.id);
+  assert.ok(section.symbol&&Number.isInteger(section.group),section.id);
+ }
+ assert.equal(M.resolveSection('keyboard'),'keyboard');
+ assert.equal(M.resolveSection('time'),'datetime');
  assert.equal(M.resolveSection('region'),'region');
- assert.equal(M.resolveSection('network'),'network');
  assert.equal(M.resolveSection('constructor'),'constructor');
- for(const [query,table] of [['раскладка',ru],['keyboard',en],['язык',en],['language',ru]]){
-  const rows=plain(M.searchResults(query,[],[],'/home/k',undefined,table));
-  assert.ok(rows.some(row=>row.kind==='settings'&&row.id==='region'),query);
+ for(const [query,id] of [['раскладка','keyboard'],['keyboard','keyboard'],['язык','region'],['language','region'],
+  ['тачпад','mouse'],['touchpad','mouse'],['герцовка','display'],['refresh rate','display'],['часовой пояс','datetime'],
+  ['браузер','apps'],['default apps','apps'],['док','dock'],['сон','power']]){
+  for(const table of [ru,en]){
+   const rows=plain(M.searchResults(query,[],[],'/home/k',undefined,table));
+   assert.ok(rows.some(row=>row.kind==='settings'&&row.id===id),`${query} ${id}`);
+  }
  }
  assert.equal(ru[M.SETTINGS_SECTIONS.find(item=>item.id==='region').label],'Язык и регион');
- assert.equal(en[M.SETTINGS_SECTIONS.find(item=>item.id==='region').label],'Language and region');
+ assert.equal(en[M.SETTINGS_SECTIONS.find(item=>item.id==='mouse').label],'Mouse and touchpad');
+});
+test('monitor modes: resolutions, rates and labels',()=>{
+ const modes=[{width:2560,height:1440,refresh:59.95},{width:3840,height:2160,refresh:30},{width:2560,height:1440,refresh:74.96},
+  {width:1920,height:1080,refresh:60},{width:1920,height:1080,refresh:60},{width:1920,height:1080,refresh:50}];
+ assert.deepEqual(plain(M.displayResolutions(modes)),[{width:3840,height:2160},{width:2560,height:1440},{width:1920,height:1080}]);
+ assert.deepEqual(plain(M.displayRates(modes,2560,1440)),[74.96,59.95]);
+ assert.deepEqual(plain(M.displayRates(modes,1920,1080)),[60,50]);
+ assert.deepEqual(plain(M.displayRates(modes,800,600)),[]);
+ assert.deepEqual(plain(M.displayResolutions(undefined)),[]);
+ assert.equal(M.displayMode(2560,1440,74.96),'2560x1440@74.96');
+ assert.equal(M.displayMode(1920,1080,60),'1920x1080@60.00');
+ assert.equal(M.refreshLabel(74.96,ru),'74,96 Гц');
+ assert.equal(M.refreshLabel(59.951,en),'59.95 Hz');
+ assert.equal(M.refreshLabel(60.002,ru),'60 Гц');
+ assert.equal(M.nearestRate([74.96,59.95],59.951),1);
+ assert.equal(M.nearestRate([],60),-1);
+});
+test('idle timeouts: minutes and never',()=>{
+ assert.equal(M.idleLabel(5,ru),'5 мин');
+ assert.equal(M.idleLabel(30,en),'30 min');
+ assert.equal(M.idleLabel(0,ru),'Никогда');
+ assert.equal(M.idleLabel(0,en),'Never');
 });
 test('search actions are found by a word of either language',()=>{
  for(const [query,id] of [['заблокировать','lock'],['выйти','logout'],['перезагрузить','reboot'],['выключить','poweroff'],['о системе','about']]){

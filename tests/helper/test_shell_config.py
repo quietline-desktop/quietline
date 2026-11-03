@@ -484,9 +484,11 @@ def test_time_reads_and_sets_zone_and_ntp(capsys, timedatectl):
     assert run_cli(capsys, "time", "--set", '{"timezone": "Europe/Warsaw"}') == (0, {"timezone": "Europe/Warsaw", "ntp": True})
     assert run_cli(capsys, "time", "--set", '{"ntp": false}') == (0, {"timezone": "Europe/Warsaw", "ntp": False})
     assert ["set-timezone", "Europe/Warsaw"] in timedatectl["calls"] and ["set-ntp", "false"] in timedatectl["calls"]
+    assert run_cli(capsys, "time", "--set", '{"timezone": "UTC", "ntp": true}') == (0, {"timezone": "UTC", "ntp": True})
 
 
-@pytest.mark.parametrize("change", [{"timezone": "Mars/Base"}, {"timezone": "../../etc"}, {"ntp": "yes"}, {}, {"timezone": "UTC", "ntp": True}])
+@pytest.mark.parametrize("change", [{"timezone": "Mars/Base"}, {"timezone": "../../etc"}, {"ntp": "yes"}, {}, {"zone": "UTC"},
+                                    {"timezone": "UTC", "ntp": 1}])
 def test_time_rejects_bad_changes(capsys, timedatectl, change):
     code, response = run_cli(capsys, "time", "--set", json.dumps(change))
     assert code == 1 and "error" in response

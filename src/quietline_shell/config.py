@@ -674,17 +674,19 @@ def time_zones() -> list[str]:
 
 
 def set_time(change: object) -> dict[str, Any]:
-    """`{"timezone": "<пояс>"}` или `{"ntp": bool}` через `timedatectl`; ответ — новое состояние.
-    Пояс должен быть в списке системы; ошибка `timedatectl` (нет прав polkit) — `RuntimeError`."""
-    if isinstance(change, dict) and set(change) == {"timezone"}:
+    """`{"timezone": "<пояс>", "ntp": bool}` (любое из полей) через `timedatectl`; ответ — новое
+    состояние. Пояс должен быть в списке системы; ошибка `timedatectl` (нет прав polkit) — `RuntimeError`."""
+    if not isinstance(change, dict) or not change or set(change) - {"timezone", "ntp"}:
+        raise ValueError('time change must be {"timezone": NAME, "ntp": true | false} (any of them)')
+    if "ntp" in change and not isinstance(change["ntp"], bool):
+        raise ValueError(f"ntp must be true or false: {change['ntp']!r}")
+    if "timezone" in change:
         zone = change["timezone"]
         if not isinstance(zone, str) or not _TIMEZONE.fullmatch(zone) or zone not in time_zones():
             raise ValueError(f"unknown time zone: {zone!r}")
         _timedatectl("set-timezone", zone)
-    elif isinstance(change, dict) and set(change) == {"ntp"} and isinstance(change["ntp"], bool):
+    if "ntp" in change:
         _timedatectl("set-ntp", "true" if change["ntp"] else "false")
-    else:
-        raise ValueError('time change must be {"timezone": NAME} or {"ntp": true | false}')
     return time_state()
 
 

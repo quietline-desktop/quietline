@@ -29,7 +29,7 @@
   меняется в gsettings, в Hyprland перечитывается конфигурация и меняется указатель; в ответ
   добавляется `"applied": true | false`;
 - `time [--set JSON] [--zones]` — `{"timezone", "ntp"}`: часовой пояс и синхронизация времени по сети;
-  `--zones` — `{"zones": [...]}`; с `--set {"timezone": NAME}` или `{"ntp": true | false}` меняет их
+  `--zones` — `{"zones": [...]}`; с `--set {"timezone": NAME, "ntp": true | false}` (любое из полей) меняет их
   через `timedatectl` (права — правило polkit `50-quietline-time.rules`) и отдаёт новое состояние;
 - `defaults [--set JSON]` — `{"categories": [{"id", "current", "apps": [{"id", "name"}]}]}`: приложения
   по умолчанию для браузера, файлов, почты, текста, изображений, видео, музыки и PDF; с `--set
@@ -106,7 +106,7 @@ def _parser() -> argparse.ArgumentParser:
     appearance.add_argument("--set", dest="change", metavar="JSON", help='apply {"theme", "cursor", "cursorSize", "batteryPercent", "dockAutohide"} (any of them) first')
     appearance.add_argument("--path", type=Path, help="appearance file (default: $XDG_CONFIG_HOME/quietline/appearance.json); appearance.lua is written next to it")
     clock = commands.add_parser("time", help="print the time zone and network time setting as JSON")
-    clock.add_argument("--set", dest="change", metavar="JSON", help='apply {"timezone": NAME} or {"ntp": true | false} first')
+    clock.add_argument("--set", dest="change", metavar="JSON", help='apply {"timezone": NAME, "ntp": true | false} (any of them) first')
     clock.add_argument("--zones", action="store_true", help="print the time zones instead")
     defaults = commands.add_parser("defaults", help="print the default applications by category as JSON")
     defaults.add_argument("--set", dest="change", metavar="JSON", help='make {"category", "app"} the default first')

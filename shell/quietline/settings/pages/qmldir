@@ -1,0 +1,7 @@
+DisplayPage 1.0 DisplayPage.qml
+MousePage 1.0 MousePage.qml
+KeyboardPage 1.0 KeyboardPage.qml
+PowerPage 1.0 PowerPage.qml
+DockPage 1.0 DockPage.qml
+DateTimePage 1.0 DateTimePage.qml
+AppsPage 1.0 AppsPage.qml

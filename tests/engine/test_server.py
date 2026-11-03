@@ -724,15 +724,18 @@ def test_shortcuts_target_expected_cli_calls():
     # Движок стартует первым, оболочка — отдельной командой после него.
     start = re.search(r'hl\.on\("hyprland\.start",\s*function\s*\(\)(.*?)\nend\)', text, re.S)
     assert start
-    assert re.findall(r'hl\.exec_cmd\("([^"]+)"\)', start.group(1)) == [
-        "hyprpm reload -n",
-        "quietline-engine serve",
-        "qs -c quietline",
-        "hypridle -c /usr/share/quietline/hypridle/hypridle.conf",
-        "wl-paste --type text --watch quietline-shell clipboard store",
-        "wl-paste --type image --watch quietline-shell clipboard store",
-        "quietline-shell files --update",
+    assert re.findall(r'hl\.exec_cmd\("([^"]+)"( \.\. idle_conf)?\)', start.group(1)) == [
+        ("hyprpm reload -n", ""),
+        ("quietline-engine serve", ""),
+        ("qs -c quietline", ""),
+        ("hypridle -c ", " .. idle_conf"),
+        ("wl-paste --type text --watch quietline-shell clipboard store", ""),
+        ("wl-paste --type image --watch quietline-shell clipboard store", ""),
+        ("quietline-shell files --update", ""),
     ]
+    # hypridle берёт файл сроков из «Настроек», без него — файл пакета.
+    assert 'local idle_conf = config_home .. "/quietline/hypridle.conf"' in text
+    assert 'idle_conf = "/usr/share/quietline/hypridle/hypridle.conf"' in text
 
     modals = re.search(r"hl\.window_rule\(\{(\s*name = \"quietline-modals\".*?)\n\}\)", text, re.S)
     assert modals

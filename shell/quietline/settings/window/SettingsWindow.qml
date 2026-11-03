@@ -4,15 +4,17 @@ import QtQuick.Layouts
 import Quickshell
 import Quickshell.Io
 import Quickshell.Hyprland
-import ".."
-import "../controls"
-import "../panels"
-import "../inputs"
-import "../logic/Models.js" as Models
+import "../.."
+import "../../controls"
+import "../../panels"
+import "../../inputs"
+import "../frame"
+import "../pages"
+import "../../logic/Models.js" as Models
 
 // Окно «Настройки»: боковая навигация и страницы на тех же компонентах управления,
 // что и всплывающие панели, поэтому изменение здесь видно и там.
-// `open(section)` открывает раздел по идентификатору (`keyboard` открывает `region`);
+// `open(section)` открывает раздел по идентификатору (прежние `time` и `pins` — `datetime` и `dock`);
 // пусто или неизвестно — текущий раздел; уже открытое окно переходит на активное пространство
 // и получает фокус. Окно создаётся при открытии и уничтожается при
 // закрытии: закрытое композитором `FloatingWindow` повторно не показывается. Раздел,
@@ -22,37 +24,23 @@ Scope {
     required property var services
     required property var desktop
     property string section: "network"
-    // Разделы не зависят от языка: подпись берётся в делегате по `labelKey`, поэтому смена языка
-    // не пересоздаёт модель списка и не сбрасывает текущий раздел.
-    // `group` — номер группы в боковой панели (между группами — отступ), `color` — цвет квадрата значка.
-    readonly property var sections: [
-        {id: "network", labelKey: "settingsNetwork", symbol: "wifi", color: "#0a84ff", group: 0},
-        {id: "bluetooth", labelKey: "settingsBluetooth", symbol: "bluetooth", color: "#0a84ff", group: 0},
-        {id: "audio", labelKey: "settingsAudio", symbol: "volume_up", color: "#ff375f", group: 1},
-        {id: "display", labelKey: "settingsDisplay", symbol: "light_mode", color: "#0a84ff", group: 1},
-        {id: "appearance", labelKey: "settingsAppearance", symbol: "palette", color: "#5e5ce6", group: 1},
-        {id: "power", labelKey: "settingsPower", symbol: "battery_full", color: "#30d158", group: 1},
-        {id: "notifications", labelKey: "settingsNotifications", symbol: "notifications", color: "#ff453a", group: 1},
-        {id: "region", labelKey: "settingsRegion", symbol: "language", color: "#8e8e93", group: 2},
-        {id: "shortcuts", labelKey: "settingsShortcuts", symbol: "keyboard", color: "#8e8e93", group: 2},
-        {id: "about", labelKey: "settingsAbout", symbol: "info", color: "#8e8e93", group: 2}
-    ]
+    // Разделы не зависят от языка: подпись берётся в делегате по `label`, поэтому смена языка
+    // не пересоздаёт модель списка и не сбрасывает текущий раздел. `group` — номер группы в
+    // боковой панели (между группами — отступ), `color` — цвет квадрата значка. Порядок
+    // разделов — порядок страниц в `pages`.
+    readonly property var sections: Models.SETTINGS_SECTIONS
     // Строка поиска боковой панели: разделы, в подписи или ключевых словах которых она есть.
     property string filter: ""
     readonly property var visibleSections: sections.filter(item => {
         var needle = filter.trim().toLowerCase();
         if (!needle) return true;
-        return (Lang.s[item.labelKey] + " " + (Lang.s[item.labelKey + "Keywords"] || "")).toLowerCase().indexOf(needle) >= 0;
+        return (Lang.s[item.label] + " " + (Lang.s[item.keywords] || "")).toLowerCase().indexOf(needle) >= 0;
     })
     // Привязки Hyprland; памятка `shortcuts` пересчитывается из них при смене языка и списка приложений.
     property var binds: []
     readonly property var shortcuts: Models.describeBinds(binds, Lang.s, desktop.entries)
     property var info: null
     readonly property bool opened: windowLoader.active
-    // Масштабы мониторов из `quietline-shell display`: правило монитора → масштаб; монитора нет — «Авто».
-    property var scales: ({})
-    property string displayError: ""
-    property bool scaleApplied: true
 
     function open(name) {
         var id = Models.resolveSection(name);
@@ -72,40 +60,11 @@ Scope {
         else desktop.restore(window, monitor ? monitor.name : "");
     }
     onSectionChanged: { if (opened) load(); }
+    // Данные разделов окна; страницы из `pages/` перечитывают свои сами при открытии.
     function load() {
         if (section === "shortcuts" && !bindsProcess.running) bindsProcess.running = true;
         if (section === "about" && !aboutProcess.running) aboutProcess.running = true;
         if (section === "network") services.network.refresh();
-        if (section === "display") {
-            Hyprland.refreshMonitors();
-            if (!displayReader.running) displayReader.running = true;
-        }
-    }
-    // Масштаб монитора: число или `"auto"`. Выбор виден сразу, ответ записи его подтверждает.
-    function setScale(monitor, scale) {
-        var output = Models.displayOutput(monitor);
-        if (!output || displayWriter.running) return;
-        var next = Object.assign({}, scales);
-        if (scale === "auto") delete next[output];
-        else next[output] = scale;
-        scales = next;
-        displayError = "";
-        displayWriter.command = ["quietline-shell", "display", "--set", JSON.stringify({output: output, scale: scale})];
-        displayWriter.running = true;
-    }
-    function receiveDisplay(text, writing) {
-        var data;
-        try { data = JSON.parse(text); } catch (_) { data = {error: "quietline-shell returned no JSON"}; }
-        if (data.error) {
-            displayError = Lang.s.displayScaleFailed + ": " + data.error;
-            if (writing) displayReader.running = true;
-            return;
-        }
-        scales = data.scales || {};
-        if (writing) {
-            scaleApplied = data.applied !== false;
-            Hyprland.refreshMonitors();
-        }
     }
 
     Process {
@@ -119,50 +78,10 @@ Scope {
         }
     }
     Process {
-        id: displayReader
-        command: ["quietline-shell", "display"]
-        stdout: StdioCollector { onStreamFinished: root.receiveDisplay(text, false) }
-    }
-    Process {
-        id: displayWriter
-        stdout: StdioCollector { onStreamFinished: root.receiveDisplay(text, true) }
-    }
-    Process {
         id: aboutProcess
         command: ["quietline-shell", "about"]
         stdout: StdioCollector {
             onStreamFinished: { try { root.info = JSON.parse(text); } catch (_) { root.info = null; } }
-        }
-    }
-
-    component PageTitle: Text {
-        renderType: Theme.textRenderType(QsWindow.window)
-        Layout.bottomMargin: 4
-        color: Theme.text; font.family: Theme.sans; font.pixelSize: Theme.headlineFontSize; font.weight: Font.Bold
-    }
-    component Note: Text {
-        renderType: Theme.textRenderType(QsWindow.window)
-        Layout.fillWidth: true; Layout.maximumWidth: 640
-        Layout.leftMargin: 4
-        color: Theme.text2; font.family: Theme.sans; font.pixelSize: Theme.smallFontSize
-        wrapMode: Text.Wrap
-    }
-    component Value: Text {
-        renderType: Theme.textRenderType(QsWindow.window)
-        width: Math.min(implicitWidth, parent && parent.maxChildWidth !== undefined ? parent.maxChildWidth : 300)
-        color: Theme.text2; font.family: Theme.sans; font.pixelSize: Theme.fontSize
-        horizontalAlignment: Text.AlignRight
-        elide: Text.ElideRight
-    }
-    // Страница раздела с полями: StackLayout растягивает дочерний элемент на всю ширину.
-    component Page: Item {
-        default property alias content: pageColumn.data
-        implicitHeight: pageColumn.implicitHeight + 48
-        ColumnLayout {
-            id: pageColumn
-            x: 28; y: 20
-            width: parent.width - 56
-            spacing: 18
         }
     }
 
@@ -261,7 +180,7 @@ Scope {
                                         Text {
                                             renderType: Theme.textRenderType(QsWindow.window)
                                             Layout.fillWidth: true
-                                            text: Lang.s[navItem.modelData.labelKey]
+                                            text: Lang.s[navItem.modelData.label]
                                             color: navItem.current ? Theme.accentForeground : Theme.text
                                             font.family: Theme.sans; font.pixelSize: Theme.fontSize
                                             elide: Text.ElideRight
@@ -292,82 +211,25 @@ Scope {
                         id: pages
                         width: pageScroll.availableWidth
                         currentIndex: root.sections.findIndex(item => item.id === root.section)
-                        Page {
-                            PageTitle { text: Lang.s.settingsNetwork }
-                            NetworkControls { Layout.fillWidth: true; Layout.maximumWidth: 640; network: root.services.network; compact: false }
+                        SettingsPage {
+                            title: Lang.s.settingsNetwork
+                            NetworkControls { Layout.fillWidth: true; network: root.services.network; compact: false }
                         }
-                        Page {
-                            PageTitle { text: "Bluetooth" }
-                            BluetoothControls { Layout.fillWidth: true; Layout.maximumWidth: 640; bluetooth: root.services.bluetooth }
+                        SettingsPage {
+                            title: "Bluetooth"
+                            BluetoothControls { Layout.fillWidth: true; bluetooth: root.services.bluetooth }
                         }
-                        Page {
-                            PageTitle { text: Lang.s.settingsAudio }
-                            AudioControls { Layout.fillWidth: true; Layout.maximumWidth: 640; audio: root.services.audio }
+                        SettingsPage {
+                            title: Lang.s.settingsAudio
+                            AudioControls { Layout.fillWidth: true; audio: root.services.audio; full: true }
                         }
-                        Page {
-                            PageTitle { text: Lang.s.settingsDisplay }
-                            SettingsGroup {
-                                visible: Quickshell.screens.some(screen => Models.isBuiltinOutput(screen.name))
-                                SettingsRow {
-                                    label: Lang.s.brightnessLabel
-                                    fill: true
-                                    BrightnessControls { width: parent.width; brightness: root.services.brightness }
-                                }
-                            }
-                            Note {
-                                visible: !Quickshell.screens.some(screen => Models.isBuiltinOutput(screen.name))
-                                text: Lang.s.settingsBrightnessNote
-                            }
-                            SettingsGroup {
-                                title: Lang.s.settingsMonitors
-                                // Режим и масштаб мониторов — из Hyprland.
-                                Repeater {
-                                    model: Hyprland.monitors.values
-                                    delegate: SettingsRow {
-                                        required property var modelData
-                                        symbol: Models.isBuiltinOutput(modelData.name) ? "laptop" : "desktop_windows"
-                                        label: Models.isBuiltinOutput(modelData.name) ? Lang.s.displayBuiltin : (modelData.description || modelData.name)
-                                        note: modelData.name
-                                        Value { text: Lang.f(Lang.s.displayMode, modelData.width, modelData.height, Math.round(modelData.scale * 100)) }
-                                    }
-                                }
-                            }
-                            SettingsGroup {
-                                title: Lang.s.settingsScale
-                                // Монитор — строка с выбором масштаба из тех, что Hyprland применяет без подгонки.
-                                Repeater {
-                                    model: Hyprland.monitors.values
-                                    delegate: SettingsRow {
-                                        id: scaleRow
-                                        required property var modelData
-                                        readonly property var choices: Models.scaleChoices(modelData.width, modelData.height)
-                                        readonly property var saved: root.scales[Models.displayOutput(modelData)]
-                                        // «Авто» — 0; сохранённый масштаб вне списка — ни один сегмент.
-                                        readonly property int savedIndex: {
-                                            if (saved === undefined) return 0;
-                                            var index = choices.findIndex(scale => Math.abs(scale - saved) < 0.001);
-                                            return index < 0 ? -1 : index + 1;
-                                        }
-                                        label: Models.isBuiltinOutput(modelData.name) ? Lang.s.displayBuiltin : (modelData.description || modelData.name)
-                                        note: Lang.s.displayScaleNote
-                                        fill: true
-                                        SegmentedControl {
-                                            showLabels: true; segmentHeight: 24
-                                            model: [{label: Lang.s.displayScaleAuto}].concat(scaleRow.choices.map(scale => ({label: Lang.f(Lang.s.displayScalePercent, Math.round(scale * 100))})))
-                                            currentIndex: scaleRow.savedIndex
-                                            busy: displayWriter.running
-                                            onActivated: index => root.setScale(scaleRow.modelData, index === 0 ? "auto" : scaleRow.choices[index - 1])
-                                        }
-                                    }
-                                }
-                            }
-                            Note { visible: root.displayError !== ""; color: Theme.danger; text: root.displayError }
-                            Note { visible: !root.scaleApplied; text: Lang.s.displayScalePending }
-                            Note { text: Lang.s.settingsDisplayNote }
-                        }
-                        Page {
-                            PageTitle { text: Lang.s.settingsAppearance }
-                            Note { visible: Appearance.error !== ""; color: Theme.danger; text: Appearance.error }
+                        DisplayPage { brightness: root.services.brightness; display: root.services.display }
+                        MousePage {}
+                        KeyboardPage { desktop: root.desktop }
+                        PowerPage { power: root.services.power }
+                        SettingsPage {
+                            title: Lang.s.settingsAppearance
+                            PageNote { visible: Appearance.error !== ""; color: Theme.danger; text: Appearance.error }
                             SettingsGroup {
                                 title: Lang.s.appearanceTheme
                                 // Карточки-превью тем: обои, панель, окно и док в миниатюре; выбранная — рамка акцентом.
@@ -458,27 +320,11 @@ Scope {
                                     }
                                 }
                             }
-                            SettingsGroup {
-                                title: Lang.s.appearancePanel
-                                SettingsRow {
-                                    label: Lang.s.appearanceBatteryPercent
-                                    SegmentedControl {
-                                        readonly property var modes: ["off", "beside", "inside"]
-                                        showLabels: true; segmentHeight: 22
-                                        model: [{label: Lang.s.batteryPercentOff}, {label: Lang.s.batteryPercentBeside}, {label: Lang.s.batteryPercentInside}]
-                                        currentIndex: modes.indexOf(Appearance.batteryPercent)
-                                        onActivated: index => Appearance.update({batteryPercent: modes[index]})
-                                    }
-                                }
-                            }
-                            Note { visible: !Appearance.applied; text: Lang.s.appearancePending }
+                            PageNote { visible: !Appearance.applied; text: Lang.s.appearancePending }
                         }
-                        Page {
-                            PageTitle { text: Lang.s.settingsPower }
-                            PowerControls { Layout.fillWidth: true; Layout.maximumWidth: 640; power: root.services.power }
-                        }
-                        Page {
-                            PageTitle { text: Lang.s.settingsNotifications }
+                        DockPage { desktop: root.desktop }
+                        SettingsPage {
+                            title: Lang.s.settingsNotifications
                             SettingsGroup {
                                 SettingsRow {
                                     label: Lang.s.notificationsDnd
@@ -502,13 +348,13 @@ Scope {
                                 }
                             }
                         }
-                        Page {
+                        SettingsPage {
                             id: regionPage
                             // Дата для подписей форматов; обновляется при каждом открытии раздела.
                             property date today: new Date()
-                            onVisibleChanged: { if (visible) today = new Date(); }
-                            PageTitle { text: Lang.s.settingsRegion }
-                            Note { visible: Lang.error !== ""; color: Theme.danger; text: Lang.error }
+                            onOpened: today = new Date()
+                            title: Lang.s.settingsRegion
+                            PageNote { visible: Lang.error !== ""; color: Theme.danger; text: Lang.error }
                             SettingsGroup {
                                 SettingsRow {
                                     label: Lang.s.settingsLanguage
@@ -518,15 +364,6 @@ Scope {
                                         model: [{label: Lang.s.languageRu}, {label: Lang.s.languageEn}]
                                         currentIndex: Lang.language === "ru" ? 0 : 1
                                         onActivated: index => Lang.update({language: index === 0 ? "ru" : "en"})
-                                    }
-                                }
-                                SettingsRow {
-                                    label: Lang.s.settingsClock
-                                    SegmentedControl {
-                                        showLabels: true; segmentHeight: 22
-                                        model: [{label: Lang.s.clock24}, {label: Lang.s.clock12}]
-                                        currentIndex: Lang.clock === "24h" ? 0 : 1
-                                        onActivated: index => Lang.update({clock: index === 0 ? "24h" : "12h"})
                                     }
                                 }
                                 SettingsRow {
@@ -540,44 +377,13 @@ Scope {
                                         onActivated: index => Lang.update({date: formats[index]})
                                     }
                                 }
-                                SettingsRow {
-                                    label: Lang.s.settingsBarDate
-                                    fill: true
-                                    SegmentedControl {
-                                        readonly property var modes: ["short", "numeric", "weekday"]
-                                        showLabels: true; segmentHeight: 22
-                                        model: modes.map(mode => ({label: Lang.barDay(regionPage.today, mode)}))
-                                        currentIndex: modes.indexOf(Lang.barDate)
-                                        onActivated: index => Lang.update({barDate: modes[index]})
-                                    }
-                                }
-                            }
-                            SettingsGroup {
-                                title: Lang.s.settingsLayouts
-                                SettingsRow {
-                                    label: Lang.f(Lang.s.regionOrder, Lang.layouts.map(code => Models.layoutLabel(code, Lang.s)).join(" → "))
-                                    note: Lang.f(Lang.s.keyboardCurrent, root.desktop.keyboardLayoutName || root.desktop.keyboardLayout)
-                                    fill: true
-                                    ShellButton { implicitHeight: 26; selected: true; text: Lang.s.layoutSwap; onClicked: Lang.update({layouts: Lang.layouts.slice().reverse()}) }
-                                    ShellButton { implicitHeight: 26; selected: true; text: Lang.s.keyboardNext; onClicked: root.desktop.switchLayout() }
-                                }
-                                SettingsRow {
-                                    label: Lang.s.settingsLayoutToggle
-                                    note: Lang.layoutsApplied ? Lang.f(Lang.s.keyboardToggleNote, Models.toggleLabel(Lang.toggle, Lang.s)) : Lang.s.regionLayoutsPending
-                                    fill: true
-                                    SegmentedControl {
-                                        readonly property var toggles: ["grp:lalt_lshift_toggle", "grp:alt_shift_toggle", "grp:ctrl_shift_toggle", "grp:caps_toggle"]
-                                        showLabels: true; segmentHeight: 24
-                                        model: toggles.map(toggle => ({label: Models.toggleLabel(toggle, Lang.s)}))
-                                        currentIndex: toggles.indexOf(Lang.toggle)
-                                        onActivated: index => Lang.update({toggle: toggles[index]})
-                                    }
-                                }
                             }
                         }
-                        Page {
-                            PageTitle { text: Lang.s.settingsShortcuts }
-                            Note { visible: root.shortcuts.length === 0; text: Lang.s.shortcutsUnreadable }
+                        DateTimePage {}
+                        AppsPage {}
+                        SettingsPage {
+                            title: Lang.s.settingsShortcuts
+                            PageNote { visible: root.shortcuts.length === 0; text: Lang.s.shortcutsUnreadable }
                             SettingsGroup {
                                 visible: root.shortcuts.length > 0
                                 Repeater {
@@ -603,9 +409,9 @@ Scope {
                                 }
                             }
                         }
-                        Page {
-                            PageTitle { text: Lang.s.settingsAbout }
-                            Note { visible: !root.info; text: Lang.s.aboutLoading }
+                        SettingsPage {
+                            title: Lang.s.settingsAbout
+                            PageNote { visible: !root.info; text: Lang.s.aboutLoading }
                             SettingsGroup {
                                 visible: !!root.info
                                 Repeater {
@@ -617,7 +423,7 @@ Scope {
                                     delegate: SettingsRow {
                                         required property var modelData
                                         label: modelData[0]
-                                        Value { text: modelData[1] || Lang.s.noData }
+                                        PageValue { text: modelData[1] || Lang.s.noData }
                                     }
                                 }
                             }

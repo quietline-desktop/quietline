@@ -452,6 +452,41 @@ function scaleChoices(width, height) {
     return SCALE_STEPS.filter(function(scale) { return Number.isInteger(width / scale) && Number.isInteger(height / scale); });
 }
 
+// Режимы монитора из `quietline-shell display` (`[{width, height, refresh}]`): разрешения без
+// повторов по убыванию площади и частоты разрешения по убыванию.
+function displayResolutions(modes) {
+    var result = [];
+    (modes || []).forEach(function(mode) {
+        if (!result.some(function(item) { return item.width === mode.width && item.height === mode.height; }))
+            result.push({width: mode.width, height: mode.height});
+    });
+    return result.sort(function(a, b) { return b.width * b.height - a.width * a.height || b.width - a.width; });
+}
+function displayRates(modes, width, height) {
+    var rates = (modes || []).filter(function(mode) { return mode.width === width && mode.height === height; })
+        .map(function(mode) { return mode.refresh; });
+    return rates.filter(function(rate, index) { return rates.indexOf(rate) === index; }).sort(function(a, b) { return b - a; });
+}
+// Режим для `hl.monitor`: `2560x1440@74.96`.
+function displayMode(width, height, refresh) { return width + "x" + height + "@" + Number(refresh).toFixed(2); }
+// Частота для подписи: «74,96 Гц», целая — без дробной части («60 Гц»).
+function refreshLabel(refresh, s) {
+    var value = Math.round(Number(refresh) * 100) / 100;
+    var text = Number.isInteger(value) ? String(value) : value.toFixed(2).replace(".", s.decimalPoint);
+    return format(s.displayHz, [text]);
+}
+// Ближайшая к `refresh` частота из `rates` (индекс); пусто — −1.
+function nearestRate(rates, refresh) {
+    var best = -1;
+    (rates || []).forEach(function(rate, index) {
+        if (best < 0 || Math.abs(rate - refresh) < Math.abs(rates[best] - refresh)) best = index;
+    });
+    return best;
+}
+
+// Сроки простоя «Питания» в минутах: 0 — «Никогда».
+function idleLabel(minutes, s) { return minutes ? format(s.idleMinutes, [minutes]) : s.idleNever; }
+
 // Громкость PipeWire в пределах 0…150 %.
 function clampVolume(value) { return Math.max(0, Math.min(1.5, value)); }
 
@@ -774,21 +809,28 @@ function calculate(text) {
 // Число для показа и копирования: без хвостов двоичной арифметики (0.1 + 0.2 → 0.3).
 function formatNumber(value) { return String(parseFloat(Number(value).toPrecision(12))); }
 
-// Разделы окна «Настройки» и системные действия для поиска: ключи подписи и ключевых слов
-// таблицы строк. Ключевые слова содержат слова обоих языков.
+// Разделы окна «Настройки» в порядке боковой панели (они же — в поиске): ключи подписи и
+// ключевых слов таблицы строк, значок Material Symbols, цвет квадрата значка и номер группы
+// боковой панели. Ключевые слова содержат слова обоих языков.
 var SETTINGS_SECTIONS = [
-    {id: "network", label: "settingsNetwork", keywords: "settingsNetworkKeywords"},
-    {id: "audio", label: "settingsAudio", keywords: "settingsAudioKeywords"},
-    {id: "display", label: "settingsDisplay", keywords: "settingsDisplayKeywords"},
-    {id: "bluetooth", label: "settingsBluetooth", keywords: "settingsBluetoothKeywords"},
-    {id: "power", label: "settingsPower", keywords: "settingsPowerKeywords"},
-    {id: "notifications", label: "settingsNotifications", keywords: "settingsNotificationsKeywords"},
-    {id: "region", label: "settingsRegion", keywords: "settingsRegionKeywords"},
-    {id: "shortcuts", label: "settingsShortcuts", keywords: "settingsShortcutsKeywords"},
-    {id: "about", label: "settingsAbout", keywords: "settingsAboutKeywords"}
+    {id: "network", label: "settingsNetwork", keywords: "settingsNetworkKeywords", symbol: "wifi", color: "#0a84ff", group: 0},
+    {id: "bluetooth", label: "settingsBluetooth", keywords: "settingsBluetoothKeywords", symbol: "bluetooth", color: "#0a84ff", group: 0},
+    {id: "audio", label: "settingsAudio", keywords: "settingsAudioKeywords", symbol: "volume_up", color: "#ff375f", group: 1},
+    {id: "display", label: "settingsDisplay", keywords: "settingsDisplayKeywords", symbol: "light_mode", color: "#0a84ff", group: 1},
+    {id: "mouse", label: "settingsMouse", keywords: "settingsMouseKeywords", symbol: "mouse", color: "#8e8e93", group: 1},
+    {id: "keyboard", label: "settingsKeyboard", keywords: "settingsKeyboardKeywords", symbol: "keyboard", color: "#8e8e93", group: 1},
+    {id: "power", label: "settingsPower", keywords: "settingsPowerKeywords", symbol: "battery_full", color: "#30d158", group: 1},
+    {id: "appearance", label: "settingsAppearance", keywords: "settingsAppearanceKeywords", symbol: "palette", color: "#5e5ce6", group: 2},
+    {id: "dock", label: "settingsDock", keywords: "settingsDockKeywords", symbol: "dock_to_bottom", color: "#8e8e93", group: 2},
+    {id: "notifications", label: "settingsNotifications", keywords: "settingsNotificationsKeywords", symbol: "notifications", color: "#5e5ce6", group: 2},
+    {id: "region", label: "settingsRegion", keywords: "settingsRegionKeywords", symbol: "language", color: "#8e8e93", group: 3},
+    {id: "datetime", label: "settingsDateTime", keywords: "settingsDateTimeKeywords", symbol: "schedule", color: "#8e8e93", group: 3},
+    {id: "apps", label: "settingsApps", keywords: "settingsAppsKeywords", symbol: "apps", color: "#8e8e93", group: 3},
+    {id: "shortcuts", label: "settingsShortcuts", keywords: "settingsShortcutsKeywords", symbol: "keyboard_command_key", color: "#8e8e93", group: 3},
+    {id: "about", label: "settingsAbout", keywords: "settingsAboutKeywords", symbol: "info", color: "#8e8e93", group: 3}
 ];
 // Прежние идентификаторы разделов и раздел, который открывается вместо них.
-var SECTION_ALIASES = {keyboard: "region"};
+var SECTION_ALIASES = {time: "datetime", pins: "dock"};
 function resolveSection(name) { return textKey(SECTION_ALIASES, name, name); }
 
 // Подписи сочетаний переключения раскладки (значения `grp:*` из `quietline-shell region`)

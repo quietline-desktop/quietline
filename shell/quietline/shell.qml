@@ -5,7 +5,7 @@ import Quickshell.Io
 import Quickshell.Hyprland
 import "services"
 import "system"
-import "settings"
+import "settings/window"
 import "session"
 import "notifications"
 import "osd"
@@ -25,6 +25,7 @@ ShellRoot {
     NetworkService { id: networkService }
     AudioService { id: audioService }
     BrightnessService { id: brightnessService }
+    DisplayService { id: displayService }
     BluetoothService { id: bluetoothService }
     PowerService { id: powerService }
     KeepAwake { id: keepAwakeService }
@@ -35,7 +36,7 @@ ShellRoot {
     NotificationService { id: notificationService; centerOpen: root.surfaces.some(item => item.bar.notificationsOpen) }
     NotificationPopups { service: notificationService }
     // Системные сервисы, общие для всех панелей, всплывающих окон и окна «Настройки».
-    readonly property var services: ({network: networkService, audio: audioService, brightness: brightnessService,
+    readonly property var services: ({network: networkService, audio: audioService, brightness: brightnessService, display: displayService,
                                       bluetooth: bluetoothService, power: powerService, keepAwake: keepAwakeService, notifications: notificationService, session: sessionService, clipboard: clipboardService, search: searchService, settings: settingsWindow})
     SettingsWindow { id: settingsWindow; services: root.services; desktop: desktopService }
     Osd { id: osdWindow; services: root.services; desktop: desktopService; indicators: systemIndicators }

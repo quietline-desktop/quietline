@@ -11,7 +11,6 @@ ColumnLayout {
     default property alias rows: box.data
     spacing: 7
     Layout.fillWidth: true
-    Layout.maximumWidth: 640
     Text {
         renderType: Theme.textRenderType(QsWindow.window)
         visible: root.title.length > 0
