@@ -15,7 +15,7 @@ import "../search"
 import "../notifications"
 import "../logic/Models.js" as Models
 
-// Верхняя панель экрана, 30 px вплотную к краю: слева меню Quietline, активное приложение (меню
+// Верхняя панель экрана, 30 px вплотную к краю (в тёмной теме прозрачная, в светлой — полупрозрачная полоса): слева меню Quietline, активное приложение (меню
 // окна), пространства (колесо мыши листает их) и режим «Окна / Тайлы»; справа группами — трей;
 // приватность (микрофон, запись экрана), «Не засыпать», раскладка, Bluetooth, звук (колесо —
 // громкость), батарея, Wi‑Fi; уведомления, пункт управления и часы (календарь).
@@ -93,7 +93,8 @@ PanelWindow {
         id: bar
         width: parent.width; height: Theme.barHeight
         color: Theme.barSurface
-        Rectangle { anchors.bottom: parent.bottom; width: parent.width; height: 1; color: Theme.hairline }
+        // Волосяная линия снизу — только у светлой полосы; прозрачная панель тёмной темы без неё.
+        Rectangle { visible: Theme.light; anchors.bottom: parent.bottom; width: parent.width; height: 1; color: Theme.hairline }
         // По центру — дата и время: открывают окно уведомлений с календарём; точка — есть непрочитанные,
         // перечёркнутый колокольчик — включено «Не беспокоить».
         ShellButton {

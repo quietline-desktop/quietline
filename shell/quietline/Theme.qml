@@ -29,7 +29,8 @@ QtObject {
     // Предупреждение: низкий заряд, индикатор микрофона и записи экрана.
     readonly property color warning: light ? "#ff9500" : "#ff9f0a"
     // Поверхности: панель, всплывающие окна, окна по центру (поиск, буфер), окно «Настройки».
-    readonly property color barSurface: light ? Qt.rgba(246 / 255, 246 / 255, 248 / 255, 0.62) : Qt.rgba(22 / 255, 22 / 255, 26 / 255, 0.50)
+    // В тёмной теме панели фона нет: текст стоит прямо на обоях.
+    readonly property color barSurface: light ? Qt.rgba(246 / 255, 246 / 255, 248 / 255, 0.62) : "transparent"
     readonly property color popupSurface: light ? Qt.rgba(246 / 255, 246 / 255, 248 / 255, 0.82) : Qt.rgba(32 / 255, 32 / 255, 36 / 255, 0.80)
     readonly property color solidSurface: light ? Qt.rgba(246 / 255, 246 / 255, 248 / 255, 0.90) : Qt.rgba(32 / 255, 32 / 255, 36 / 255, 0.88)
     readonly property color solidSurfaceHover: light ? Qt.rgba(232 / 255, 232 / 255, 236 / 255, 0.95) : Qt.rgba(48 / 255, 48 / 255, 54 / 255, 0.92)
