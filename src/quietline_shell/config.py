@@ -648,6 +648,155 @@ def restart_hypridle(conf: Path) -> bool:
     return True
 
 
+_TIMEDATECTL_TIMEOUT = 10
+_TIMEZONE = re.compile(r"[A-Za-z0-9_+-]+(/[A-Za-z0-9_+-]+){0,2}")
+
+
+def _timedatectl(*args: str) -> str:
+    """Вывод `timedatectl --no-ask-password ARGS`; ненулевой код — `RuntimeError` с текстом ошибки."""
+    result = subprocess.run(["timedatectl", "--no-ask-password", *args], capture_output=True, text=True,
+                            timeout=_TIMEDATECTL_TIMEOUT, check=False)
+    if result.returncode != 0:
+        raise RuntimeError(result.stderr.strip() or f"timedatectl {args[0]} failed")
+    return result.stdout
+
+
+def time_state() -> dict[str, Any]:
+    """Часовой пояс и синхронизация времени по сети: `{"timezone", "ntp"}`."""
+    fields = dict(line.split("=", 1) for line in _timedatectl("show", "-p", "Timezone", "-p", "NTP").splitlines() if "=" in line)
+    return {"timezone": fields.get("Timezone", ""), "ntp": fields.get("NTP") == "yes"}
+
+
+def time_zones() -> list[str]:
+    """Часовые пояса системы (`timedatectl list-timezones`)."""
+    return [line.strip() for line in _timedatectl("list-timezones").splitlines() if line.strip()]
+
+
+def set_time(change: object) -> dict[str, Any]:
+    """`{"timezone": "<пояс>"}` или `{"ntp": bool}` через `timedatectl`; ответ — новое состояние.
+    Пояс должен быть в списке системы; ошибка `timedatectl` (нет прав polkit) — `RuntimeError`."""
+    if isinstance(change, dict) and set(change) == {"timezone"}:
+        zone = change["timezone"]
+        if not isinstance(zone, str) or not _TIMEZONE.fullmatch(zone) or zone not in time_zones():
+            raise ValueError(f"unknown time zone: {zone!r}")
+        _timedatectl("set-timezone", zone)
+    elif isinstance(change, dict) and set(change) == {"ntp"} and isinstance(change["ntp"], bool):
+        _timedatectl("set-ntp", "true" if change["ntp"] else "false")
+    else:
+        raise ValueError('time change must be {"timezone": NAME} or {"ntp": true | false}')
+    return time_state()
+
+
+# Приложения по умолчанию: категория → типы MIME. Кандидаты ищутся по первому типу, выбор пишется
+# для всех типов категории.
+DEFAULT_APP_CATEGORIES = {
+    "browser": ("x-scheme-handler/http", "x-scheme-handler/https", "text/html"),
+    "files": ("inode/directory",),
+    "mail": ("x-scheme-handler/mailto",),
+    "text": ("text/plain",),
+    "images": ("image/png", "image/jpeg", "image/webp", "image/gif"),
+    "video": ("video/mp4", "video/x-matroska", "video/webm"),
+    "music": ("audio/mpeg", "audio/flac", "audio/ogg"),
+    "pdf": ("application/pdf",),
+}
+_DESKTOP_FILE = re.compile(r"[A-Za-z0-9][A-Za-z0-9_.+-]{0,199}\.desktop")
+
+
+def _application_dirs() -> list[Path]:
+    """Каталоги desktop-файлов по порядку старшинства: `$XDG_DATA_HOME`, затем `$XDG_DATA_DIRS`."""
+    home = os.environ.get("XDG_DATA_HOME") or str(Path.home() / ".local" / "share")
+    dirs = os.environ.get("XDG_DATA_DIRS") or "/usr/local/share:/usr/share"
+    return [Path(directory) / "applications" for directory in [home, *dirs.split(":")] if directory]
+
+
+def _desktop_entry(path: Path) -> dict[str, str]:
+    """Ключи раздела `[Desktop Entry]` desktop-файла; нечитаемый файл — пусто."""
+    try:
+        lines = path.read_text(encoding="utf-8").splitlines()
+    except (OSError, UnicodeError):
+        return {}
+    entry, inside = {}, False
+    for line in lines:
+        if line.startswith("["):
+            inside = line.strip() == "[Desktop Entry]"
+        elif inside and "=" in line and not line.startswith("#"):
+            key, value = line.split("=", 1)
+            entry.setdefault(key.strip(), value.strip())
+    return entry
+
+
+def default_app_candidates(language: str = "en") -> dict[str, list[dict[str, str]]]:
+    """Видимые приложения для каждой категории: `{"id", "name"}` по имени. Desktop-файл из каталога
+    со старшинством выше закрывает файл с тем же ID ниже; имя — на `language`, если оно есть."""
+    entries: dict[str, dict[str, str]] = {}
+    for directory in _application_dirs():
+        for path in sorted(directory.glob("**/*.desktop")) if directory.is_dir() else []:
+            desktop_id = str(path.relative_to(directory)).replace("/", "-")
+            if _DESKTOP_FILE.fullmatch(desktop_id) and desktop_id not in entries:
+                entries[desktop_id] = _desktop_entry(path)
+    result: dict[str, list[dict[str, str]]] = {category: [] for category in DEFAULT_APP_CATEGORIES}
+    for desktop_id, entry in entries.items():
+        if entry.get("Type", "Application") != "Application" or "true" in (entry.get("NoDisplay"), entry.get("Hidden")):
+            continue
+        mimes = set(filter(None, entry.get("MimeType", "").split(";")))
+        name = entry.get(f"Name[{language}]") or entry.get("Name") or desktop_id.removesuffix(".desktop")
+        for category, types in DEFAULT_APP_CATEGORIES.items():
+            if types[0] in mimes:
+                result[category].append({"id": desktop_id, "name": name})
+    for apps in result.values():
+        apps.sort(key=lambda app: app["name"].casefold())
+    return result
+
+
+def _default_app(mime: str) -> str | None:
+    try:
+        result = subprocess.run(["xdg-mime", "query", "default", mime], capture_output=True, text=True,
+                                timeout=_HYPRCTL_TIMEOUT, check=False)
+    except (OSError, subprocess.TimeoutExpired):
+        return None
+    value = result.stdout.strip()
+    return value if result.returncode == 0 and _DESKTOP_FILE.fullmatch(value) else None
+
+
+def default_apps(language: str = "en") -> dict[str, Any]:
+    """Категории приложений по умолчанию: `{"categories": [{"id", "current", "apps"}]}`; текущее —
+    `xdg-mime query default` первого типа категории (нет — `null`)."""
+    candidates = default_app_candidates(language)
+    return {"categories": [{"id": category, "current": _default_app(types[0]), "apps": candidates[category]}
+                           for category, types in DEFAULT_APP_CATEGORIES.items()]}
+
+
+def mimeapps_with(text: str, mimes: tuple[str, ...], app: str) -> str:
+    """Текст `mimeapps.list`, где в `[Default Applications]` каждый тип из `mimes` указывает на `app`;
+    остальные строки и разделы сохраняются, раздела нет — он дописывается в конец."""
+    lines = text.splitlines()
+    try:
+        start = lines.index("[Default Applications]") + 1
+    except ValueError:
+        lines += ([""] if lines else []) + ["[Default Applications]"]
+        start = len(lines)
+    end = next((index for index in range(start, len(lines)) if lines[index].startswith("[")), len(lines))
+    kept = [line for line in lines[start:end] if line.split("=", 1)[0].strip() not in mimes]
+    return "\n".join(lines[:start] + [f"{mime}={app};" for mime in mimes] + kept + lines[end:]) + "\n"
+
+
+def set_default_app(change: object, config_home: Path, language: str = "en") -> dict[str, Any]:
+    """`{"category", "app"}`: приложение из кандидатов категории становится приложением по умолчанию
+    для всех её типов в `config_home/mimeapps.list`; ответ — новое состояние."""
+    if not isinstance(change, dict) or set(change) != {"category", "app"} or change["category"] not in DEFAULT_APP_CATEGORIES:
+        raise ValueError('default app change must be {"category": ..., "app": "<id>.desktop"}')
+    category, app = change["category"], change["app"]
+    if app not in [item["id"] for item in default_app_candidates(language)[category]]:
+        raise ValueError(f"{app!r} cannot open {category}")
+    path = config_home / "mimeapps.list"
+    try:
+        existing = path.read_text(encoding="utf-8")
+    except FileNotFoundError:
+        existing = ""
+    _atomic_write_text(path, mimeapps_with(existing, DEFAULT_APP_CATEGORIES[category], app))
+    return default_apps(language)
+
+
 APPEARANCE_DEFAULTS = {"theme": "dark", "cursor": "dark", "cursorSize": 24, "batteryPercent": "off"}
 _APPEARANCE_CHOICES = {"theme": ("dark", "light"), "cursor": ("dark", "light"), "cursorSize": (24, 36, 48),
                        "batteryPercent": ("off", "beside", "inside")}

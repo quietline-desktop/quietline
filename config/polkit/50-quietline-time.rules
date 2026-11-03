@@ -1,0 +1,11 @@
+// Quietline: активный локальный пользователь из группы wheel меняет часовой пояс и включает
+// синхронизацию времени по сети из «Настроек» → «Дата и время» без запроса пароля.
+// Удалённые и неактивные сеансы остаются с правилами дистрибутива.
+polkit.addRule(function(action, subject) {
+    var allowed = [
+        "org.freedesktop.timedate1.set-timezone",
+        "org.freedesktop.timedate1.set-ntp"
+    ];
+    if (allowed.indexOf(action.id) >= 0 && subject.local && subject.active && subject.isInGroup("wheel"))
+        return polkit.Result.YES;
+});

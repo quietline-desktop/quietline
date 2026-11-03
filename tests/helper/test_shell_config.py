@@ -446,6 +446,103 @@ def test_idle_settings_restart_hypridle(tmp_path, capsys, monkeypatch):
     assert started[0][0] == ["hypridle", "-c", str(tmp_path / "hypridle.conf")] and started[0][1]["start_new_session"]
 
 
+# Дата и время: CLI `time` с поддельным `timedatectl`.
+
+@pytest.fixture
+def timedatectl(monkeypatch):
+    """Поддельный `timedatectl`: пояс и NTP в `state`, вызовы — в `calls`, `fail` — код 1."""
+    fake = {"state": {"Timezone": "Europe/Minsk", "NTP": "yes"}, "calls": [], "fail": False}
+
+    def run(args, **kwargs):
+        assert args[:2] == ["timedatectl", "--no-ask-password"]
+        fake["calls"].append(args[2:])
+        command = args[2]
+        if fake["fail"] and command.startswith("set-"):
+            return subprocess.CompletedProcess(args, 1, "", "Access denied\n")
+        if command == "show":
+            return subprocess.CompletedProcess(args, 0, "".join(f"{k}={v}\n" for k, v in fake["state"].items()), "")
+        if command == "list-timezones":
+            return subprocess.CompletedProcess(args, 0, "Europe/Minsk\nEurope/Warsaw\nUTC\n", "")
+        if command == "set-timezone":
+            fake["state"]["Timezone"] = args[3]
+        if command == "set-ntp":
+            fake["state"]["NTP"] = "yes" if args[3] == "true" else "no"
+        return subprocess.CompletedProcess(args, 0, "", "")
+
+    monkeypatch.setattr(config.subprocess, "run", run)
+    return fake
+
+
+def run_cli(capsys, *argv):
+    code = main(list(argv))
+    return code, json.loads(capsys.readouterr().out)
+
+
+def test_time_reads_and_sets_zone_and_ntp(capsys, timedatectl):
+    assert run_cli(capsys, "time") == (0, {"timezone": "Europe/Minsk", "ntp": True})
+    assert run_cli(capsys, "time", "--zones") == (0, {"zones": ["Europe/Minsk", "Europe/Warsaw", "UTC"]})
+    assert run_cli(capsys, "time", "--set", '{"timezone": "Europe/Warsaw"}') == (0, {"timezone": "Europe/Warsaw", "ntp": True})
+    assert run_cli(capsys, "time", "--set", '{"ntp": false}') == (0, {"timezone": "Europe/Warsaw", "ntp": False})
+    assert ["set-timezone", "Europe/Warsaw"] in timedatectl["calls"] and ["set-ntp", "false"] in timedatectl["calls"]
+
+
+@pytest.mark.parametrize("change", [{"timezone": "Mars/Base"}, {"timezone": "../../etc"}, {"ntp": "yes"}, {}, {"timezone": "UTC", "ntp": True}])
+def test_time_rejects_bad_changes(capsys, timedatectl, change):
+    code, response = run_cli(capsys, "time", "--set", json.dumps(change))
+    assert code == 1 and "error" in response
+    assert not [call for call in timedatectl["calls"] if call[0].startswith("set-")]
+
+
+def test_time_reports_timedatectl_errors(capsys, timedatectl):
+    timedatectl["fail"] = True
+    assert run_cli(capsys, "time", "--set", '{"ntp": true}') == (1, {"error": "Access denied"})
+
+
+# Приложения по умолчанию: CLI `defaults` с поддельными desktop-файлами и `xdg-mime`.
+
+def _desktop(directory, name, text):
+    directory.mkdir(parents=True, exist_ok=True)
+    (directory / name).write_text("[Desktop Entry]\nType=Application\n" + text, encoding="utf-8")
+
+
+def test_defaults_lists_candidates_and_writes_mimeapps(tmp_path, capsys, monkeypatch):
+    home, system = tmp_path / "home", tmp_path / "usr"
+    monkeypatch.setenv("XDG_DATA_HOME", str(home))
+    monkeypatch.setenv("XDG_DATA_DIRS", str(system))
+    monkeypatch.setenv("LANG", "ru_RU.UTF-8")
+    _desktop(system / "applications", "firefox.desktop", "Name=Firefox\nMimeType=text/html;x-scheme-handler/http;\n")
+    _desktop(system / "applications", "brave.desktop", "Name=Brave\nName[ru]=Брейв\nMimeType=x-scheme-handler/http;\n")
+    _desktop(system / "applications", "hidden.desktop", "Name=Hidden\nNoDisplay=true\nMimeType=x-scheme-handler/http;\n")
+    _desktop(system / "applications", "imv.desktop", "Name=imv\nMimeType=image/png;\n")
+    _desktop(home / "applications", "imv.desktop", "Name=imv\nHidden=true\n")
+    monkeypatch.setattr(config.subprocess, "run",
+                        lambda args, **kwargs: subprocess.CompletedProcess(args, 0, "firefox.desktop\n" if "http" in args[3] else "", ""))
+    code, response = run_cli(capsys, "defaults")
+    categories = {item["id"]: item for item in response["categories"]}
+    assert code == 0 and list(categories) == list(config.DEFAULT_APP_CATEGORIES)
+    assert categories["browser"] == {"id": "browser", "current": "firefox.desktop", "apps": [
+        {"id": "firefox.desktop", "name": "Firefox"}, {"id": "brave.desktop", "name": "Брейв"}]}
+    assert categories["images"] == {"id": "images", "current": None, "apps": []}
+
+    mimeapps = tmp_path / "config" / "mimeapps.list"
+    monkeypatch.setenv("XDG_CONFIG_HOME", str(mimeapps.parent))
+    mimeapps.parent.mkdir()
+    mimeapps.write_text("[Added Associations]\ntext/html=firefox.desktop;\n\n[Default Applications]\ntext/html=old.desktop;\ntext/plain=micro.desktop;\n", encoding="utf-8")
+    assert run_cli(capsys, "defaults", "--set", '{"category": "browser", "app": "brave.desktop"}')[0] == 0
+    assert mimeapps.read_text(encoding="utf-8") == (
+        "[Added Associations]\ntext/html=firefox.desktop;\n\n[Default Applications]\n"
+        "x-scheme-handler/http=brave.desktop;\nx-scheme-handler/https=brave.desktop;\ntext/html=brave.desktop;\n"
+        "text/plain=micro.desktop;\n")
+    code, response = run_cli(capsys, "defaults", "--set", '{"category": "images", "app": "brave.desktop"}')
+    assert code == 1 and "cannot open images" in response["error"]
+
+
+def test_mimeapps_section_is_added_when_missing():
+    assert config.mimeapps_with("", ("inode/directory",), "dolphin.desktop") == "[Default Applications]\ninode/directory=dolphin.desktop;\n"
+    assert config.mimeapps_with("[Added Associations]\n", ("a/b",), "x.desktop") == (
+        "[Added Associations]\n\n[Default Applications]\na/b=x.desktop;\n")
+
+
 # Оформление: `appearance.json`, `appearance.lua` и CLI `appearance`.
 
 def run_appearance(capsys, *argv):

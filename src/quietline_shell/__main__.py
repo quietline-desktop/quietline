@@ -28,6 +28,12 @@
   проверяется и пишется в `appearance.json` и `appearance.lua` рядом с ним, схема приложений
   меняется в gsettings, в Hyprland перечитывается конфигурация и меняется указатель; в ответ
   добавляется `"applied": true | false`;
+- `time [--set JSON] [--zones]` — `{"timezone", "ntp"}`: часовой пояс и синхронизация времени по сети;
+  `--zones` — `{"zones": [...]}`; с `--set {"timezone": NAME}` или `{"ntp": true | false}` меняет их
+  через `timedatectl` (права — правило polkit `50-quietline-time.rules`) и отдаёт новое состояние;
+- `defaults [--set JSON]` — `{"categories": [{"id", "current", "apps": [{"id", "name"}]}]}`: приложения
+  по умолчанию для браузера, файлов, почты, текста, изображений, видео, музыки и PDF; с `--set
+  {"category", "app"}` приложение пишется в `$XDG_CONFIG_HOME/mimeapps.list` для всех типов категории;
 - `greeter [--remember JSON] [--path PATH]` — данные экрана входа `{users: [{name, display}],
   sessions: [{id, name, command, desktopNames}], last: {user, session}}`; с `--remember
   {"user", "session"}` выбор проверяется и пишется в `greeter.json` (по умолчанию
@@ -74,7 +80,7 @@ from typing import Any
 from quietline_shell import capture, clipboard, network, search, session
 from quietline_shell.config import (
     about, apply_appearance, apply_display, apply_keyboard, default_appearance_path, default_display_path, display_outputs,
-    display_scales, default_idle_path, load_idle, updated_idle, save_idle, restart_hypridle, default_input_path, load_input, updated_input, save_input, apply_input, has_touchpad,
+    display_scales, time_state, time_zones, set_time, default_apps, set_default_app, default_idle_path, load_idle, updated_idle, save_idle, restart_hypridle, default_input_path, load_input, updated_input, save_input, apply_input, has_touchpad,
     default_pins_path, default_region_path, load_appearance, load_display, load_pins, load_region, reduced_motion,
     notification_text, save_appearance, save_display, save_pins, save_region, updated_appearance, updated_display,
     validated_region,
@@ -99,6 +105,11 @@ def _parser() -> argparse.ArgumentParser:
     appearance = commands.add_parser("appearance", help="print the theme and pointer settings as JSON")
     appearance.add_argument("--set", dest="change", metavar="JSON", help='apply {"theme", "cursor", "cursorSize", "batteryPercent"} (any of them) first')
     appearance.add_argument("--path", type=Path, help="appearance file (default: $XDG_CONFIG_HOME/quietline/appearance.json); appearance.lua is written next to it")
+    clock = commands.add_parser("time", help="print the time zone and network time setting as JSON")
+    clock.add_argument("--set", dest="change", metavar="JSON", help='apply {"timezone": NAME} or {"ntp": true | false} first')
+    clock.add_argument("--zones", action="store_true", help="print the time zones instead")
+    defaults = commands.add_parser("defaults", help="print the default applications by category as JSON")
+    defaults.add_argument("--set", dest="change", metavar="JSON", help='make {"category", "app"} the default first')
     greeter = commands.add_parser("greeter", help="print the users and sessions for the login screen as JSON")
     greeter.add_argument("--remember", metavar="JSON", help="store this {user, session} choice instead")
     greeter.add_argument("--path", type=Path, help="state file (default: $XDG_STATE_HOME/quietline/greeter.json)")
@@ -179,6 +190,16 @@ def _run(args: argparse.Namespace) -> dict[str, Any]:
             updated = updated_appearance(json.loads(args.change), current)
             save_appearance(path, updated)
             return {**updated, "applied": apply_appearance(updated)}
+        case "time":
+            if args.zones:
+                return {"zones": time_zones()}
+            return time_state() if args.change is None else set_time(json.loads(args.change))
+        case "defaults":
+            language = "ru" if os.environ.get("LANG", "").startswith("ru") else "en"
+            if args.change is None:
+                return default_apps(language)
+            config_home = Path(os.environ.get("XDG_CONFIG_HOME") or Path.home() / ".config")
+            return set_default_app(json.loads(args.change), config_home, language)
         case "greeter":
             path = args.path or session.default_greeter_path()
             if args.remember is not None:
