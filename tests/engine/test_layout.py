@@ -42,11 +42,11 @@ def test_windows_to_tiles_preserves_floating_geometry():
     )
     assert plan.reverse == (
         SetFloating("0xa", True),
-        MoveWindow("0xa", 100, 140),
         ResizeWindow("0xa", 800, 600),
+        MoveWindow("0xa", 100, 140),
         SetFloating("0xb", True),
-        MoveWindow("0xb", 1000, 300),
         ResizeWindow("0xb", 900, 700),
+        MoveWindow("0xb", 1000, 300),
         FocusWindow("0xb"),
     )
     assert plan.expected_floating == {"0xa": False, "0xb": False}
@@ -77,15 +77,15 @@ def test_tiles_to_windows_restores_geometry_clamped_to_work_area():
     assert plan.mode == "windows"
     assert plan.actions == (
         SetFloating("0xa", True),
-        MoveWindow("0xa", 3680, 480),
         ResizeWindow("0xa", 800, 600),
+        MoveWindow("0xa", 3680, 480),
         SetFloating("0xb", True),
-        MoveWindow("0xb", 2560, 40),
         ResizeWindow("0xb", 1920, 1040),
+        MoveWindow("0xb", 2560, 40),
         # Без сохранённой геометрии — 60% рабочей области по центру.
         SetFloating("0xc", True),
-        MoveWindow("0xc", 2944, 248),
         ResizeWindow("0xc", 1152, 624),
+        MoveWindow("0xc", 2944, 248),
         FocusWindow("0xa"),
     )
     assert plan.extra["columns"] == [

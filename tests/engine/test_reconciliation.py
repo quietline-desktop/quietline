@@ -70,7 +70,7 @@ def test_new_window_floats_only_on_windows_workspace(registry):
     assert run(controller.reconcile(EVENT)) is None
 
     # Новое тайловое окно в «Окнах» становится плавающим по центру рабочей области.
-    assert adapter.applied == [[SetFloating("0xn", True), MoveWindow("0xn", 512, 320), ResizeWindow("0xn", 1536, 840)]]
+    assert adapter.applied == [[SetFloating("0xn", True), ResizeWindow("0xn", 1536, 840), MoveWindow("0xn", 512, 320)]]
     assert registry.get(KEY, 1).extra["managed"] == ["0xa", "0xn"]
     assert registry.get(KEY, 1).extra["dialogs"] == ["0xd"]
     # В «Тайлах» новое окно остаётся в раскладке и становится управляемым.
@@ -141,7 +141,7 @@ def test_moved_window_obeys_destination_mode(registry):
     run(controller.reconcile(HyprEvent("movewindow", "0xa,1001")))
 
     assert adapter.applied == [
-        [SetFloating("0xb", True), MoveWindow("0xb", 300, 200), ResizeWindow("0xb", 1000, 700)],
+        [SetFloating("0xb", True), ResizeWindow("0xb", 1000, 700), MoveWindow("0xb", 300, 200)],
         [SetFloating("0xa", False)],
     ]
     assert registry.get(KEY, 1).extra["managed"] == ["0xb"]
@@ -283,7 +283,7 @@ def test_disconnected_workspace_is_accessible_and_returns(registry):
     assert refs[(SECOND_KEY, 2)]["workspace_id"] == 1001
     assert [m["key"] for m in state.to_json()["monitors"]] == [KEY]
     # Плавающее окно перенесено в рабочую область оставшегося монитора.
-    assert adapter.applied == [[MoveWindow("0xb", 140, 100), ResizeWindow("0xb", 800, 600)]]
+    assert adapter.applied == [[ResizeWindow("0xb", 800, 600), MoveWindow("0xb", 140, 100)]]
     adapter.applied.clear()
 
     # Панель открывает пространство отключённого монитора на мониторе фокуса.
@@ -322,7 +322,7 @@ def test_disconnected_workspace_is_accessible_and_returns(registry):
     assert state.error is None
     assert adapter.applied == [
         [MoveWorkspaceToMonitor(2, "HDMI-A-1"), MoveWorkspaceToMonitor(1001, "HDMI-A-1")],
-        [MoveWindow("0xb", 2700, 100), ResizeWindow("0xb", 800, 600)],
+        [ResizeWindow("0xb", 800, 600), MoveWindow("0xb", 2700, 100)],
     ]
     refs = workspaces_json(state)
     assert set(refs) == {(KEY, 1), (KEY, 2), (SECOND_KEY, 1), (SECOND_KEY, 2)}
@@ -371,7 +371,7 @@ def test_reconnected_smaller_monitor_clamps_geometry(registry):
     )
     adapter.snapshots = [alone]
     run(controller.reconcile(HyprEvent("monitorremoved", "HDMI-A-1")))
-    assert adapter.applied == [[MoveWindow("0xw", 1440, 900), ResizeWindow("0xw", 1000, 500)]]
+    assert adapter.applied == [[ResizeWindow("0xw", 1000, 500), MoveWindow("0xw", 1440, 900)]]
     assert registry.get(SECOND_KEY, 2).extra["geometry"] == {"0xt": {"at": [1360, 800], "size": [1200, 600]}}
     adapter.applied.clear()
 
@@ -400,7 +400,7 @@ def test_reconnected_smaller_monitor_clamps_geometry(registry):
     assert state.error is None
     assert adapter.applied == [
         [MoveWorkspaceToMonitor(2, "HDMI-A-1"), MoveWorkspaceToMonitor(1001, "HDMI-A-1")],
-        [MoveWindow("0xw", 3480, 580), ResizeWindow("0xw", 1000, 500)],
+        [ResizeWindow("0xw", 1000, 500), MoveWindow("0xw", 3480, 580)],
     ]
     assert registry.get(SECOND_KEY, 2).extra["geometry"] == {"0xt": {"at": [3280, 480], "size": [1200, 600]}}
     assert workspaces_json(state)[(SECOND_KEY, 1)]["display_monitor_key"] == SECOND_KEY
@@ -504,7 +504,7 @@ def test_rejected_window_update_reports_error_and_keeps_others(registry):
     assert registry.get(KEY, 1).extra["managed"] == ["0xn", "0xm"]
 
     # Следующая сверка повторяет отклонённое действие и больше ничего не трогает.
-    centered = (MoveWindow("0xn", 512, 288), ResizeWindow("0xn", 1536, 864))
+    centered = (ResizeWindow("0xn", 1536, 864), MoveWindow("0xn", 512, 288))
     partly = snapshot(
         [mon],
         [workspace(1, mon)],
@@ -550,7 +550,7 @@ def test_rejected_translate_is_retried(registry):
     adapter.snapshots = [alone]
     state = run(controller.reconcile(HyprEvent("monitorremoved", "HDMI-A-1")))
 
-    translate = [MoveWindow("0xw", 1440, 900), ResizeWindow("0xw", 1000, 500)]
+    translate = [ResizeWindow("0xw", 1000, 500), MoveWindow("0xw", 1440, 900)]
     assert state.error is not None and "window update failed" in state.error
     assert adapter.applied == [translate]
     # Цель отклонённого сдвига запомнена: следующая сверка повторяет его.
@@ -618,8 +618,8 @@ def test_partial_translate_failure_does_not_shift_moved_windows_twice(registry):
 
     assert state.error is not None
     assert adapter.applied == [
-        [MoveWindow("0xa", 100, 50), ResizeWindow("0xa", 800, 600)],
-        [MoveWindow("0xb", 900, 50), ResizeWindow("0xb", 800, 600)],
+        [ResizeWindow("0xa", 800, 600), MoveWindow("0xa", 100, 50)],
+        [ResizeWindow("0xb", 800, 600), MoveWindow("0xb", 900, 50)],
     ]
 
     # Повторяется только отклонённое окно; уже сдвинутое не сдвигается второй раз.
@@ -630,7 +630,7 @@ def test_partial_translate_failure_does_not_shift_moved_windows_twice(registry):
     )
     adapter.snapshots = [partly]
     assert run(controller.reconcile(EVENT)) is None
-    assert adapter.applied[2:] == [[MoveWindow("0xa", 100, 50), ResizeWindow("0xa", 800, 600)]]
+    assert adapter.applied[2:] == [[ResizeWindow("0xa", 800, 600), MoveWindow("0xa", 100, 50)]]
 
 
 def test_toggle_drops_pending_window_targets(registry):
@@ -664,7 +664,7 @@ def test_pending_target_follows_work_area_change(registry):
     assert run(controller.reconcile(EVENT)) is None
 
     # Отложенная цель сдвинута вместе с рабочей областью и ограничена ею.
-    assert adapter.applied == [[SetFloating("0xn", True), MoveWindow("0xn", 512, 328), ResizeWindow("0xn", 1536, 864)]]
+    assert adapter.applied == [[SetFloating("0xn", True), ResizeWindow("0xn", 1536, 864), MoveWindow("0xn", 512, 328)]]
     assert "pending" not in registry.get(KEY, 1).extra
 
 
@@ -688,7 +688,7 @@ def test_refused_workspace_return_does_not_stop_window_reconciliation(registry):
     assert "cannot return workspaces to their monitor" in state.error
     assert adapter.applied == [
         [MoveWorkspaceToMonitor(2, "HDMI-A-1")],
-        [SetFloating("0xn", True), MoveWindow("0xn", 512, 288), ResizeWindow("0xn", 1536, 864)],
+        [SetFloating("0xn", True), ResizeWindow("0xn", 1536, 864), MoveWindow("0xn", 512, 288)],
     ]
     assert registry.get(KEY, 1).extra["managed"] == ["0xn"]
 

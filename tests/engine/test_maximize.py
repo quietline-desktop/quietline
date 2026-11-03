@@ -28,7 +28,7 @@ def snap(*windows, active=None):
 def test_floating_window_fills_frame_and_remembers_geometry():
     plan = LayoutPlanner().maximize(ref(managed=["0xa"]), snap(window("0xa", at=(100, 200), size=(800, 600), floating=True)), "0xa")
 
-    assert plan.actions == (MoveWindow("0xa", *FRAME_AT), ResizeWindow("0xa", *FRAME_SIZE))
+    assert plan.actions == (ResizeWindow("0xa", *FRAME_SIZE), MoveWindow("0xa", *FRAME_AT))
     assert plan.extra["maximized"] == {"0xa": {"at": [100, 200], "size": [800, 600]}}
     assert plan.extra["managed"] == ["0xa"]
 
@@ -40,7 +40,7 @@ def test_maximized_window_returns_to_remembered_geometry():
 
     plan = LayoutPlanner().maximize(workspace_ref, snap(current), "0xa")
 
-    assert plan.actions == (MoveWindow("0xa", 100, 200), ResizeWindow("0xa", 800, 600))
+    assert plan.actions == (ResizeWindow("0xa", 800, 600), MoveWindow("0xa", 100, 200))
     assert "maximized" not in plan.extra
 
 
@@ -50,7 +50,7 @@ def test_window_moved_after_maximizing_is_maximized_again():
 
     plan = LayoutPlanner().maximize(workspace_ref, snap(moved), "0xa")
 
-    assert plan.actions == (MoveWindow("0xa", *FRAME_AT), ResizeWindow("0xa", *FRAME_SIZE))
+    assert plan.actions == (ResizeWindow("0xa", *FRAME_SIZE), MoveWindow("0xa", *FRAME_AT))
     assert plan.extra["maximized"] == {"0xa": {"at": [500, 500], "size": [1200, 900]}}
 
 
@@ -59,7 +59,7 @@ def test_restored_geometry_is_clamped_to_work_area():
 
     plan = LayoutPlanner().maximize(workspace_ref, snap(window("0xa", at=FRAME_AT, size=FRAME_SIZE, floating=True)), "0xa")
 
-    assert plan.actions == (MoveWindow("0xa", 1760, 840), ResizeWindow("0xa", 800, 600))
+    assert plan.actions == (ResizeWindow("0xa", 800, 600), MoveWindow("0xa", 1760, 840))
 
 
 def test_tiled_window_toggles_hyprland_maximized():
@@ -105,7 +105,7 @@ def test_application_maximize_request_becomes_frame_geometry():
     # Hyprland вернул окну прежнюю геометрию: она запоминается, окно встаёт в рамку.
     second = reconcile(WorkspaceRef(KEY, KEY, 1, 1, "windows", first.extra),
                        window("0xa", at=(100, 200), size=(800, 600), floating=True))
-    assert [c.actions for c in second.changes] == [(MoveWindow("0xa", *FRAME_AT), ResizeWindow("0xa", *FRAME_SIZE))]
+    assert [c.actions for c in second.changes] == [(ResizeWindow("0xa", *FRAME_SIZE), MoveWindow("0xa", *FRAME_AT))]
     assert second.extra["maximized"] == {"0xa": {"at": [100, 200], "size": [800, 600]}}
     assert "maximizing" not in second.extra
 
@@ -116,7 +116,7 @@ def test_application_maximize_request_on_maximized_window_restores_it():
     update = reconcile(workspace_ref, window("0xa", at=FRAME_AT, size=FRAME_SIZE, floating=True, fullscreen=1))
 
     assert [c.actions for c in update.changes] == [
-        (SetMaximized("0xa", False), MoveWindow("0xa", 100, 200), ResizeWindow("0xa", 800, 600))
+        (SetMaximized("0xa", False), ResizeWindow("0xa", 800, 600), MoveWindow("0xa", 100, 200))
     ]
     assert "maximized" not in update.extra
 
@@ -128,7 +128,7 @@ def test_window_opened_maximized_is_floated_into_frame():
     # Окно впервые классифицируется: управляемое, плавающее, прежняя геометрия — по центру.
     second = reconcile(WorkspaceRef(KEY, KEY, 1, 1, "windows", first.extra), window("0xn", at=(0, 30), size=(1280, 720)))
     assert [c.actions for c in second.changes] == [
-        (SetFloating("0xn", True), MoveWindow("0xn", *FRAME_AT), ResizeWindow("0xn", *FRAME_SIZE))
+        (SetFloating("0xn", True), ResizeWindow("0xn", *FRAME_SIZE), MoveWindow("0xn", *FRAME_AT))
     ]
     assert second.extra["managed"] == ["0xn"]
     assert second.extra["maximized"] == {"0xn": {"at": [512, 312], "size": [1536, 846]}}
@@ -162,7 +162,7 @@ def test_controller_maximizes_active_window_and_saves_geometry(registry):
     state = asyncio.run(WindowController(adapter, registry).maximize())
 
     assert state.error is None
-    assert adapter.applied == [[MoveWindow("0xa", *FRAME_AT), ResizeWindow("0xa", *FRAME_SIZE)]]
+    assert adapter.applied == [[ResizeWindow("0xa", *FRAME_SIZE), MoveWindow("0xa", *FRAME_AT)]]
     assert registry.get(KEY, 1).extra["maximized"] == {"0xa": {"at": [100, 200], "size": [800, 600]}}
 
 

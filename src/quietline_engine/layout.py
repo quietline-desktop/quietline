@@ -297,8 +297,8 @@ class LayoutPlanner:
                 placed = _clamp(saved, monitor) if saved is not None else _centered(monitor)
                 actions += [
                     SetFloating(address, True),
-                    MoveWindow(address, *placed.at),
                     ResizeWindow(address, *placed.size),
+                    MoveWindow(address, *placed.at),
                 ]
         else:
             order = []
@@ -433,8 +433,8 @@ def _refloat(windows: list[Window], active: str | None) -> tuple[HyprAction, ...
     for window in windows:
         actions += [
             SetFloating(window.address, True),
-            MoveWindow(window.address, *window.at),
             ResizeWindow(window.address, *window.size),
+            MoveWindow(window.address, *window.at),
         ]
     if actions and active is not None:
         actions.append(FocusWindow(active))
@@ -692,7 +692,8 @@ def _translate(geometry: Geometry, source: tuple[int, int, int, int], target: tu
 
 
 def _place(address: str, geometry: Geometry) -> tuple[HyprAction, ...]:
-    return (MoveWindow(address, *geometry.at), ResizeWindow(address, *geometry.size))
+    """Сначала размер, затем положение: Hyprland меняет размер плавающего окна вокруг его центра."""
+    return (ResizeWindow(address, *geometry.size), MoveWindow(address, *geometry.at))
 
 
 def _workspace_monitor(snapshot: CompositorSnapshot, workspace_id: int) -> Monitor:

@@ -138,11 +138,11 @@ def test_toggle_back_restores_saved_geometry(registry):
     assert state.revision == 2 and state.error is None
     assert adapter.applied[1] == [
         SetFloating("0xa", True),
-        MoveWindow("0xa", 100, 140),
         ResizeWindow("0xa", 800, 600),
+        MoveWindow("0xa", 100, 140),
         SetFloating("0xb", True),
-        MoveWindow("0xb", 1000, 300),
         ResizeWindow("0xb", 900, 700),
+        MoveWindow("0xb", 1000, 300),
         FocusWindow("0xb"),
     ]
     ref = registry.get(KEY, 1)
@@ -183,11 +183,11 @@ def test_failed_or_interrupted_transition_keeps_old_mode(registry, failure):
     # Обратный план применяется по одному действию, чтобы закрытое окно не мешало остальным.
     assert adapter.applied[1:] == [
         [SetFloating("0xa", True)],
-        [MoveWindow("0xa", 100, 140)],
         [ResizeWindow("0xa", 800, 600)],
+        [MoveWindow("0xa", 100, 140)],
         [SetFloating("0xb", True)],
-        [MoveWindow("0xb", 1000, 300)],
         [ResizeWindow("0xb", 900, 700)],
+        [MoveWindow("0xb", 1000, 300)],
         [FocusWindow("0xb")],
     ]
     assert adapter.calls[-1] == "snapshot"
@@ -353,11 +353,11 @@ def test_unexpected_failure_after_apply_rolls_back(registry, monkeypatch):
     assert state.error == "mode switch failed: cannot save workspace state: state store is broken"
     assert adapter.applied[1:] == [
         [SetFloating("0xa", True)],
-        [MoveWindow("0xa", 100, 140)],
         [ResizeWindow("0xa", 800, 600)],
+        [MoveWindow("0xa", 100, 140)],
         [SetFloating("0xb", True)],
-        [MoveWindow("0xb", 1000, 300)],
         [ResizeWindow("0xb", 900, 700)],
+        [MoveWindow("0xb", 1000, 300)],
         [FocusWindow("0xb")],
     ]
     assert adapter.calls[-1] == "snapshot"
