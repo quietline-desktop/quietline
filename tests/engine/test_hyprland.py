@@ -15,12 +15,14 @@ from quietline_engine.types import (
     FocusMonitor,
     FocusWindow,
     FocusWorkspace,
+    FrameExtents,
     MoveWindow,
     MoveWindowToWorkspace,
     MoveWorkspaceToMonitor,
     ResizeColumn,
     ResizeWindow,
     SetFloating,
+    SetMaximized,
     SwapColumn,
 )
 
@@ -104,6 +106,8 @@ class FakeRunner:
             ("hyprctl", "-j", "clients"): json.dumps(CLIENTS),
             ("hyprctl", "-j", "activewindow"): json.dumps(CLIENTS[1]),
             ("hyprctl", "-j", "cursorpos"): json.dumps({"x": 2700, "y": 500}),
+            ("hyprctl", "-j", "getoption", "general:border_size"): '{"option": "general:border_size", "int": 2, "set": true }',
+            ("hyprctl", "-j", "getoption", "plugin:hyprbars:bar_height"): '{"option": "plugin:hyprbars:bar_height", "int": 32, "set": true }',
         }
 
     def __call__(self, argv: Sequence[str]) -> str:
@@ -150,7 +154,24 @@ def test_snapshot_parses_two_monitors_and_clients():
         ["hyprctl", "-j", "clients"],
         ["hyprctl", "-j", "activewindow"],
         ["hyprctl", "-j", "cursorpos"],
+        ["hyprctl", "-j", "getoption", "general:border_size"],
+        ["hyprctl", "-j", "getoption", "plugin:hyprbars:bar_height"],
     ]
+    assert snap.frame == FrameExtents(border=2, title=32)
+    assert snap.windows[1].maximized is False
+
+
+def test_snapshot_without_hyprbars_has_no_title_extent():
+    runner = FakeRunner()
+    runner.replies[("hyprctl", "-j", "getoption", "plugin:hyprbars:bar_height")] = "no such option"
+    assert Hyprland(runner=runner).snapshot().frame == FrameExtents(border=2, title=0)
+
+
+def test_snapshot_rejects_unexpected_option_reply():
+    runner = FakeRunner()
+    runner.replies[("hyprctl", "-j", "getoption", "general:border_size")] = '{"option": "general:border_size", "float": 2.0}'
+    with pytest.raises(HyprlandError, match="getoption general:border_size"):
+        Hyprland(runner=runner).snapshot()
 
 
 def test_snapshot_reads_window_tags_and_dialog_marks():
@@ -263,6 +284,8 @@ def test_eval_escapes_only_validated_ids():
         [
             SetFloating("0xa1", True),
             SetFloating("0xb2", False),
+            SetMaximized("0xa1", True),
+            SetMaximized("0xb2", False),
             MoveWindow("0xa1", 100, 200),
             ResizeWindow("0xa1", 800, 600),
             FocusWindow("0xa1"),
@@ -281,6 +304,8 @@ def test_eval_escapes_only_validated_ids():
     assert call[2].split("\n") == [
         'hl.dispatch(hl.dsp.window.float({ action = "enable", window = "address:0xa1" }))',
         'hl.dispatch(hl.dsp.window.float({ action = "disable", window = "address:0xb2" }))',
+        'hl.dispatch(hl.dsp.window.fullscreen({ mode = "maximized", action = "set", window = "address:0xa1" }))',
+        'hl.dispatch(hl.dsp.window.fullscreen({ mode = "maximized", action = "unset", window = "address:0xb2" }))',
         'hl.dispatch(hl.dsp.window.move({ x = 100, y = 200, window = "address:0xa1" }))',
         'hl.dispatch(hl.dsp.window.resize({ x = 800, y = 600, window = "address:0xa1" }))',
         'hl.dispatch(hl.dsp.focus({ window = "address:0xa1" }))',

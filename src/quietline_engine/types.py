@@ -85,6 +85,11 @@ class Window:
     tags: tuple[str, ...] = ()
 
     @property
+    def maximized(self) -> bool:
+        """Окно в состоянии `maximized` Hyprland (а не в настоящем полноэкранном режиме)."""
+        return self.fullscreen == 1
+
+    @property
     def dialog_tagged(self) -> bool:
         """Окно помечено тегом из `DIALOG_TAGS` (с `*` правила окна или без него).
 
@@ -103,14 +108,23 @@ class Column:
 
 
 @dataclass(frozen=True, slots=True)
+class FrameExtents:
+    """Декорации плавающего окна вокруг его содержимого: рамка со всех сторон и заголовок сверху (пиксели)."""
+
+    border: int = 0
+    title: int = 0
+
+
+@dataclass(frozen=True, slots=True)
 class CompositorSnapshot:
-    """Полное состояние Hyprland на момент чтения."""
+    """Полное состояние Hyprland на момент чтения; `frame` — декорации плавающих окон."""
 
     monitors: tuple[Monitor, ...]
     workspaces: tuple[Workspace, ...]
     windows: tuple[Window, ...]
     active_window: Window | None
     cursor_position: tuple[int, int]
+    frame: FrameExtents = FrameExtents()
 
     def columns(self, workspace_id: int) -> tuple[Column, ...]:
         """Колонки пространства слева направо.
@@ -152,6 +166,14 @@ class SetFloating:
 
     address: str
     floating: bool
+
+
+@dataclass(frozen=True, slots=True)
+class SetMaximized:
+    """Поставить окну состояние `maximized` Hyprland или снять его."""
+
+    address: str
+    maximized: bool
 
 
 @dataclass(frozen=True, slots=True)
@@ -226,6 +248,7 @@ class SwapColumn:
 
 type HyprAction = (
     SetFloating
+    | SetMaximized
     | MoveWindow
     | ResizeWindow
     | FocusWindow

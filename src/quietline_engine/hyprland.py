@@ -11,6 +11,7 @@ from collections.abc import AsyncIterator, Callable, Mapping, Sequence
 from quietline_engine.types import (
     CompositorSnapshot,
     FocusMonitor,
+    FrameExtents,
     FocusWindow,
     FocusWorkspace,
     HyprAction,
@@ -22,6 +23,7 @@ from quietline_engine.types import (
     ResizeColumn,
     ResizeWindow,
     SetFloating,
+    SetMaximized,
     SwapColumn,
     Window,
     Workspace,
@@ -96,6 +98,12 @@ def render_action(action: HyprAction) -> str:
         case SetFloating(address, floating):
             mode = "enable" if _boolean(floating, "floating flag") else "disable"
             return _dispatch(f'hl.dsp.window.float({{ action = "{mode}", window = "address:{_address(address)}" }})')
+        case SetMaximized(address, maximized):
+            state = "set" if _boolean(maximized, "maximized flag") else "unset"
+            return _dispatch(
+                f'hl.dsp.window.fullscreen({{ mode = "maximized", action = "{state}", '
+                f'window = "address:{_address(address)}" }})'
+            )
         case MoveWindow(address, x, y):
             return _dispatch(
                 f'hl.dsp.window.move({{ x = {_integer(x, "x")}, y = {_integer(y, "y")}, '
@@ -236,13 +244,28 @@ class Hyprland:
         except json.JSONDecodeError as error:
             raise HyprlandError(f"hyprctl -j {command} returned invalid JSON") from error
 
+    def _option(self, name: str) -> int:
+        """Целое значение опции Hyprland; опции нет (плагин не загружен) — 0."""
+        output = self._runner(["hyprctl", "-j", "getoption", name])
+        try:
+            value = json.loads(output)
+        except json.JSONDecodeError:
+            return 0
+        if not isinstance(value, dict) or type(value.get("int")) is not int:
+            raise HyprlandError(f"unexpected hyprctl getoption {name} reply: {output.strip()!r}")
+        return value["int"]
+
     def snapshot(self) -> CompositorSnapshot:
-        """Читает мониторы, пространства, окна, активное окно и указатель."""
+        """Читает мониторы, пространства, окна, активное окно, указатель и декорации окон.
+
+        Декорации — `general:border_size` и высота заголовка hyprbars `plugin:hyprbars:bar_height`.
+        """
         monitors = self._read("monitors")
         workspaces = self._read("workspaces")
         clients = self._read("clients")
         active = self._read("activewindow")
         cursor = self._read("cursorpos")
+        frame = FrameExtents(self._option("general:border_size"), self._option("plugin:hyprbars:bar_height"))
         try:
             return CompositorSnapshot(
                 monitors=tuple(_monitor(m) for m in monitors),
@@ -250,6 +273,7 @@ class Hyprland:
                 windows=tuple(_window(c) for c in clients),
                 active_window=_window(active) if active else None,
                 cursor_position=(int(cursor["x"]), int(cursor["y"])),
+                frame=frame,
             )
         except (KeyError, TypeError, ValueError) as error:
             raise HyprlandError(f"unexpected hyprctl reply shape: {error!r}") from error
