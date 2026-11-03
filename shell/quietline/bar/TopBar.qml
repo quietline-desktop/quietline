@@ -508,6 +508,9 @@ PanelWindow {
                    : showingApplications ? searchPanel.contentHeight
                    : showingClipboard ? clipboardPanel.contentHeight
                    : Math.min(content.implicitHeight + 20, root.screen ? root.screen.height - 80 : 500)
+        // Поиск держит поверхность наибольшей высоты и плавно меняет высоту карточки при наборе.
+        windowHeight: showingApplications ? searchPanel.maxHeight : panelHeight
+        animateHeight: showingApplications
         onPresented: { if (showingApplications) searchPanel.reset(); else if (showingClipboard) clipboardPanel.reset(); else if (showingMenu) quietlineMenu.takeFocus(); else if (showingWindow) windowMenu.takeFocus(); else if (showingNotifications) notificationCenter.reset(); }
         onDismissed: searchPanel.reset()
         QuietlineMenu {
@@ -534,6 +537,7 @@ PanelWindow {
             services: root.services
             finder: root.services.search
             monitorName: root.monitorName
+            reducedMotion: root.reducedMotion
             onDone: popout.close()
             onSessionRequested: action => root.openSession(action)
             onClipboardRequested: popout.open("clipboard")

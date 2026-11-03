@@ -13,7 +13,9 @@ import "../logic/Models.js" as Models
 // приложения (снимок в Satty, запуск программы): иначе исключительная клавиатура окна панели не
 // пустила бы ввод в новое окно. Размер поверхности — `panelWidth` × `panelHeight`, её левый
 // верхний угол — `popupX`, `popupY` на экране; вокруг остаётся поле под тень, щелчки в нём
-// проходят насквозь.
+// проходят насквозь. Окно с `windowHeight` больше `panelHeight` держит поверхность слоя этой
+// высоты, а `animateHeight` плавно меняет высоту видимой поверхности внутри неё: окно не
+// переразмечается, когда содержимое растёт и сжимается.
 PanelWindow {
     id: root
     default property alias contents: body.data
@@ -32,6 +34,8 @@ PanelWindow {
     property real popupY: 0
     property real panelWidth: 300
     property real panelHeight: 200
+    property real windowHeight: panelHeight
+    property bool animateHeight: false
     property real padding: 10
     property real radius: Theme.radiusPopup
     property color surfaceColor: Theme.popupSurface
@@ -51,7 +55,7 @@ PanelWindow {
     margins.left: Math.max(0, popupX - shadowMargin)
     margins.top: Math.max(0, popupY - shadowMargin)
     implicitWidth: frame.x + panelWidth + shadowMargin
-    implicitHeight: frame.y + panelHeight + shadowMargin
+    implicitHeight: frame.y + Math.max(windowHeight, frame.height) + shadowMargin
     color: "transparent"
     mask: Region { item: frame }
     function open(name) {
@@ -125,6 +129,10 @@ PanelWindow {
         y: root.popupY - root.margins.top
         width: root.panelWidth
         height: root.panelHeight
+        Behavior on height {
+            enabled: root.animateHeight && root.visible && frame.shown === 1 && !root.reducedMotion
+            NumberAnimation { duration: Theme.motionDuration; easing.type: Easing.OutCubic }
+        }
         radius: root.radius
         color: root.surfaceColor
         border.width: 1

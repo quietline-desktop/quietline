@@ -948,12 +948,14 @@ function searchFileMatches(files, query) {
     });
 }
 
-// Высота списка поиска по строкам: заголовок раздела 26, вычисление 48, остальные 40 px,
-// поля списка сверху 6 и снизу 8; не больше `max`. Пустой список — 0.
+// Высота списка поиска по строкам: заголовок раздела 26, вычисление 48, файл и группа (две
+// строки текста) 44, остальные 40 px, поля списка сверху 6 и снизу 8; не больше `max`.
+// Пустой список — 0.
+var SEARCH_ROW_HEIGHTS = {calc: 48, file: 44, group: 44};
 function searchListHeight(rows, max) {
     if (!rows || !rows.length) return 0;
     var height = 14;
-    rows.forEach(function(row) { height += row.header ? 26 : row.item && row.item.kind === "calc" ? 48 : 40; });
+    rows.forEach(function(row) { height += row.header ? 26 : textKey(SEARCH_ROW_HEIGHTS, row.item && row.item.kind, 40); });
     return Math.min(height, max);
 }
 

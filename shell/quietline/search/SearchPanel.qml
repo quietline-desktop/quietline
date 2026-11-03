@@ -6,32 +6,63 @@ import ".."
 import "../controls"
 import "../logic/Models.js" as Models
 
-// Поиск `Super+Space` по центру экрана: крупное поле и результаты по разделам —
-// «Лучшее совпадение», приложения (со значками), действия и разделы настроек, файлы
-// домашнего каталога; вычисление — первой строкой. ↑/↓ выбирают результат, Enter
-// открывает, Esc закрывает окно.
+// Поиск `Super+Space` по центру экрана: крупное поле сверху. Пустое поле — меню групп
+// («Приложения», «Действия», «Питание», «Настройки»): ↑/↓ выбирают, Enter или → открывают
+// группу, ←, Backspace на пустом поле и Esc возвращают к группам. Любой ввод — поиск по всем
+// источникам с разделами «Лучшее совпадение», приложения, действия и разделы настроек, файлы;
+// вычисление — первой строкой. Enter открывает выбранное, Tab переходит к следующему разделу,
+// Esc закрывает окно. Высота содержимого `contentHeight` меняется плавно внутри поверхности
+// высотой `maxHeight`.
 ColumnLayout {
     id: root
     required property var desktop
     required property var services
     required property var finder
     required property string monitorName
+    property bool reducedMotion: false
+    // Открытая группа меню; пусто — список групп.
+    property string group: ""
+    // Номер выбранного результата или пункта меню (`index` строки).
     property int selected: 0
-    readonly property var results: Models.searchResults(field.text, desktop.entries, finder.files, finder.home, 40, Lang.s)
-    readonly property var rows: Models.searchSections(results, field.text, Lang.s)
-    readonly property int current: Math.min(selected, results.length - 1)
-    // Высота содержимого — по ней окно подстраивает свой размер.
-    readonly property real contentHeight: 54 + (results.length ? 1 + Math.min(list.contentHeight + 16, 440) : field.text.length ? 49 : 0)
+    readonly property bool searching: field.text.trim().length > 0
+    readonly property var results: searching ? Models.searchResults(field.text, desktop.entries,
+        Models.searchFileMatches(finder.files, field.text), finder.home, 40, Lang.s) : []
+    readonly property var resultRows: Models.searchSections(results, field.text, Lang.s)
+    readonly property var browseRows: Models.searchBrowseRows(group, desktop.entries, Lang.s)
+    readonly property var rows: searching ? resultRows : browseRows
+    readonly property int count: searching ? results.length : browseRows.length
+    readonly property int current: Math.min(selected, count - 1)
+    readonly property var currentItem: {
+        var row = rows.find(entry => !entry.header && entry.index === current);
+        return row ? row.item : null;
+    }
+    readonly property bool showMessage: searching && results.length === 0
+    readonly property real listMax: 420
+    readonly property real maxHeight: 54 + 1 + listMax
+    readonly property real contentHeight: 54 + (rows.length ? 1 + Models.searchListHeight(rows, listMax) : showMessage ? 49 : 0)
     signal done()
     // Выход, перезагрузка и выключение подтверждаются диалогом сеанса.
     signal sessionRequested(string action)
     signal clipboardRequested()
     spacing: 0
 
-    function reset() { field.clear(); selected = 0; field.forceActiveFocus(); }
+    function reset() { group = ""; field.clear(); selected = 0; field.forceActiveFocus(); }
+    function rowOf(list, index) { return list.findIndex(entry => !entry.header && entry.index === index); }
+    function openGroup(id) {
+        group = id;
+        selected = 0;
+        browseList.slide(1);
+    }
+    function closeGroup() {
+        var from = group;
+        group = "";
+        selected = Math.max(0, browseRows.findIndex(entry => entry.item.id === from));
+        browseList.slide(-1);
+    }
     function activate(item) {
         if (!item) return;
         switch (item.kind) {
+        case "group": openGroup(item.id); break;
         case "app": root.desktop.launch(item.id, root.monitorName); root.done(); break;
         case "settings": root.done(); root.services.settings.open(item.id); break;
         case "calc": Quickshell.execDetached(["wl-copy", item.value]); root.done(); break;
@@ -44,10 +75,15 @@ ColumnLayout {
             break;
         }
     }
-    function select(index) {
-        selected = Math.max(0, Math.min(index, results.length - 1));
-        var row = rows.findIndex(entry => !entry.header && entry.index === selected);
-        if (row >= 0) list.positionViewAtIndex(row, ListView.Contain);
+    function select(index) { selected = Math.max(0, Math.min(index, count - 1)); }
+    // Tab: первый результат следующего раздела, после последнего — снова первый.
+    function nextSection() {
+        if (!searching) { select(current + 1 < count ? current + 1 : 0); return; }
+        var row = rowOf(rows, current);
+        for (var i = row + 1; i < rows.length; i++) {
+            if (rows[i].header && i + 1 < rows.length) { selected = rows[i + 1].index; return; }
+        }
+        selected = 0;
     }
 
     RowLayout {
@@ -56,6 +92,25 @@ ColumnLayout {
         Layout.leftMargin: 18; Layout.rightMargin: 18
         spacing: 12
         Icon { name: "search"; size: 24; color: Theme.text2 }
+        Rectangle {
+            id: crumb
+            visible: root.group.length > 0 && !root.searching
+            implicitWidth: crumbText.implicitWidth + 18
+            implicitHeight: 26
+            radius: 8
+            color: Theme.fill2
+            Text {
+                id: crumbText
+                renderType: Text.CurveRendering
+                anchors.centerIn: parent
+                text: {
+                    var row = Models.searchGroups(Lang.s).find(entry => entry.id === root.group);
+                    return row ? row.title : "";
+                }
+                color: Theme.text
+                font.family: Theme.sans; font.pixelSize: Theme.fontSize; font.weight: Font.Medium
+            }
+        }
         TextField {
             id: field
             Layout.fillWidth: true
@@ -68,125 +123,85 @@ ColumnLayout {
             padding: 0
             background: Item {}
             Accessible.name: Lang.s.searchTitle
-            onTextChanged: { root.selected = 0; root.finder.query = text; list.positionViewAtBeginning(); }
-            onAccepted: root.activate(root.results[root.current])
-            Keys.onDownPressed: root.select(root.selected + 1)
-            Keys.onUpPressed: root.select(root.selected - 1)
+            onTextChanged: {
+                if (root.searching && root.group.length > 0) root.group = "";
+                root.selected = 0;
+                root.finder.query = text;
+            }
+            onAccepted: root.activate(root.currentItem)
+            Keys.onDownPressed: root.select(root.current + 1)
+            Keys.onUpPressed: root.select(root.current - 1)
+            Keys.onTabPressed: root.nextSection()
+            Keys.onRightPressed: event => {
+                if (!root.searching && root.currentItem && root.currentItem.kind === "group") root.openGroup(root.currentItem.id);
+                else event.accepted = false;
+            }
+            Keys.onLeftPressed: event => {
+                if (!root.searching && root.group.length > 0) root.closeGroup();
+                else event.accepted = false;
+            }
+            Keys.onPressed: event => {
+                if (event.key === Qt.Key_Backspace && text.length === 0 && root.group.length > 0) { root.closeGroup(); event.accepted = true; }
+            }
+            Keys.onEscapePressed: event => {
+                if (!root.searching && root.group.length > 0) root.closeGroup();
+                else event.accepted = false;
+            }
         }
         Text {
             renderType: Text.CurveRendering
-            visible: root.results.length > 0
-            text: Lang.s.searchOpenHint
+            text: root.searching ? Lang.s.searchOpenHint : root.group.length > 0 ? Lang.s.searchBackHint : Lang.s.searchGroupHint
             color: Theme.text3
             font.family: Theme.sans; font.pixelSize: Theme.smallFontSize
         }
     }
     Rectangle {
-        visible: root.results.length > 0 || field.text.length > 0
+        visible: root.contentHeight > 54
         Layout.fillWidth: true
         implicitHeight: 1
         color: Theme.hairline
     }
-    ListView {
-        id: list
-        visible: root.results.length > 0
+    // Меню групп и результаты лежат друг на друге и сменяются затуханием со сдвигом.
+    Item {
         Layout.fillWidth: true
         Layout.fillHeight: true
-        Layout.margins: 8
         clip: true
-        boundsBehavior: Flickable.StopAtBounds
-        model: root.rows
-        ScrollBar.vertical: ShellScrollBar {}
-        delegate: Item {
-            id: entry
-            required property var modelData
-            readonly property var item: modelData.header ? null : modelData.item
-            readonly property bool chosen: !modelData.header && modelData.index === root.current
-            readonly property bool large: !!item && item.kind === "calc"
-            width: list.width - 6
-            height: modelData.header ? 26 : large ? 48 : 40
-            Text {
-                renderType: Text.CurveRendering
-                visible: entry.modelData.header
-                x: 10; anchors.bottom: parent.bottom; anchors.bottomMargin: 4
-                text: entry.modelData.header ? entry.modelData.title.toUpperCase() : ""
-                color: Theme.text3
-                font.family: Theme.sans; font.pixelSize: Theme.captionFontSize; font.weight: Font.DemiBold; font.letterSpacing: 0.6
-            }
-            Rectangle {
-                visible: !!entry.item
-                anchors.fill: parent
-                radius: Theme.radiusRow
-                color: entry.chosen ? Theme.accent : rowArea.containsMouse ? Theme.fill : "transparent"
-                MouseArea {
-                    id: rowArea
-                    anchors.fill: parent
-                    hoverEnabled: true
-                    cursorShape: Qt.PointingHandCursor
-                    onClicked: root.activate(entry.item)
-                    onEntered: root.selected = entry.modelData.index
-                }
-                RowLayout {
-                    anchors.fill: parent; anchors.leftMargin: 10; anchors.rightMargin: 12
-                    spacing: 12
-                    Item {
-                        implicitWidth: 28; implicitHeight: 28
-                        Image {
-                            id: appIcon
-                            anchors.fill: parent
-                            visible: !!entry.item && entry.item.kind === "app"
-                            source: visible ? Quickshell.iconPath(entry.item.icon || "", true) : ""
-                            sourceSize.width: 56; sourceSize.height: 56
-                            smooth: true; mipmap: true
-                        }
-                        Icon {
-                            anchors.centerIn: parent
-                            visible: !appIcon.visible || appIcon.status !== Image.Ready
-                            name: Models.searchSymbol(entry.item)
-                            size: 20
-                            color: entry.chosen ? Theme.accentForeground : Theme.text2
-                        }
-                    }
-                    Column {
-                        Layout.fillWidth: true
-                        Text {
-                            renderType: Text.CurveRendering
-                            width: parent.width
-                            text: entry.item ? entry.item.title : ""
-                            color: entry.chosen ? Theme.accentForeground : Theme.text
-                            font.family: Theme.sans
-                            font.pixelSize: entry.large ? 20 : 14
-                            font.weight: entry.large ? Font.Light : Font.Normal
-                            elide: Text.ElideRight; textFormat: Text.PlainText
-                        }
-                        Text {
-                            renderType: Text.CurveRendering
-                            visible: !!entry.item && entry.item.kind === "file"
-                            width: parent.width
-                            text: entry.item ? entry.item.subtitle : ""
-                            color: entry.chosen ? Theme.accentForeground2 : Theme.text2
-                            font.family: Theme.sans; font.pixelSize: Theme.smallFontSize
-                            elide: Text.ElideMiddle; textFormat: Text.PlainText
-                        }
-                    }
-                    Text {
-                        renderType: Text.CurveRendering
-                        visible: entry.large
-                        text: entry.item ? entry.item.subtitle : ""
-                        color: entry.chosen ? Theme.accentForeground2 : Theme.text3
-                        font.family: Theme.sans; font.pixelSize: Theme.smallFontSize
-                    }
-                }
-            }
+        SearchList {
+            id: browseList
+            anchors.fill: parent
+            rows: root.browseRows
+            currentRow: root.searching ? -1 : root.rowOf(root.browseRows, root.current)
+            reducedMotion: root.reducedMotion
+            onActivated: item => root.activate(item)
+            onPointed: index => { if (!root.searching) root.selected = index; }
+            fade: root.searching ? 0 : 1
+            offsetY: root.searching ? -8 : 0
+            Behavior on fade { enabled: !root.reducedMotion; NumberAnimation { duration: Theme.motionDuration; easing.type: Easing.OutCubic } }
+            Behavior on offsetY { enabled: !root.reducedMotion; NumberAnimation { duration: Theme.motionDuration; easing.type: Easing.OutCubic } }
         }
-    }
-    Text {
-        renderType: Text.CurveRendering
-        visible: field.text.length > 0 && root.results.length === 0
-        Layout.alignment: Qt.AlignHCenter
-        Layout.topMargin: 14; Layout.bottomMargin: 14
-        text: root.finder.errorMessage.length > 0 ? root.finder.errorMessage : Lang.s.nothingFound
-        color: root.finder.errorMessage.length > 0 ? Theme.danger : Theme.text2
-        font.family: Theme.sans; font.pixelSize: Theme.fontSize
+        SearchList {
+            id: resultList
+            anchors.fill: parent
+            rows: root.resultRows
+            currentRow: root.searching ? root.rowOf(root.resultRows, root.current) : -1
+            animateRows: true
+            reducedMotion: root.reducedMotion
+            onActivated: item => root.activate(item)
+            onPointed: index => { if (root.searching) root.selected = index; }
+            fade: root.searching ? 1 : 0
+            offsetY: root.searching ? 0 : 8
+            Behavior on fade { enabled: !root.reducedMotion; NumberAnimation { duration: Theme.motionDuration; easing.type: Easing.OutCubic } }
+            Behavior on offsetY { enabled: !root.reducedMotion; NumberAnimation { duration: Theme.motionDuration; easing.type: Easing.OutCubic } }
+        }
+        Text {
+            renderType: Text.CurveRendering
+            visible: root.showMessage
+            anchors.horizontalCenter: parent.horizontalCenter
+            y: 14
+            text: root.finder.errorMessage.length > 0 ? root.finder.errorMessage
+                : root.finder.pending ? Lang.s.searchFilesPending : Lang.s.nothingFound
+            color: root.finder.errorMessage.length > 0 ? Theme.danger : Theme.text2
+            font.family: Theme.sans; font.pixelSize: Theme.fontSize
+        }
     }
 }

@@ -695,5 +695,6 @@ test('earlier file results are narrowed to the new query',()=>{
 test('search list height follows its rows',()=>{
  assert.equal(M.searchListHeight([],420),0);
  assert.equal(M.searchListHeight([{header:true},{item:{kind:'calc'}},{item:{kind:'app'}}],420),14+26+48+40);
+ assert.equal(M.searchListHeight([{item:{kind:'group'}},{item:{kind:'file'}},{item:{kind:'constructor'}}],420),14+44+44+40);
  assert.equal(M.searchListHeight(Array.from({length:30},()=>({item:{kind:'app'}})),420),420);
 });
