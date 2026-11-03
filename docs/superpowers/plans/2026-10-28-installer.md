@@ -147,7 +147,7 @@ docs/install/2026-10-20-arch-install.md, docs/install/updating.md, scripts/smoke
 
 | Раздел | Вариант | Источник и пакеты | desktop | рекоменд. |
 |---|---|---|---|---|
-| core | основа | repo: `hyprland quickshell greetd greetd-tuigreet xdg-desktop-portal-hyprland xdg-desktop-portal-gtk hyprpolkitagent qt6-wayland polkit pipewire pipewire-pulse wireplumber networkmanager bluez bluez-utils power-profiles-daemon brightnessctl upower libnotify glib2 xdg-user-dirs xdg-utils flatpak ttf-ibm-plex ttf-jetbrains-mono-nerd noto-fonts noto-fonts-emoji grim slurp satty wl-clipboard cliphist plocate ghostty fish starship micro git openssh curl unzip`; службы `NetworkManager.service bluetooth.service power-profiles-daemon.service` | — | всегда |
+| core | основа | repo: `hyprland quickshell greetd greetd-tuigreet xdg-desktop-portal-hyprland xdg-desktop-portal-gtk hyprpolkitagent qt6-wayland polkit pipewire pipewire-pulse wireplumber networkmanager bluez bluez-utils power-profiles-daemon brightnessctl upower libnotify glib2 xdg-user-dirs xdg-utils flatpak ttf-ibm-plex ttf-jetbrains-mono-nerd noto-fonts noto-fonts-emoji grim slurp satty wl-clipboard cliphist plocate ghostty fish fisher micro git openssh curl unzip`; службы `NetworkManager.service bluetooth.service power-profiles-daemon.service` | — | всегда |
 | browsers (несколько) | chrome / firefox / brave / chromium | aur `google-chrome` / repo `firefox` / flatpak `com.brave.Browser` / repo `chromium` | `google-chrome` / `firefox` / `com.brave.Browser` / `chromium` | chrome |
 | messengers (несколько) | telegram / slack / wechat | repo `telegram-desktop` / aur `slack-desktop` / aur `wechat-bin` + repo `noto-fonts-cjk` | `org.telegram.desktop` / `slack` / `wechat?` | telegram |
 | files | dolphin | repo `dolphin` | `org.kde.dolphin` | да |
@@ -244,7 +244,8 @@ docs/install/2026-10-20-arch-install.md, docs/install/updating.md, scripts/smoke
 - Produces:
   - `install_file(ctx, source, target, sudo=False) -> str` — `created | unchanged | updated, backup <путь>`; копия только если содержимое отличается и от последней копии; журнал `file`.
   - `hyprland_step()` — нет файла, или в нём нет строки `dofile("/usr/share/quietline/hyprland/quietline.lua")` → шаблон с копией; строка есть → ничего.
-  - `fish_step()` — `~/.config/fish/conf.d/quietline.fish` (`EDITOR`/`VISUAL=micro`, `starship init fish | source`, при выбранном Node — `fnm env --use-on-cd --shell fish | source`) и `~/.config/fish/conf.d/quietline-locale.fish` ← `/usr/share/quietline/fish/quietline-locale.fish`.
+  - `fish_step()` — `~/.config/fish/conf.d/quietline.fish` (`EDITOR`/`VISUAL=micro`, при выбранном Node — `fnm env --use-on-cd --shell fish | source`) и `~/.config/fish/conf.d/quietline-locale.fish` ← `/usr/share/quietline/fish/quietline-locale.fish`.
+  - `tide_step()` — нет `~/.config/fish/functions/tide.fish` → `fish -c 'fisher install ilancosman/tide@v6'` от пользователя; без терминала мастер Tide не запускается, включается стиль Lean.
   - `micro_step()` — слияние `{"clipboard": "external", "mouse": true}` в `~/.config/micro/settings.json`.
   - `quickshell_link_step()` — `~/.config/quickshell/quietline` → `/usr/share/quietline/shell` (существующий каталог — в копию).
   - `user_dirs_step()` — нет `~/.config/user-dirs.dirs` → английский шаблон и каталоги `Desktop Documents Downloads Music Pictures Public Templates Videos`; есть → не трогается, в итог — строка с путями; `user-dirs.conf` с `enabled=False` пишется всегда (с копией).

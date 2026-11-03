@@ -1,6 +1,3 @@
-# Quietline: редактор по умолчанию и приглашение starship.
+# Quietline: редактор по умолчанию. Приглашение — Tide, его ставит шаг установщика `tide`.
 set -gx EDITOR micro
 set -gx VISUAL micro
-if status is-interactive
-    starship init fish | source
-end

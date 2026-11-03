@@ -91,7 +91,7 @@ def test_fish_snippets_include_locale_and_fnm_only_when_node_selected(ctx, tmp_p
     prepare_locale_source(ctx, tmp_path)
     configs.fish_step(with_fnm=False).run(ctx)
     main = config(ctx, 'fish/conf.d/quietline.fish').read_text()
-    assert 'micro' in main and 'starship init fish | source' in main and 'fnm' not in main
+    assert 'micro' in main and 'starship' not in main and 'fnm' not in main
     locale = config(ctx, 'fish/conf.d/quietline-locale.fish').read_text()
     assert locale == (REPO / 'config/fish/quietline-locale.fish').read_text()
     assert configs.fish_step(with_fnm=False).check(ctx) is True
@@ -100,6 +100,18 @@ def test_fish_snippets_include_locale_and_fnm_only_when_node_selected(ctx, tmp_p
     assert step.check(ctx) is False
     step.run(ctx)
     assert 'fnm env --use-on-cd --shell fish | source' in config(ctx, 'fish/conf.d/quietline.fish').read_text()
+
+
+def test_tide_is_installed_by_fisher_until_its_function_appears(ctx, system):
+    step = configs.tide_step()
+    assert step.check(ctx) is False
+    step.run(ctx)
+    assert system.calls[-1]['args'] == ['fish', '-c', 'fisher install ilancosman/tide@v6']
+    assert system.calls[-1]['sudo'] is False
+    tide = config(ctx, 'fish/functions/tide.fish')
+    tide.parent.mkdir(parents=True)
+    tide.write_text('')
+    assert step.check(ctx) is True
 
 
 def test_micro_settings_are_merged_not_replaced(ctx):

@@ -1,5 +1,5 @@
-"""Файлы пользователя: конфигурация Hyprland, fish, micro, ссылка на оболочку, домашние папки,
-язык системы и закрепления дока.
+"""Файлы пользователя: конфигурация Hyprland, fish и его приглашение Tide, micro, ссылка на оболочку,
+домашние папки, язык системы и закрепления дока.
 
 Заменяемый файл сохраняется копией `<файл>.quietline-<время>`; если текущее содержимое уже лежит
 в последней копии, новая не создаётся. Каждое изменение записывается в журнал для отката.
@@ -17,6 +17,9 @@ DOFILE = 'dofile("/usr/share/quietline/hyprland/quietline.lua")'
 SHELL_DIR = Path('/usr/share/quietline/shell')
 LOCALE_FISH = '/usr/share/quietline/fish/quietline-locale.fish'
 FNM_HOOK = 'fnm env --use-on-cd --shell fish | source'
+# Tide из выпусков шестой версии; fisher — пакет основы.
+TIDE_PLUGIN = 'ilancosman/tide@v6'
+TIDE_FUNCTION = 'fish/functions/tide.fish'
 MICRO_SETTINGS = {'clipboard': 'external', 'mouse': True}
 USER_DIRS = ('Desktop', 'Documents', 'Downloads', 'Music', 'Pictures', 'Public', 'Templates', 'Videos')
 REGION_DEFAULTS = {'ru': {'clock': '24h', 'date': 'dmy'}, 'en': {'clock': '12h', 'date': 'mdy'}}
@@ -81,7 +84,7 @@ def _fish_main(with_fnm: bool) -> str:
 
 
 def fish_step(with_fnm: bool) -> Step:
-    """`conf.d/quietline.fish` (редактор, starship, при выбранном Node — fnm) и английские сообщения терминала."""
+    """`conf.d/quietline.fish` (редактор, при выбранном Node — fnm) и английские сообщения терминала."""
     def wanted(ctx: Ctx) -> dict[Path, str]:
         locale = system_path(ctx, LOCALE_FISH).read_text(encoding='utf-8')
         return {_config(ctx, 'fish/conf.d/quietline.fish'): _fish_main(with_fnm),
@@ -96,6 +99,21 @@ def fish_step(with_fnm: bool) -> Step:
             write_text(ctx, path, text)
 
     return Step('fish', 'step.fish', 'Quietline', check, run)
+
+
+def tide_step() -> Step:
+    """Приглашение fish — Tide: fisher скачивает его с GitHub в `~/.config/fish`.
+
+    fish без терминала не задаёт вопросов мастера: Tide включается со стилем Lean, вид меняет
+    `tide configure`. Уже установленный Tide не переустанавливается.
+    """
+    def check(ctx: Ctx) -> bool:
+        return _config(ctx, TIDE_FUNCTION).is_file()
+
+    def run(ctx: Ctx) -> None:
+        ctx.system.run(['fish', '-c', f'fisher install {TIDE_PLUGIN}'], interactive=True)
+
+    return Step('tide', 'step.tide', 'Arch repositories: fisher; github.com/IlanCosman/tide', check, run)
 
 
 def _micro(path: Path) -> dict | None:

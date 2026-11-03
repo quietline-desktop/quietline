@@ -111,7 +111,7 @@ CPU показывается как сглаженный процент обще
 
 | Группа | Приложения | Источник |
 | --- | --- | --- |
-| Основа (ставится всегда) | Hyprland, Quickshell, Quietline, greetd + tuigreet, PipeWire, NetworkManager, Bluetooth, порталы, polkit, шрифты, Ghostty, fish, Starship, micro, Git, OpenSSH, помощник AUR yay | Репозитории Arch; Quietline — локальный пакет из клона; yay — AUR (`yay-bin`, выпуск разработчика yay) |
+| Основа (ставится всегда) | Hyprland, Quickshell, Quietline, greetd + tuigreet, PipeWire, NetworkManager, Bluetooth, порталы, polkit, шрифты, Ghostty, fish с менеджером плагинов fisher и приглашением Tide, micro, Git, OpenSSH, помощник AUR yay | Репозитории Arch; Quietline — локальный пакет из клона; yay — AUR (`yay-bin`, выпуск разработчика yay); Tide — плагин fish, fisher ставит его в `~/.config/fish` с GitHub (`IlanCosman/tide@v6`): пакета в репозиториях Arch нет |
 | Действия оболочки | grim, slurp, Satty, wl-clipboard, cliphist, plocate | Репозитории Arch; собственный интерфейс Quietline поверх инструментов |
 | Браузеры (по выбору, можно несколько) | Google Chrome, Firefox, Brave, Chromium | Chrome — AUR (`google-chrome`, выпуск Google); Firefox и Chromium — Arch; Brave — Flathub (verified) |
 | Общение (по выбору) | Telegram Desktop, Slack | Telegram — Arch; Slack — AUR (`slack-desktop`, выпуск Slack) |

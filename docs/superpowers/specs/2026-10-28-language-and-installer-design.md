@@ -113,7 +113,7 @@
 - хранилище паролей gnome-keyring (служба `org.freedesktop.secrets`): его открывает вход через greetd паролем пользователя, иначе программы на libsecret — 1Password, Chrome, VS Code — не сохраняют пароли и токены;
 - шрифты IBM Plex Sans/Mono, JetBrainsMono Nerd Font, шрифты с кириллицей;
 - grim, slurp, Satty, wl-clipboard, cliphist, plocate;
-- Ghostty, fish, Starship, micro, git, OpenSSH, curl, unzip;
+- Ghostty, fish, fisher, micro, git, OpenSSH, curl, unzip; приглашение fish — Tide (`fisher install ilancosman/tide@v6`, стиль Lean, вид меняет `tide configure`);
 - помощник AUR yay (`yay-bin`): им пользователь ставит программы AUR вне каталога и обновляет все пакеты одной командой; собирается первым из пакетов AUR, с тем же показом инструкций.
 
 По выбору:

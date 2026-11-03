@@ -182,6 +182,9 @@ def ready_system(ctx, system, root):
     region = ctx.home / '.config/quietline/region.json'
     region.parent.mkdir(parents=True)
     region.write_text('{}')
+    tide = ctx.home / '.config/fish/functions/tide.fish'
+    tide.parent.mkdir(parents=True)
+    tide.write_text('')
     system.answer(['locale', '-a'], 'C\nen_US.utf8\nru_RU.utf8\n')
 
 
@@ -220,7 +223,7 @@ FULL = Plan(repo=['fish', 'docker'], flatpak=['com.brave.Browser'], aur=['google
 def test_login_session_comes_before_aur_and_manual_steps_last():
     ids = [step.id for step in build_steps(FULL)]
     assert ids == ['system-upgrade', 'repo-packages', 'graphics', 'locales', 'quietline-package', 'services',
-                   'hyprland-config', 'fish', 'micro', 'quickshell-link', 'user-dirs', 'region', 'pins', 'greetd',
+                   'hyprland-config', 'fish', 'tide', 'micro', 'quickshell-link', 'user-dirs', 'region', 'pins', 'greetd',
                    'keyring', 'flatpak', 'fnm', 'uv', 'aur-google-chrome', 'aur-1password', 'default-shell', 'hyprbars', 'docker-group',
                    'docker-desktop', 'amneziavpn']
     steps = {step.id: step for step in build_steps(FULL)}

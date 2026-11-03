@@ -12,7 +12,7 @@ packages = [
   "inter-font", "ttf-material-symbols-variable", "ttf-jetbrains-mono", "ttf-ibm-plex", "ttf-jetbrains-mono-nerd",
   "noto-fonts", "noto-fonts-emoji", "capitaine-cursors",
   "grim", "slurp", "satty", "wl-clipboard", "cliphist", "plocate",
-  "ghostty", "fish", "starship", "micro", "git", "openssh", "curl", "base-devel", "unzip",
+  "ghostty", "fish", "fisher", "micro", "git", "openssh", "curl", "base-devel", "unzip",
 ]
 services = ["NetworkManager.service", "bluetooth.service", "power-profiles-daemon.service"]
 # Помощник AUR для программ, которые пользователь ставит сам, и для обновления всех пакетов.
