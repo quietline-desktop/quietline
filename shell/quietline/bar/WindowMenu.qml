@@ -46,7 +46,7 @@ Column {
     }
     Separator {}
     Text {
-        renderType: Text.CurveRendering
+        renderType: Theme.textRenderType(QsWindow.window)
         leftPadding: 10
         height: 22
         verticalAlignment: Text.AlignVCenter

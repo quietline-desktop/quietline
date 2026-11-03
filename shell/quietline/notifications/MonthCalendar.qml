@@ -31,7 +31,7 @@ Rectangle {
         RowLayout {
             Layout.fillWidth: true
             Text {
-                renderType: Text.CurveRendering
+                renderType: Theme.textRenderType(QsWindow.window)
                 Layout.fillWidth: true
                 text: {
                     var name = Lang.locale.standaloneMonthName(root.month, Locale.LongFormat);
@@ -50,7 +50,7 @@ Rectangle {
                 model: 7
                 delegate: Text {
                     required property int index
-                    renderType: Text.CurveRendering
+                    renderType: Theme.textRenderType(QsWindow.window)
                     Layout.fillWidth: true; Layout.preferredWidth: 1
                     horizontalAlignment: Text.AlignHCenter
                     text: {
@@ -73,7 +73,7 @@ Rectangle {
                         color: parent.modelData.today ? Theme.accent : "transparent"
                     }
                     Text {
-                        renderType: Text.CurveRendering
+                        renderType: Theme.textRenderType(QsWindow.window)
                         anchors.centerIn: parent
                         text: parent.modelData.day
                         color: parent.modelData.today ? Theme.accentForeground : parent.modelData.current ? Theme.text : Theme.text3

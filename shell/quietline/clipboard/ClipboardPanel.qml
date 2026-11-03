@@ -1,4 +1,5 @@
 import QtQuick
+import Quickshell
 import QtQuick.Controls
 import QtQuick.Layouts
 import ".."
@@ -37,7 +38,7 @@ ColumnLayout {
             Layout.fillWidth: true
             placeholderText: Lang.s.clipboardSearchPlaceholder
             font.family: Theme.sans; font.pixelSize: 19
-            renderType: Text.CurveRendering
+            renderType: Theme.textRenderType(QsWindow.window)
             color: Theme.text; placeholderTextColor: Theme.text3
             selectionColor: Theme.accent; selectedTextColor: Theme.accentForeground
             selectByMouse: true
@@ -54,7 +55,7 @@ ColumnLayout {
             }
         }
         Text {
-            renderType: Text.CurveRendering
+            renderType: Theme.textRenderType(QsWindow.window)
             text: Lang.s.clipboardHint
             color: Theme.text3
             font.family: Theme.sans; font.pixelSize: Theme.smallFontSize
@@ -100,7 +101,7 @@ ColumnLayout {
                     Column {
                         Layout.fillWidth: true
                         Text {
-                            renderType: Text.CurveRendering
+                            renderType: Theme.textRenderType(QsWindow.window)
                             width: parent.width
                             text: row.modelData.kind === "image" ? Models.clipboardImageLabel(row.modelData.preview, Lang.s) : row.modelData.preview
                             color: row.chosen ? Theme.accentForeground : Theme.text
@@ -108,7 +109,7 @@ ColumnLayout {
                             elide: Text.ElideRight; textFormat: Text.PlainText; maximumLineCount: 1
                         }
                         Text {
-                            renderType: Text.CurveRendering
+                            renderType: Theme.textRenderType(QsWindow.window)
                             text: Models.clipboardKindLabel(row.modelData, Lang.s)
                             color: row.chosen ? Theme.accentForeground2 : Theme.text3
                             font.family: Theme.sans; font.pixelSize: Theme.captionFontSize
@@ -126,7 +127,7 @@ ColumnLayout {
                 }
             }
             Text {
-                renderType: Text.CurveRendering
+                renderType: Theme.textRenderType(QsWindow.window)
                 visible: root.matches.length === 0
                 anchors.centerIn: parent
                 text: root.clipboard.entries.length ? Lang.s.nothingFound : Lang.s.clipboardEmpty
@@ -147,7 +148,7 @@ ColumnLayout {
                 cache: false
             }
             Text {
-                renderType: Text.CurveRendering
+                renderType: Theme.textRenderType(QsWindow.window)
                 visible: !!root.current && root.current.kind !== "image"
                 anchors.fill: parent; anchors.margins: 14; anchors.bottomMargin: 34
                 text: root.current ? root.current.preview : ""
@@ -157,7 +158,7 @@ ColumnLayout {
                 textFormat: Text.PlainText
             }
             Text {
-                renderType: Text.CurveRendering
+                renderType: Theme.textRenderType(QsWindow.window)
                 visible: !!root.current
                 anchors.left: parent.left; anchors.bottom: parent.bottom; anchors.margins: 14
                 text: !root.current ? "" : root.current.kind === "image" ? Models.clipboardKindLabel(root.current, Lang.s)
@@ -174,7 +175,7 @@ ColumnLayout {
         Layout.leftMargin: 10; Layout.rightMargin: 10
         spacing: 6
         Text {
-            renderType: Text.CurveRendering
+            renderType: Theme.textRenderType(QsWindow.window)
             Layout.fillWidth: true
             text: root.clipboard.errorMessage.length > 0 ? root.clipboard.errorMessage : root.clipboard.paused ? Lang.s.clipboardPausedNote : ""
             color: root.clipboard.errorMessage.length > 0 ? Theme.danger : Theme.text2

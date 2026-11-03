@@ -31,7 +31,7 @@ ColumnLayout {
         border.width: 1; border.color: Theme.moduleBorder
     }
     component Caption: Text {
-        renderType: Text.CurveRendering
+        renderType: Theme.textRenderType(QsWindow.window)
         color: Theme.text
         font.family: Theme.sans; font.pixelSize: 12; font.weight: Font.DemiBold
     }
@@ -165,7 +165,7 @@ ColumnLayout {
                 Layout.fillWidth: true
                 Caption { text: Lang.s.quickSound }
                 Text {
-                    renderType: Text.CurveRendering
+                    renderType: Theme.textRenderType(QsWindow.window)
                     Layout.fillWidth: true
                     horizontalAlignment: Text.AlignRight
                     text: root.audio.available ? (root.audio.sink.description || root.audio.sink.nickname || root.audio.sink.name) : ""
@@ -236,7 +236,7 @@ ColumnLayout {
                 Layout.fillWidth: true; Layout.preferredWidth: 1
                 spacing: 5
                 Text {
-                    renderType: Text.CurveRendering
+                    renderType: Theme.textRenderType(QsWindow.window)
                     textFormat: Text.StyledText
                     text: parent.label + "  <b>" + parent.value + "</b>"
                     color: Theme.text2

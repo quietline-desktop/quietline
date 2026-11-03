@@ -1,4 +1,5 @@
 import QtQuick
+import Quickshell
 import ".."
 
 // Значок Material Symbols Rounded по имени лигатуры (`wifi`, `bluetooth`, `close`…):
@@ -10,7 +11,7 @@ Text {
     property int weight: 400
     property real size: Theme.iconSize
     text: name
-    renderType: Text.CurveRendering
+    renderType: Theme.textRenderType(QsWindow.window)
     color: Theme.text
     font.family: Theme.symbols
     font.pixelSize: size

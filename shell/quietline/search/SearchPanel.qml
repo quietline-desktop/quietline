@@ -101,7 +101,7 @@ ColumnLayout {
             color: Theme.fill2
             Text {
                 id: crumbText
-                renderType: Text.CurveRendering
+                renderType: Theme.textRenderType(QsWindow.window)
                 anchors.centerIn: parent
                 text: {
                     var row = Models.searchGroups(Lang.s).find(entry => entry.id === root.group);
@@ -116,7 +116,7 @@ ColumnLayout {
             Layout.fillWidth: true
             placeholderText: Lang.s.searchPlaceholder
             font.family: Theme.sans; font.pixelSize: 21; font.weight: Font.Normal
-            renderType: Text.CurveRendering
+            renderType: Theme.textRenderType(QsWindow.window)
             color: Theme.text; placeholderTextColor: Theme.text3
             selectionColor: Theme.accent; selectedTextColor: Theme.accentForeground
             selectByMouse: true
@@ -149,7 +149,7 @@ ColumnLayout {
             }
         }
         Text {
-            renderType: Text.CurveRendering
+            renderType: Theme.textRenderType(QsWindow.window)
             text: root.searching ? Lang.s.searchOpenHint : root.group.length > 0 ? Lang.s.searchBackHint : Lang.s.searchGroupHint
             color: Theme.text3
             font.family: Theme.sans; font.pixelSize: Theme.smallFontSize
@@ -194,7 +194,7 @@ ColumnLayout {
             Behavior on offsetY { enabled: !root.reducedMotion; NumberAnimation { duration: Theme.motionDuration; easing.type: Easing.OutCubic } }
         }
         Text {
-            renderType: Text.CurveRendering
+            renderType: Theme.textRenderType(QsWindow.window)
             visible: root.showMessage
             anchors.horizontalCenter: parent.horizontalCenter
             y: 14

@@ -47,7 +47,7 @@ PopupWindow {
         color: Theme.tooltipSurface
         border.width: 1; border.color: Theme.border
         Text {
-            renderType: Text.CurveRendering
+            renderType: Theme.textRenderType(QsWindow.window)
             id: label
             x: 10; y: 5
             width: Math.min(implicitWidth, 320)

@@ -1,4 +1,5 @@
 import QtQuick
+import Quickshell
 import QtQuick.Controls
 import QtQuick.Layouts
 import ".."
@@ -117,7 +118,7 @@ ColumnLayout {
     }
 
     Text {
-        renderType: Text.CurveRendering
+        renderType: Theme.textRenderType(QsWindow.window)
         visible: text.length > 0
         Layout.fillWidth: true
         Layout.leftMargin: 4

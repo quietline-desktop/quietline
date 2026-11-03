@@ -1,4 +1,5 @@
 import QtQuick
+import Quickshell
 import QtQuick.Controls
 import ".."
 
@@ -13,7 +14,7 @@ TextField {
     selectionColor: Theme.accent
     selectedTextColor: Theme.accentForeground
     selectByMouse: true
-    renderType: Text.CurveRendering
+    renderType: Theme.textRenderType(QsWindow.window)
     implicitHeight: 30
     leftPadding: 10; rightPadding: 10
     Accessible.name: label

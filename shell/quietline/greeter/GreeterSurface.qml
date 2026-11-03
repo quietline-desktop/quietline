@@ -70,7 +70,7 @@ PanelWindow {
                 anchors.centerIn: parent
                 spacing: 2
                 Text {
-                    renderType: Text.CurveRendering
+                    renderType: Theme.textRenderType(QsWindow.window)
                     text: root.context.user ? root.context.user.display : Lang.s.greeterNoUsers
                     color: "#ffffff"
                     font.family: Theme.sans; font.pixelSize: 14; font.weight: Font.DemiBold
@@ -113,7 +113,7 @@ PanelWindow {
             }
         }
         Text {
-            renderType: Text.CurveRendering
+            renderType: Theme.textRenderType(QsWindow.window)
             Layout.alignment: Qt.AlignHCenter
             Layout.preferredHeight: 16
             text: keyboardStatus.capsLocked ? Lang.s.greeterCapsLock : ""
@@ -132,7 +132,7 @@ PanelWindow {
                 anchors.centerIn: parent
                 spacing: 4
                 Text {
-                    renderType: Text.CurveRendering
+                    renderType: Theme.textRenderType(QsWindow.window)
                     text: root.context.session ? root.context.session.name : ""
                     color: Qt.rgba(1, 1, 1, 0.78)
                     font.family: Theme.sans; font.pixelSize: Theme.smallFontSize; font.weight: Font.Medium
@@ -155,7 +155,7 @@ PanelWindow {
             Accessible.name: Lang.s.greeterChooseSession
         }
         Text {
-            renderType: Text.CurveRendering
+            renderType: Theme.textRenderType(QsWindow.window)
             Layout.fillWidth: true
             Layout.minimumHeight: 16
             text: root.context.message
@@ -178,7 +178,7 @@ PanelWindow {
             onClicked: root.context.textLogin()
         }
         Text {
-            renderType: Text.CurveRendering
+            renderType: Theme.textRenderType(QsWindow.window)
             Layout.alignment: Qt.AlignHCenter
             text: "Ctrl+Alt+Backspace"
             color: Qt.rgba(1, 1, 1, 0.55)

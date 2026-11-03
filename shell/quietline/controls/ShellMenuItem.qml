@@ -1,4 +1,5 @@
 import QtQuick
+import Quickshell
 import QtQuick.Controls
 import ".."
 
@@ -24,7 +25,7 @@ MenuItem {
             color: root.lit ? Theme.accentForeground : Theme.text2
         }
         Text {
-            renderType: Text.CurveRendering
+            renderType: Theme.textRenderType(QsWindow.window)
             anchors.verticalCenter: parent.verticalCenter
             width: parent.width - (root.symbol.length > 0 ? 26 : 0) - shortcutLabel.implicitWidth - 10
             text: root.text
@@ -34,7 +35,7 @@ MenuItem {
             elide: Text.ElideRight
         }
         Text {
-            renderType: Text.CurveRendering
+            renderType: Theme.textRenderType(QsWindow.window)
             id: shortcutLabel
             anchors.verticalCenter: parent.verticalCenter
             text: root.shortcut

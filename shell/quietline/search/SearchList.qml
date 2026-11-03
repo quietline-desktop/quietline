@@ -103,7 +103,7 @@ ListView {
         width: list.width - list.leftMargin - list.rightMargin - 6
         height: row.header ? 26 : large ? 48 : twoLines ? 44 : 40
         Text {
-            renderType: Text.CurveRendering
+            renderType: Theme.textRenderType(QsWindow.window)
             visible: entry.row.header
             x: 10; anchors.bottom: parent.bottom; anchors.bottomMargin: 4
             text: entry.row.header ? entry.row.title.toUpperCase() : ""
@@ -151,7 +151,7 @@ ListView {
             Column {
                 Layout.fillWidth: true
                 Text {
-                    renderType: Text.CurveRendering
+                    renderType: Theme.textRenderType(QsWindow.window)
                     width: parent.width
                     text: entry.item ? entry.item.title : ""
                     color: entry.chosen ? Theme.accentForeground : Theme.text
@@ -163,7 +163,7 @@ ListView {
                     elide: Text.ElideRight; textFormat: Text.PlainText
                 }
                 Text {
-                    renderType: Text.CurveRendering
+                    renderType: Theme.textRenderType(QsWindow.window)
                     visible: entry.twoLines
                     width: parent.width
                     text: entry.item ? entry.item.subtitle : ""
@@ -175,7 +175,7 @@ ListView {
                 }
             }
             Text {
-                renderType: Text.CurveRendering
+                renderType: Theme.textRenderType(QsWindow.window)
                 visible: entry.large
                 text: entry.item ? entry.item.subtitle : ""
                 color: entry.chosen ? Theme.accentForeground2 : Theme.text3

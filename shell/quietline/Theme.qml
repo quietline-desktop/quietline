@@ -1,5 +1,6 @@
 pragma Singleton
 import QtQuick
+import "logic/Models.js" as Models
 
 // Единственный источник цветов, шрифтов, размеров и длительностей оболочки: вариант B
 // (docs/design/quiet-line-b.html, светлая тема — quiet-line-b-light.html). Цвета зависят от темы
@@ -109,4 +110,9 @@ QtObject {
     readonly property var emphasizedCurve: [0.2, 0.9, 0.3, 1, 1, 1]
     readonly property real hoverLift: 4
     readonly property real hoverScale: 1.06
+    // Тип отрисовки текста для окна (`QsWindow.window` элемента): при целом масштабе — нативный с хинтингом,
+    // при дробном или без окна — кривыми.
+    function textRenderType(window) {
+        return Models.integerScale(window ? window.devicePixelRatio : 0) ? Text.NativeRendering : Text.CurveRendering;
+    }
 }

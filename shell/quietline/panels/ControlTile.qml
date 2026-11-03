@@ -50,7 +50,7 @@ Rectangle {
         anchors.verticalCenter: parent.verticalCenter
         spacing: 1
         Text {
-            renderType: Text.CurveRendering
+            renderType: Theme.textRenderType(QsWindow.window)
             width: parent.width
             text: root.title
             color: Theme.text
@@ -58,7 +58,7 @@ Rectangle {
             elide: Text.ElideRight
         }
         Text {
-            renderType: Text.CurveRendering
+            renderType: Theme.textRenderType(QsWindow.window)
             visible: !root.small && root.subtitle.length > 0
             width: parent.width
             text: root.subtitle

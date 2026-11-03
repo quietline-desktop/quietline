@@ -1,4 +1,5 @@
 import QtQuick
+import Quickshell
 import QtQuick.Layouts
 import ".."
 import "../controls"
@@ -29,14 +30,14 @@ ColumnLayout {
         Icon { anchors.centerIn: parent; name: root.symbol; size: 30; color: Theme.text }
     }
     Text {
-        renderType: Text.CurveRendering
+        renderType: Theme.textRenderType(QsWindow.window)
         Layout.fillWidth: true
         text: Models.sessionQuestion(root.action, Lang.s)
         color: Theme.text; font.family: Theme.sans; font.pixelSize: Theme.titleFontSize; font.weight: Font.Bold
         horizontalAlignment: Text.AlignHCenter; wrapMode: Text.Wrap
     }
     Text {
-        renderType: Text.CurveRendering
+        renderType: Theme.textRenderType(QsWindow.window)
         Layout.fillWidth: true
         Layout.topMargin: 6
         Layout.bottomMargin: 16

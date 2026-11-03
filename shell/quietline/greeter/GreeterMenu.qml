@@ -1,4 +1,5 @@
 import QtQuick
+import Quickshell
 import QtQuick.Layouts
 import ".."
 import "../controls"
@@ -61,7 +62,7 @@ Rectangle {
                         }
                         Text {
                             anchors.centerIn: parent
-                            renderType: Text.CurveRendering
+                            renderType: Theme.textRenderType(QsWindow.window)
                             text: String(modelData.label).charAt(0).toUpperCase()
                             color: "#ffffff"
                             font.family: Theme.sans; font.pixelSize: 10; font.weight: Font.Bold
@@ -69,7 +70,7 @@ Rectangle {
                     }
                     Text {
                         Layout.fillWidth: true
-                        renderType: Text.CurveRendering
+                        renderType: Theme.textRenderType(QsWindow.window)
                         text: modelData.label
                         elide: Text.ElideRight
                         color: index === root.highlighted ? Theme.accentForeground : "#f2f2f5"

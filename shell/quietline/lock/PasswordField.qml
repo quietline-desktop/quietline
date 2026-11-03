@@ -1,4 +1,5 @@
 import QtQuick
+import Quickshell
 import QtQuick.Controls
 import ".."
 import "../controls"
@@ -15,7 +16,7 @@ TextField {
     echoMode: echo ? TextInput.Normal : TextInput.Password
     enabled: !busy
     focus: true
-    renderType: Text.CurveRendering
+    renderType: Theme.textRenderType(QsWindow.window)
     font.family: Theme.sans; font.pixelSize: Theme.fontSize
     color: "#ffffff"; placeholderTextColor: Qt.rgba(1, 1, 1, 0.55)
     selectionColor: Theme.accent

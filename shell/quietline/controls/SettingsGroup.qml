@@ -1,4 +1,5 @@
 import QtQuick
+import Quickshell
 import QtQuick.Layouts
 import ".."
 
@@ -12,7 +13,7 @@ ColumnLayout {
     Layout.fillWidth: true
     Layout.maximumWidth: 640
     Text {
-        renderType: Text.CurveRendering
+        renderType: Theme.textRenderType(QsWindow.window)
         visible: root.title.length > 0
         Layout.leftMargin: 4
         text: root.title

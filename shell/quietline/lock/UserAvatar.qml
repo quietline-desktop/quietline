@@ -1,4 +1,5 @@
 import QtQuick
+import Quickshell
 import ".."
 
 // Кружок с первой буквой имени пользователя на градиенте.
@@ -12,7 +13,7 @@ Rectangle {
         GradientStop { position: 1; color: "#b06aff" }
     }
     Text {
-        renderType: Text.CurveRendering
+        renderType: Theme.textRenderType(QsWindow.window)
         anchors.centerIn: parent
         text: parent.name.charAt(0).toUpperCase()
         color: "#ffffff"

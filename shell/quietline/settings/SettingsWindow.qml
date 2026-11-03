@@ -136,19 +136,19 @@ Scope {
     }
 
     component PageTitle: Text {
-        renderType: Text.CurveRendering
+        renderType: Theme.textRenderType(QsWindow.window)
         Layout.bottomMargin: 4
         color: Theme.text; font.family: Theme.sans; font.pixelSize: Theme.headlineFontSize; font.weight: Font.Bold
     }
     component Note: Text {
-        renderType: Text.CurveRendering
+        renderType: Theme.textRenderType(QsWindow.window)
         Layout.fillWidth: true; Layout.maximumWidth: 640
         Layout.leftMargin: 4
         color: Theme.text2; font.family: Theme.sans; font.pixelSize: Theme.smallFontSize
         wrapMode: Text.Wrap
     }
     component Value: Text {
-        renderType: Text.CurveRendering
+        renderType: Theme.textRenderType(QsWindow.window)
         width: Math.min(implicitWidth, parent && parent.maxChildWidth !== undefined ? parent.maxChildWidth : 300)
         color: Theme.text2; font.family: Theme.sans; font.pixelSize: Theme.fontSize
         horizontalAlignment: Text.AlignRight
@@ -203,7 +203,7 @@ Scope {
                                 TextInput {
                                     id: searchField
                                     Layout.fillWidth: true
-                                    renderType: Text.CurveRendering
+                                    renderType: Theme.textRenderType(QsWindow.window)
                                     color: Theme.text
                                     selectionColor: Theme.accent
                                     font.family: Theme.sans; font.pixelSize: Theme.smallFontSize
@@ -213,7 +213,7 @@ Scope {
                                     Keys.onDownPressed: navigation.forceActiveFocus()
                                     Accessible.name: Lang.s.settingsSearch
                                     Text {
-                                        renderType: Text.CurveRendering
+                                        renderType: Theme.textRenderType(QsWindow.window)
                                         visible: !parent.text
                                         anchors.verticalCenter: parent.verticalCenter
                                         text: Lang.s.settingsSearch
@@ -259,7 +259,7 @@ Scope {
                                             Icon { anchors.centerIn: parent; name: navItem.modelData.symbol; filled: true; size: 15; color: Theme.accentForeground }
                                         }
                                         Text {
-                                            renderType: Text.CurveRendering
+                                            renderType: Theme.textRenderType(QsWindow.window)
                                             Layout.fillWidth: true
                                             text: Lang.s[navItem.modelData.labelKey]
                                             color: navItem.current ? Theme.accentForeground : Theme.text
@@ -421,7 +421,7 @@ Scope {
                                                 }
                                             }
                                             Text {
-                                                renderType: Text.CurveRendering
+                                                renderType: Theme.textRenderType(QsWindow.window)
                                                 anchors.horizontalCenter: parent.horizontalCenter
                                                 text: Lang.s[themeCard.modelData.labelKey]
                                                 color: Theme.text
@@ -592,7 +592,7 @@ Scope {
                                             border.width: 1; border.color: Theme.hairline
                                             Text {
                                                 id: keysText
-                                                renderType: Text.CurveRendering
+                                                renderType: Theme.textRenderType(QsWindow.window)
                                                 anchors.centerIn: parent
                                                 text: modelData.keys
                                                 color: Theme.text

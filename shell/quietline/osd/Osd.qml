@@ -124,7 +124,7 @@ PanelWindow {
                 }
             }
             Text {
-                renderType: Text.CurveRendering
+                renderType: Theme.textRenderType(QsWindow.window)
                 Layout.fillWidth: root.view.fill < 0
                 horizontalAlignment: root.view.fill < 0 ? Text.AlignLeft : Text.AlignRight
                 text: root.view.text

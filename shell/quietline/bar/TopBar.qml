@@ -118,7 +118,7 @@ PanelWindow {
                         color: Theme.text2
                     }
                     Text {
-                        renderType: Text.CurveRendering
+                        renderType: Theme.textRenderType(QsWindow.window)
                         anchors.verticalCenter: parent.verticalCenter
                         text: root.tiny ? Lang.time(clock.date) : Lang.barClock(clock.date)
                         color: Theme.text
@@ -325,7 +325,7 @@ PanelWindow {
                                 border.width: 1.5; border.color: Theme.text
                                 // Заглавные Inter стоят выше середины строки: подпись опущена до центра рамки.
                                 Text {
-                                    renderType: Text.CurveRendering
+                                    renderType: Theme.textRenderType(QsWindow.window)
                                     id: layoutText
                                     anchors.centerIn: parent
                                     anchors.verticalCenterOffset: 0.75
@@ -382,7 +382,7 @@ PanelWindow {
                                 anchors.centerIn: parent
                                 spacing: 1
                                 Text {
-                                    renderType: Text.CurveRendering
+                                    renderType: Theme.textRenderType(QsWindow.window)
                                     visible: Appearance.batteryPercent === "beside"
                                     anchors.verticalCenter: parent.verticalCenter
                                     rightPadding: 4
@@ -411,7 +411,7 @@ PanelWindow {
                                     }
                                     Text {
                                         id: insidePercent
-                                        renderType: Text.CurveRendering
+                                        renderType: Theme.textRenderType(QsWindow.window)
                                         visible: batteryCell.inside
                                         anchors.centerIn: parent
                                         anchors.verticalCenterOffset: 0.5
@@ -426,7 +426,7 @@ PanelWindow {
                                         width: batteryFill.width; height: parent.height
                                         clip: true
                                         Text {
-                                            renderType: Text.CurveRendering
+                                            renderType: Theme.textRenderType(QsWindow.window)
                                             x: insidePercent.x - parent.x; y: insidePercent.y
                                             text: insidePercent.text
                                             color: batteryCell.fillColor === Theme.text ? Theme.textInverse : Theme.accentForeground
@@ -564,7 +564,7 @@ PanelWindow {
                     Layout.fillWidth: true
                     service: root.services.notifications
                 }
-                Text { renderType: Text.CurveRendering; visible: popout.showingNetwork; text: Lang.s.settingsNetwork; color: Theme.text; font.family: Theme.sans; font.pixelSize: Theme.titleFontSize; font.weight: Font.Bold }
+                Text { renderType: Theme.textRenderType(QsWindow.window); visible: popout.showingNetwork; text: Lang.s.settingsNetwork; color: Theme.text; font.family: Theme.sans; font.pixelSize: Theme.titleFontSize; font.weight: Font.Bold }
                 Loader {
                     id: networkLoader
                     active: popout.showingNetwork && popout.opened
@@ -572,14 +572,14 @@ PanelWindow {
                     Layout.fillWidth: true
                     sourceComponent: Component { NetworkControls { network: root.network; compact: true } }
                 }
-                Text { renderType: Text.CurveRendering; visible: popout.showingBluetooth; text: "Bluetooth"; color: Theme.text; font.family: Theme.sans; font.pixelSize: Theme.titleFontSize; font.weight: Font.Bold }
+                Text { renderType: Theme.textRenderType(QsWindow.window); visible: popout.showingBluetooth; text: "Bluetooth"; color: Theme.text; font.family: Theme.sans; font.pixelSize: Theme.titleFontSize; font.weight: Font.Bold }
                 Loader {
                     active: popout.showingBluetooth && popout.opened
                     visible: active
                     Layout.fillWidth: true
                     sourceComponent: Component { BluetoothControls { bluetooth: root.services.bluetooth } }
                 }
-                Text { renderType: Text.CurveRendering; visible: popout.showingSound; text: Lang.s.quickSound; color: Theme.text; font.family: Theme.sans; font.pixelSize: Theme.titleFontSize; font.weight: Font.Bold }
+                Text { renderType: Theme.textRenderType(QsWindow.window); visible: popout.showingSound; text: Lang.s.quickSound; color: Theme.text; font.family: Theme.sans; font.pixelSize: Theme.titleFontSize; font.weight: Font.Bold }
                 Loader {
                     active: popout.showingSound && popout.opened
                     visible: active
@@ -604,7 +604,7 @@ PanelWindow {
                     onCloseRequested: popout.close()
                 }
                 // Трей, скрытый с узкой панели, остаётся доступным здесь.
-                Text { renderType: Text.CurveRendering; visible: popout.showingQuick && root.compact && SystemTray.items.values.length > 0; text: Lang.s.barBackgroundApps; color: Theme.text2; font.family: Theme.sans; font.pixelSize: Theme.smallFontSize }
+                Text { renderType: Theme.textRenderType(QsWindow.window); visible: popout.showingQuick && root.compact && SystemTray.items.values.length > 0; text: Lang.s.barBackgroundApps; color: Theme.text2; font.family: Theme.sans; font.pixelSize: Theme.smallFontSize }
                 Repeater {
                     model: popout.showingQuick && root.compact ? SystemTray.items : null
                     delegate: ShellButton { required property var modelData; Layout.fillWidth: true; text: modelData.title || modelData.id; onClicked: { modelData.onlyMenu ? modelData.display(root, root.width - 300, 70) : modelData.activate(); } }
@@ -652,7 +652,7 @@ PanelWindow {
             border.color: parent.visualFocus ? Theme.accent : Theme.border
         }
         contentItem: Text {
-            renderType: Text.CurveRendering
+            renderType: Theme.textRenderType(QsWindow.window)
             text: root.message; color: root.errorText ? Theme.danger : Theme.text; font.family: Theme.sans
             font.pixelSize: Theme.smallFontSize; elide: Text.ElideRight; verticalAlignment: Text.AlignVCenter
             leftPadding: 10; rightPadding: 10

@@ -1,4 +1,5 @@
 import QtQuick
+import Quickshell
 import QtQuick.Layouts
 import ".."
 import "../controls"
@@ -38,7 +39,7 @@ ColumnLayout {
             onMoved: line.moved(value)
         }
         Text {
-            renderType: Text.CurveRendering
+            renderType: Theme.textRenderType(QsWindow.window)
             Layout.preferredWidth: 40
             horizontalAlignment: Text.AlignRight
             text: Math.round(line.volume * 100) + "%"

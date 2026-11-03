@@ -23,14 +23,14 @@ ColumnLayout {
         Icon { anchors.centerIn: parent; name: "dangerous"; size: 30; color: Theme.danger }
     }
     Text {
-        renderType: Text.CurveRendering
+        renderType: Theme.textRenderType(QsWindow.window)
         Layout.fillWidth: true
         text: Lang.s.killTitle
         color: Theme.text; font.family: Theme.sans; font.pixelSize: Theme.titleFontSize; font.weight: Font.Bold
         horizontalAlignment: Text.AlignHCenter; wrapMode: Text.Wrap
     }
     Text {
-        renderType: Text.CurveRendering
+        renderType: Theme.textRenderType(QsWindow.window)
         Layout.fillWidth: true
         Layout.topMargin: 6
         Layout.bottomMargin: 16

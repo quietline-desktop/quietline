@@ -698,3 +698,8 @@ test('search list height follows its rows',()=>{
  assert.equal(M.searchListHeight([{item:{kind:'group'}},{item:{kind:'file'}},{item:{kind:'constructor'}}],420),14+44+44+40);
  assert.equal(M.searchListHeight(Array.from({length:30},()=>({item:{kind:'app'}})),420),420);
 });
+
+test('integerScale: целый масштаб окна даёт нативную отрисовку текста, дробный и неизвестный — нет',()=>{
+ for(const ratio of [1,2,3,1.004]) assert.equal(M.integerScale(ratio),true,String(ratio));
+ for(const ratio of [1.25,1.5,1.75,0,undefined,null,NaN]) assert.equal(M.integerScale(ratio),false,String(ratio));
+});

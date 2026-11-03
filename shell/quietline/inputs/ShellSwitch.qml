@@ -1,4 +1,5 @@
 import QtQuick
+import Quickshell
 import QtQuick.Controls
 import ".."
 
@@ -28,7 +29,7 @@ Switch {
         }
     }
     contentItem: Text {
-        renderType: Text.CurveRendering
+        renderType: Theme.textRenderType(QsWindow.window)
         text: root.text
         rightPadding: root.indicator.width + 8
         color: root.enabled ? Theme.text : Theme.text3

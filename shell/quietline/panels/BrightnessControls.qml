@@ -1,4 +1,5 @@
 import QtQuick
+import Quickshell
 import QtQuick.Layouts
 import ".."
 import "../inputs"
@@ -9,7 +10,7 @@ RowLayout {
     required property var brightness
     spacing: 8
     Text {
-        renderType: Text.CurveRendering
+        renderType: Theme.textRenderType(QsWindow.window)
         visible: !root.brightness.supported
         Layout.fillWidth: true
         text: Lang.s.brightnessUnavailable
@@ -25,7 +26,7 @@ RowLayout {
         onMoved: root.brightness.set(value)
     }
     Text {
-        renderType: Text.CurveRendering
+        renderType: Theme.textRenderType(QsWindow.window)
         visible: root.brightness.supported
         Layout.preferredWidth: 40
         horizontalAlignment: Text.AlignRight

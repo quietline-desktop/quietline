@@ -68,7 +68,7 @@ Button {
                 color: root.contentColor
             }
             Text {
-                renderType: Text.CurveRendering
+                renderType: Theme.textRenderType(QsWindow.window)
                 id: label
                 visible: text.length > 0
                 anchors.verticalCenter: parent.verticalCenter

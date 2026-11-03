@@ -1038,3 +1038,10 @@ function micUsers(streams) {
     });
     return names;
 }
+
+// Целый ли масштаб окна (1, 2, 3): при нём текст рисуется нативно с хинтингом fontconfig, при дробном
+// или неизвестном (0, отсутствует) — кривыми, чтобы буквы стояли на одной базовой линии.
+function integerScale(ratio) {
+    var value = Number(ratio);
+    return value >= 1 && Math.abs(value - Math.round(value)) < 0.01;
+}

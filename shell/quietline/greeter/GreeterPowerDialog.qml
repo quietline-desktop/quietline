@@ -1,4 +1,5 @@
 import QtQuick
+import Quickshell
 import QtQuick.Layouts
 import ".."
 import "../controls"
@@ -21,7 +22,7 @@ FocusScope {
             anchors { fill: parent; margins: 20 }
             spacing: 18
             Text {
-                renderType: Text.CurveRendering
+                renderType: Theme.textRenderType(QsWindow.window)
                 Layout.fillWidth: true
                 text: root.context.powerAction === "reboot" ? Lang.s.sessionRebootQuestion : Lang.s.sessionPoweroffQuestion
                 color: Theme.text; font.family: Theme.sans; font.pixelSize: Theme.titleFontSize

@@ -42,7 +42,7 @@ RowLayout {
             Layout.fillWidth: true
             Layout.leftMargin: 4
             Text {
-                renderType: Text.CurveRendering
+                renderType: Theme.textRenderType(QsWindow.window)
                 Layout.fillWidth: true
                 text: Lang.s.notificationsTitle
                 color: Theme.text; font.family: Theme.sans; font.pixelSize: Theme.titleFontSize; font.weight: Font.Bold
@@ -61,7 +61,7 @@ RowLayout {
             }
         }
         Text {
-            renderType: Text.CurveRendering
+            renderType: Theme.textRenderType(QsWindow.window)
             visible: root.service.history.length === 0
             Layout.alignment: Qt.AlignHCenter
             Layout.topMargin: 6; Layout.bottomMargin: 6

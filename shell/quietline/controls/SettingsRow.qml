@@ -1,4 +1,5 @@
 import QtQuick
+import Quickshell
 import QtQuick.Layouts
 import ".."
 
@@ -76,7 +77,7 @@ Item {
                 visible: root.label.length > 0 || root.note.length > 0
                 spacing: 2
                 Text {
-                    renderType: Text.CurveRendering
+                    renderType: Theme.textRenderType(QsWindow.window)
                     Layout.fillWidth: true
                     Layout.minimumWidth: Math.min(implicitWidth, 200)
                     visible: root.label.length > 0
@@ -87,7 +88,7 @@ Item {
                     elide: Text.ElideRight
                 }
                 Text {
-                    renderType: Text.CurveRendering
+                    renderType: Theme.textRenderType(QsWindow.window)
                     Layout.fillWidth: true
                     visible: root.note.length > 0
                     text: root.note

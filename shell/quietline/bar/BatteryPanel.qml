@@ -1,4 +1,5 @@
 import QtQuick
+import Quickshell
 import QtQuick.Layouts
 import Quickshell.Services.UPower
 import ".."
@@ -20,14 +21,14 @@ ColumnLayout {
         Layout.fillWidth: true
         Layout.leftMargin: 4; Layout.rightMargin: 4
         Text {
-            renderType: Text.CurveRendering
+            renderType: Theme.textRenderType(QsWindow.window)
             Layout.fillWidth: true
             text: Lang.s.batteryTitle
             color: Theme.text
             font.family: Theme.sans; font.pixelSize: Theme.titleFontSize; font.weight: Font.Bold
         }
         Text {
-            renderType: Text.CurveRendering
+            renderType: Theme.textRenderType(QsWindow.window)
             text: root.power.percent + "%"
             color: Theme.text
             font.family: Theme.sans; font.pixelSize: Theme.titleFontSize; font.weight: Font.DemiBold
@@ -35,7 +36,7 @@ ColumnLayout {
         }
     }
     Text {
-        renderType: Text.CurveRendering
+        renderType: Theme.textRenderType(QsWindow.window)
         Layout.fillWidth: true
         Layout.leftMargin: 4; Layout.rightMargin: 4
         Layout.topMargin: -6
@@ -49,7 +50,7 @@ ColumnLayout {
         elide: Text.ElideRight
     }
     Text {
-        renderType: Text.CurveRendering
+        renderType: Theme.textRenderType(QsWindow.window)
         Layout.leftMargin: 4
         Layout.topMargin: 4
         text: Lang.s.powerMode
@@ -79,7 +80,7 @@ ColumnLayout {
         }
     }
     Text {
-        renderType: Text.CurveRendering
+        renderType: Theme.textRenderType(QsWindow.window)
         visible: !root.power.profilesAvailable
         Layout.fillWidth: true
         Layout.leftMargin: 4

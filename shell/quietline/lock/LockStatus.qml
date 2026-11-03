@@ -1,4 +1,5 @@
 import QtQuick
+import Quickshell
 import QtQuick.Layouts
 import Quickshell.Io
 import Quickshell.Hyprland
@@ -47,7 +48,7 @@ RowLayout {
         border.width: 1.5; border.color: "#ffffff"
         Text {
             id: layoutText
-            renderType: Text.CurveRendering
+            renderType: Theme.textRenderType(QsWindow.window)
             anchors.centerIn: parent
             anchors.verticalCenterOffset: 0.75
             text: root.layout

@@ -60,20 +60,20 @@ Rectangle {
             RowLayout {
                 Layout.fillWidth: true
                 Text {
-                    renderType: Text.CurveRendering
+                    renderType: Theme.textRenderType(QsWindow.window)
                     Layout.fillWidth: true
                     text: root.notification ? (root.notification.appName || Lang.s.notificationDefaultApp) : ""
                     color: Theme.text2; font.family: Theme.sans; font.pixelSize: Theme.smallFontSize
                     elide: Text.ElideRight; textFormat: Text.PlainText
                 }
                 Text {
-                    renderType: Text.CurveRendering
+                    renderType: Theme.textRenderType(QsWindow.window)
                     text: root.timeText
                     color: Theme.text2; font.family: Theme.sans; font.pixelSize: Theme.smallFontSize
                 }
             }
             Text {
-                renderType: Text.CurveRendering
+                renderType: Theme.textRenderType(QsWindow.window)
                 Layout.fillWidth: true
                 visible: text.length > 0
                 text: root.notification ? root.notification.summary : ""
@@ -81,7 +81,7 @@ Rectangle {
                 wrapMode: Text.Wrap; maximumLineCount: 2; elide: Text.ElideRight; textFormat: Text.PlainText
             }
             Text {
-                renderType: Text.CurveRendering
+                renderType: Theme.textRenderType(QsWindow.window)
                 Layout.fillWidth: true
                 visible: text.length > 0
                 text: root.notification ? root.notification.body : ""
