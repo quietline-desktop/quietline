@@ -176,7 +176,6 @@ Scope {
                                         Rectangle {
                                             implicitWidth: 22; implicitHeight: 22; radius: 6
                                             color: navItem.current ? Theme.selectedTile : navItem.modelData.color
-                                            Behavior on color { ColorAnimation { duration: Theme.fastDuration } }
                                             Icon { anchors.centerIn: parent; name: navItem.modelData.symbol; filled: true; size: 15; color: Theme.accentForeground }
                                         }
                                         Text {
