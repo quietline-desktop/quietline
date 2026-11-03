@@ -397,12 +397,11 @@ def ask_resume(stdscr, ctx, failed_step: str, reason: str = '') -> str:
 
 # --- вопрос «да / нет» в терминале ---
 
-# Буквы в обеих раскладках: д — «да»; т — клавиша N в русской раскладке. «н» (клавиша Y в русской
-# раскладке и начало «нет») ответом не считается.
-YES_KEYS = ('y', 'Y', 'д', 'Д')
-NO_KEYS = ('n', 'N', 'т', 'Т')
-YES_WORDS = ('y', 'yes', 'д', 'да')
-NO_WORDS = ('n', 'no', 'т', 'нет')
+# Буквами отвечают только `y` и `n` на любом языке установщика; кириллица ответом не считается.
+YES_KEYS = ('y', 'Y')
+NO_KEYS = ('n', 'N')
+YES_WORDS = ('y', 'yes')
+NO_WORDS = ('n', 'no')
 
 
 def answer_key(key: str, answer: bool) -> tuple[bool, bool]:
@@ -424,7 +423,7 @@ def answer_key(key: str, answer: bool) -> tuple[bool, bool]:
 
 
 def answer_text(line: str, default: bool) -> bool | None:
-    """Ответ строкой: пустая — `default`, слова «да» и «нет» обоих языков; непонятная — None."""
+    """Ответ строкой: пустая — `default`, `y`/`yes` и `n`/`no`; другая — None."""
     word = line.strip().lower()
     if not word:
         return default
@@ -486,7 +485,7 @@ def ask_yes_no(ctx, question: str, default: bool = False, stdin=None, stdout=Non
     if not (stdin.isatty() and stdout.isatty()):
         while True:
             try:
-                line = input(f'{question} ({yes} / {no}, Enter — {yes if default else no}): ')
+                line = input(f'{question} [{"Y/n" if default else "y/N"}] ')
             except EOFError:
                 return False
             answer = answer_text(line, default)

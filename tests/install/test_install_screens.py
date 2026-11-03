@@ -196,14 +196,13 @@ def test_arrows_choose_and_enter_confirms():
     assert shown == [True, False, False]
 
 
-@pytest.mark.parametrize('key, answer', [('y', True), ('Y', True), ('д', True), ('Д', True),
-                                         ('n', False), ('N', False), ('т', False), ('Т', False)])
-def test_letters_of_both_layouts_answer_at_once(key, answer):
+@pytest.mark.parametrize('key, answer', [('y', True), ('Y', True), ('n', False), ('N', False)])
+def test_y_and_n_answer_at_once(key, answer):
     assert choose_answer([key, 'enter'], default=not answer) is answer
 
 
-def test_ambiguous_and_other_keys_change_nothing():
-    for key in ('н', 'Н', 'x', 'esc', ' '):
+def test_cyrillic_and_other_keys_change_nothing():
+    for key in ('д', 'Д', 'т', 'н', 'Н', 'x', 'esc', ' '):
         assert answer_key(key, True) == (True, False)
         assert answer_key(key, False) == (False, False)
 
@@ -212,9 +211,9 @@ def test_ended_input_means_no():
     assert choose_answer([], default=True) is False
 
 
-@pytest.mark.parametrize('line, answer', [('', True), ('  ', True), ('y', True), ('Yes', True), ('д', True),
-                                          ('Да', True), ('n', False), ('no', False), ('т', False),
-                                          ('Нет', False), ('н', None), ('maybe', None)])
+@pytest.mark.parametrize('line, answer', [('', True), ('  ', True), ('y', True), ('Yes', True), ('n', False),
+                                          ('no', False), ('да', None), ('нет', None), ('н', None),
+                                          ('maybe', None)])
 def test_typed_answers(line, answer):
     assert answer_text(line, default=True) is answer
 
@@ -230,11 +229,11 @@ def test_without_a_terminal_the_answer_is_typed_and_repeated_until_clear(monkeyp
     from quietline_install.runner import Ctx
 
     ctx = Ctx(system=None, home=None, repo=None, ask=None, language='ru')
-    replies = iter(['н', 'да'])
+    replies = iter(['да', 'y'])
     prompts = []
     monkeypatch.setattr('builtins.input', lambda prompt: prompts.append(prompt) or next(replies))
     assert screens.ask_yes_no(ctx, 'Продолжить?', default=False, stdin=Pipe(), stdout=Pipe()) is True
-    assert prompts == ['Продолжить? (Да / Нет, Enter — Нет): '] * 2
+    assert prompts == ['Продолжить? [y/N] '] * 2
 
     def closed(prompt):
         raise EOFError
