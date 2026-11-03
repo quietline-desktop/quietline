@@ -92,6 +92,7 @@ def test_fish_snippets_include_locale_and_fnm_only_when_node_selected(ctx, tmp_p
     configs.fish_step(with_fnm=False).run(ctx)
     main = config(ctx, 'fish/conf.d/quietline.fish').read_text()
     assert 'micro' in main and 'starship' not in main and 'fnm' not in main
+    assert 'set -g fish_greeting\n' in main
     locale = config(ctx, 'fish/conf.d/quietline-locale.fish').read_text()
     assert locale == (REPO / 'config/fish/quietline-locale.fish').read_text()
     assert configs.fish_step(with_fnm=False).check(ctx) is True
