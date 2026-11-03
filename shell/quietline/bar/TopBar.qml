@@ -319,7 +319,7 @@ PanelWindow {
                             Rectangle {
                                 id: layoutBadge
                                 anchors.centerIn: parent
-                                width: layoutText.implicitWidth + 8; height: 16
+                                width: Math.round(layoutText.implicitWidth) + 8; height: 16
                                 radius: 4
                                 color: "transparent"
                                 border.width: 1.5; border.color: Theme.text
@@ -409,15 +409,18 @@ PanelWindow {
                                         radius: batteryCell.inside ? 2 : 1.5
                                         color: batteryCell.fillColor
                                     }
+                                    // Нативно отрисованные цифры округляются к пикселю: кегль 10 без сдвига
+                                    // ставит их по центру заливки, кривыми — кегль 9 со сдвигом на полпикселя.
                                     Text {
                                         id: insidePercent
+                                        readonly property bool hinted: renderType === Text.NativeRendering
                                         renderType: Theme.textRenderType(QsWindow.window)
                                         visible: batteryCell.inside
                                         anchors.centerIn: parent
-                                        anchors.verticalCenterOffset: 0.5
+                                        anchors.verticalCenterOffset: hinted ? 0 : 0.5
                                         text: root.power.percent
                                         color: Theme.text
-                                        font.family: Theme.sans; font.pixelSize: 9; font.weight: Font.Bold
+                                        font.family: Theme.sans; font.pixelSize: hinted ? 10 : 9; font.weight: Font.Bold
                                         font.features: { "tnum": 1 }
                                     }
                                     Item {
