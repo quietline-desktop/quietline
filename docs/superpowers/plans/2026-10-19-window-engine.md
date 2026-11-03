@@ -61,7 +61,7 @@
 
 Режимы на стороне Hyprland: глобальная раскладка всех пространств — `scrolling` (`hl.config({ general = { layout = "scrolling" } })` в `config/hyprland/quietline.lua`). Режим `windows` — все обычные окна пространства плавающие; режим `tiles` — они же возвращены в раскладку и образуют колонки. Раскладка отдельных пространств не переключается.
 
-Сокет: `$XDG_RUNTIME_DIR/quietline/engine.sock`; каталог `0700`, сокет `0600`. Один запрос — одна JSON-строка с `id`, `method`, `params`; ответ содержит тот же `id` и либо `result`, либо `error {code,message}`. Методы: `switch {number,monitor?}`, `move {number}`, `toggle {monitor?}`, `state {}`, `subscribe {}`. `monitor` применяется к кнопке панели; без него используется монитор фокуса. `subscribe` сначала выдаёт полный `state`, затем события с монотонным `revision`. Ответ `toggle` возвращает уже подтверждённое новое состояние; ошибка оставляет предыдущий режим. Число вне `1`–`10` отвергается без действий Hyprland.
+Сокет: `$XDG_RUNTIME_DIR/quietline/engine.sock`; каталог `0700`, сокет `0600`. Один запрос — одна JSON-строка с `id`, `method`, `params`; ответ содержит тот же `id` и либо `result`, либо `error {code,message}`. Методы: `switch {number,monitor?}`, `move {number}`, `toggle {monitor?}`, `maximize {address?}` (добавлен 2026-11-03, спека `2026-11-03-geometry-maximize-design.md`), `state {}`, `subscribe {}`. `monitor` применяется к кнопке панели; без него используется монитор фокуса. `subscribe` сначала выдаёт полный `state`, затем события с монотонным `revision`. Ответ `toggle` возвращает уже подтверждённое новое состояние; ошибка оставляет предыдущий режим. Число вне `1`–`10` отвергается без действий Hyprland.
 
 ## Карта команд Hyprland 0.55
 
