@@ -466,7 +466,7 @@ def _restore_system_file(ctx: Ctx, path: str, backup: str | None) -> None:
 
 
 def rollback_journal(ctx: Ctx) -> None:
-    """Откат по журналу без снимка: файлы, оболочка входа, службы, Flatpak, затем один `pacman -Rns` новых пакетов."""
+    """Откат по журналу без снимка: файлы, оболочка входа, службы, Flatpak, меню GRUB, затем один `pacman -Rns` новых пакетов."""
     failures = []
     packages = []
     for change in reversed(ctx.state.changes):
@@ -483,6 +483,9 @@ def rollback_journal(ctx: Ctx) -> None:
                 ctx.system.run(['systemctl', 'disable', change['unit']], sudo=True)
             elif kind == 'flatpak':
                 ctx.system.run(['flatpak', 'uninstall', '--user', '-y', change['id']])
+            elif kind == 'grub':
+                # Запись стоит в журнале перед копией /etc/default/grub: файл к этому моменту уже возвращён.
+                ctx.system.run(['grub-mkconfig', '-o', '/boot/grub/grub.cfg'], sudo=True, interactive=True)
             elif kind == 'package' and change['name'] not in packages:
                 packages.append(change['name'])
         except (OSError, subprocess.CalledProcessError) as exc:

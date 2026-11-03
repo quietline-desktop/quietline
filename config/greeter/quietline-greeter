@@ -1,0 +1,31 @@
+#!/bin/sh
+# Экран входа Quietline для greetd: отдельный Hyprland с конфигурацией экрана входа, в нём —
+# Quickshell с `Greeter.qml`. Если Hyprland не запустился, экран входа завершился ошибкой или
+# нажато Ctrl+Alt+Backspace, вместо него в этом же терминале открывается tuigreet: вход в
+# систему не зависит от графики и QML.
+
+state=/var/lib/quietline-greeter
+failed="${XDG_RUNTIME_DIR:-/tmp}/quietline-greeter.failed"
+ready="${XDG_RUNTIME_DIR:-/tmp}/quietline-greeter.ready"
+rm -f "$failed" "$ready"
+
+# Язык системы для текстов экрана входа.
+if [ -r /etc/locale.conf ]; then
+    set -a
+    . /etc/locale.conf
+    set +a
+fi
+
+# У пользователя greeter домашний каталог `/`: настройки, кэш и последний выбор живут в каталоге
+# экрана входа (его создаёт правило tmpfiles пакета).
+export XDG_CONFIG_HOME="$state/config" XDG_CACHE_HOME="$state/cache" XDG_STATE_HOME="$state/state"
+export XCURSOR_THEME=capitaine-cursors XCURSOR_SIZE=24
+export QUIETLINE_GREETER_FAILED="$failed"
+export QUIETLINE_GREETER_READY="$ready"
+
+start-hyprland -- --config /usr/share/quietline/greeter/hyprland.lua
+code=$?
+if [ "$code" -ne 0 ] || [ -e "$failed" ]; then
+    rm -f "$failed"
+    exec tuigreet --time --remember --remember-session --sessions /usr/share/wayland-sessions
+fi

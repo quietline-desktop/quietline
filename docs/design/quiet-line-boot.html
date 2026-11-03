@@ -1,0 +1,245 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Quietline — загрузка и вход</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400&family=Material+Symbols+Rounded:opsz,wght,FILL,GRAD@20..48,300..500,0..1,-25..0&display=block" rel="stylesheet">
+<style>
+/* Токены варианта B (DESIGN.md): экран входа и меню загрузки всегда тёмные. */
+:root {
+  --pop-bg: rgba(32, 32, 36, .80);
+  --pop-border: rgba(255, 255, 255, .11);
+  --hairline: rgba(255, 255, 255, .08);
+  --fill: rgba(255, 255, 255, .07);
+  --fill-2: rgba(255, 255, 255, .11);
+  --text: #f2f2f5;
+  --text-2: rgba(235, 235, 245, .62);
+  --text-3: rgba(235, 235, 245, .34);
+  --accent: #0a84ff;
+  --ui: "Inter", system-ui, sans-serif;
+  --mono: "JetBrains Mono", ui-monospace, monospace;
+}
+* { box-sizing: border-box; margin: 0; padding: 0; }
+html, body { background: #0b0b0e; color: var(--text); font: 400 14px/1.4 var(--ui); -webkit-font-smoothing: antialiased; }
+.ms { font-family: "Material Symbols Rounded"; font-weight: 400; font-style: normal; font-size: 18px; line-height: 1; white-space: nowrap; font-variation-settings: "FILL" 1, "wght" 400, "GRAD" -25, "opsz" 20; display: inline-block; }
+
+header.page { position: sticky; top: 0; z-index: 50; background: rgba(11, 11, 14, .92); backdrop-filter: blur(12px); border-bottom: 1px solid var(--hairline); padding: 14px 16px 0; }
+header.page h1 { font: 600 17px var(--ui); letter-spacing: -.01em; }
+header.page p { color: var(--text-2); font-size: 13px; margin-top: 2px; max-width: 900px; }
+nav.tabs { display: flex; gap: 4px; overflow-x: auto; padding: 12px 0 10px; scrollbar-width: none; }
+nav.tabs button { flex: none; font: 500 13px var(--ui); color: var(--text-2); background: none; border: 0; padding: 7px 12px; border-radius: 8px; cursor: pointer; }
+nav.tabs button:hover { background: var(--fill); color: var(--text); }
+nav.tabs button[aria-selected="true"] { background: var(--fill-2); color: var(--text); }
+main { padding: 20px 16px 48px; }
+.scene { display: none; max-width: 1280px; margin: 0 auto; }
+.scene.on { display: block; }
+.scene-note { color: var(--text-2); font-size: 13px; margin-bottom: 12px; }
+.scene-note b { color: var(--text); font-weight: 600; }
+.stage { position: relative; width: 100%; overflow: hidden; border-radius: 12px; box-shadow: 0 0 0 1px var(--hairline); }
+.screen { position: absolute; left: 0; top: 0; transform-origin: 0 0; overflow: hidden; }
+.grub-screen { width: 1920px; height: 1200px; }
+.greet-screen { width: 1536px; height: 960px; }
+
+/* Обои Quietline, размытые: те же пятна, что в макете варианта B (.wall.blurred). */
+.wall { position: absolute; inset: -6%; background:
+  radial-gradient(ellipse 60% 50% at 70% 30%, rgba(80, 120, 255, .55), transparent 60%),
+  radial-gradient(ellipse 50% 60% at 20% 80%, rgba(40, 140, 255, .45), transparent 60%),
+  radial-gradient(ellipse 40% 35% at 88% 78%, rgba(200, 80, 160, .35), transparent 60%),
+  radial-gradient(ellipse 30% 25% at 35% 25%, rgba(255, 120, 120, .18), transparent 60%),
+  linear-gradient(160deg, #141a3c 0%, #1b1f52 40%, #0e1230 100%);
+  filter: blur(28px) brightness(.9); }
+.dim { position: absolute; inset: 0; background: rgba(0, 0, 0, .18); }
+
+/* Меню GRUB: размеры — пиксели экрана 1920×1200, GRUB не знает о масштабе. */
+.grub-brand { position: absolute; left: 0; right: 0; top: 23%; text-align: center; font: 600 26px var(--ui); color: var(--text-2); letter-spacing: .01em; }
+.grub-menu { position: absolute; left: 50%; top: 30%; width: 760px; height: calc(54px * 7); transform: translateX(-50%); }
+.grub-item { height: 54px; display: flex; align-items: center; padding: 0 22px; border-radius: 12px; font: 400 23px var(--ui); color: var(--text); white-space: nowrap; }
+.grub-item.dim2 { color: rgba(255, 255, 255, .78); }
+.grub-item.sel { background: var(--accent); color: #fff; font-weight: 500; box-shadow: 0 8px 24px rgba(10, 132, 255, .35); }
+.grub-hint { position: absolute; left: 0; right: 0; top: calc(30% + 54px * 7 + 20px); text-align: center; font: 400 20px var(--ui); color: var(--text-2); }
+.grub-timeout { position: absolute; left: 0; right: 0; bottom: 9%; text-align: center; font: 500 22px var(--ui); color: var(--text); }
+.grub-term { position: absolute; inset: 0; background: rgba(14, 16, 32, .92); padding: 40px 48px; font: 400 21px/1.5 var(--mono); color: #dfe3ee; white-space: pre; }
+
+/* Экран входа: логические пиксели при масштабе 1.25 (1536×960). */
+.top-right { position: absolute; top: 10px; right: 16px; display: flex; align-items: center; gap: 14px; color: #fff; }
+.kb { font: 700 10px var(--ui); border: 1.5px solid #fff; border-radius: 4px; padding: 1px 4px; line-height: 12px; }
+.clock { position: absolute; left: 0; right: 0; top: 10%; text-align: center; }
+.clock .date { font: 600 20px var(--ui); color: rgba(255, 255, 255, .88); }
+.clock .time { font: 600 112px/1.1 var(--ui); letter-spacing: -3px; color: rgba(255, 255, 255, .92); font-variant-numeric: tabular-nums; }
+.login { position: absolute; left: 50%; bottom: 9%; width: 260px; transform: translateX(-50%); display: flex; flex-direction: column; align-items: center; gap: 10px; }
+.avatar { width: 56px; height: 56px; border-radius: 50%; background: linear-gradient(90deg, #6a8cff, #b06aff); display: grid; place-items: center; font: 700 22px var(--ui); }
+.who { display: flex; align-items: center; gap: 2px; font: 600 14px var(--ui); color: #fff; padding: 2px 6px 2px 10px; border-radius: 10px; cursor: default; }
+.who .ms { font-size: 18px; color: rgba(255, 255, 255, .7); }
+.pw { position: relative; width: 220px; height: 32px; border-radius: 16px; background: rgba(255, 255, 255, .16); border: 1px solid rgba(255, 255, 255, .35); display: flex; align-items: center; padding: 0 34px 0 14px; font: 400 13px var(--ui); color: rgba(255, 255, 255, .55); }
+.pw.typed { color: #fff; letter-spacing: 2px; }
+.pw .go { position: absolute; right: 5px; top: 4px; width: 22px; height: 22px; border-radius: 50%; background: rgba(255, 255, 255, .3); display: grid; place-items: center; }
+.pw .go .ms { font-size: 15px; color: #fff; }
+.session { display: flex; align-items: center; gap: 4px; height: 22px; padding: 0 8px 0 10px; border-radius: 11px; background: rgba(255, 255, 255, .10); font: 500 11.5px var(--ui); color: rgba(255, 255, 255, .78); }
+.session .ms { font-size: 15px; }
+.msg { font: 400 12px var(--ui); color: rgba(255, 255, 255, .75); text-align: center; min-height: 16px; }
+.msg.err { color: #ff8a80; }
+.power { position: absolute; right: 28px; bottom: 28px; display: flex; gap: 12px; }
+.power span { width: 40px; height: 40px; border-radius: 50%; background: rgba(255, 255, 255, .14); display: grid; place-items: center; color: #fff; }
+.power span .ms { font-size: 20px; }
+.power span.hover { background: rgba(255, 255, 255, .26); }
+.tip { position: absolute; right: 22px; bottom: 76px; background: rgba(32, 32, 36, .88); border: 1px solid var(--pop-border); border-radius: 8px; padding: 4px 9px; font: 400 12px var(--ui); color: var(--text); }
+/* Список поверх формы: как всплывающее меню оболочки. */
+.menu { position: absolute; width: 240px; background: var(--pop-bg); border: 1px solid var(--pop-border); border-radius: 14px; padding: 5px; box-shadow: 0 22px 56px rgba(0, 0, 0, .42); backdrop-filter: blur(34px); }
+.menu .row { height: 26px; display: flex; align-items: center; gap: 8px; padding: 0 9px; border-radius: 8px; font: 400 13px var(--ui); color: var(--text); }
+.menu .row.sel { background: var(--accent); color: #fff; }
+.menu .row .ms { font-size: 16px; width: 16px; }
+.menu .row .mini { width: 18px; height: 18px; border-radius: 50%; background: linear-gradient(90deg, #6a8cff, #b06aff); font: 700 10px var(--ui); display: grid; place-items: center; }
+.menu .row .mini.b { background: linear-gradient(90deg, #30d158, #0a84ff); }
+</style>
+</head>
+<body>
+<header class="page">
+  <h1>Quietline — меню загрузки и экран входа</h1>
+  <p>Макет к спеке <code>docs/superpowers/specs/2026-11-02-boot-and-greeter-design.md</code>. Меню GRUB нарисовано в пикселях экрана 1920×1200, экран входа — в логических пикселях при масштабе 1.25.</p>
+  <nav class="tabs" role="tablist">
+    <button role="tab" aria-selected="true" data-scene="grub">Меню загрузки</button>
+    <button role="tab" aria-selected="false" data-scene="grub-term">Консоль GRUB</button>
+    <button role="tab" aria-selected="false" data-scene="greet">Экран входа</button>
+    <button role="tab" aria-selected="false" data-scene="greet-error">Неверный пароль</button>
+    <button role="tab" aria-selected="false" data-scene="greet-users">Выбор пользователя</button>
+    <button role="tab" aria-selected="false" data-scene="greet-session">Выбор сеанса</button>
+  </nav>
+</header>
+<main>
+
+<section class="scene on" id="grub">
+  <p class="scene-note"><b>Меню загрузки.</b> Пункты прямо на обоях Quietline, выбранный — капсула акцента; под меню место на семь пунктов, лишние прокручиваются. Подменю снимков grub-btrfs и Windows — обычные пункты. Отсчёт исчезает, когда нажата любая клавиша.</p>
+  <div class="stage"><div class="screen grub-screen">
+    <div class="wall"></div><div class="dim"></div>
+    <div class="grub-brand">Quietline</div>
+    <div class="grub-menu">
+      <div class="grub-item sel">Arch Linux</div>
+      <div class="grub-item dim2">Advanced options for Arch Linux</div>
+      <div class="grub-item dim2">Arch Linux snapshots</div>
+      <div class="grub-item dim2">Windows Boot Manager (on /dev/nvme0n1p1)</div>
+      <div class="grub-item dim2">UEFI Firmware Settings</div>
+    </div>
+    <div class="grub-hint">↑ ↓ — выбор  ·  Enter — загрузить  ·  E — изменить  ·  C — консоль</div>
+    <div class="grub-timeout">Загрузка через 4 с</div>
+  </div></div>
+</section>
+
+<section class="scene" id="grub-term">
+  <p class="scene-note"><b>Консоль и правка пункта</b> (<code>c</code>, <code>e</code>) — JetBrains Mono поверх затемнённых обоев.</p>
+  <div class="stage"><div class="screen grub-screen">
+    <div class="wall"></div>
+    <div class="grub-term">GNU GRUB  version 2.16
+
+   Minimal BASH-like line editing is supported. For the first word, TAB
+   lists possible command completions. Anywhere else TAB lists possible
+   device or file completions. ESC at any time exits.
+
+grub> ls
+(proc) (hd0) (hd0,gpt8) (hd0,gpt7) (hd0,gpt6) (hd0,gpt5) (hd0,gpt1)
+grub> _</div>
+  </div></div>
+</section>
+
+<section class="scene" id="greet">
+  <p class="scene-note"><b>Экран входа.</b> Как экран блокировки, но на обоях Quietline. Последний пользователь уже выбран, поле пароля в фокусе. Капсула сеанса видна, если сеансов больше одного. Справа снизу — «Перезагрузить» и «Выключить».</p>
+  <div class="stage"><div class="screen greet-screen">
+    <div class="wall"></div><div class="dim"></div>
+    <div class="top-right"><span class="kb">EN</span><span class="ms">battery_full</span></div>
+    <div class="clock"><div class="date">Понедельник, 2 ноября</div><div class="time">14:32</div></div>
+    <div class="login">
+      <div class="avatar">K</div>
+      <div class="who">Kiryl Novik <span class="ms">expand_more</span></div>
+      <div class="pw">Пароль<span class="go"><span class="ms">arrow_forward</span></span></div>
+      <div class="session">Hyprland <span class="ms">expand_more</span></div>
+      <div class="msg"></div>
+    </div>
+    <div class="power"><span><span class="ms">restart_alt</span></span><span><span class="ms">power_settings_new</span></span></div>
+  </div></div>
+</section>
+
+<section class="scene" id="greet-error">
+  <p class="scene-note"><b>Неверный пароль.</b> Поле очищается и остаётся в фокусе, сообщение — красным под капсулой сеанса. Сообщения PAM без вопроса (например, о блокировке после попыток) показываются тут же.</p>
+  <div class="stage"><div class="screen greet-screen">
+    <div class="wall"></div><div class="dim"></div>
+    <div class="top-right"><span class="kb">EN</span><span class="ms">battery_full</span></div>
+    <div class="clock"><div class="date">Понедельник, 2 ноября</div><div class="time">14:32</div></div>
+    <div class="login">
+      <div class="avatar">K</div>
+      <div class="who">Kiryl Novik <span class="ms">expand_more</span></div>
+      <div class="pw">Пароль<span class="go"><span class="ms">arrow_forward</span></span></div>
+      <div class="session">Hyprland <span class="ms">expand_more</span></div>
+      <div class="msg err">Неверный пароль</div>
+    </div>
+    <div class="power"><span><span class="ms">restart_alt</span></span><span class="hover"><span class="ms">power_settings_new</span></span></div>
+    <div class="tip">Выключить</div>
+  </div></div>
+</section>
+
+<section class="scene" id="greet-users">
+  <p class="scene-note"><b>Выбор пользователя</b> — щелчок по имени. Список появляется, только если пользователей больше одного; без этого стрелки у имени нет.</p>
+  <div class="stage"><div class="screen greet-screen">
+    <div class="wall"></div><div class="dim"></div>
+    <div class="top-right"><span class="kb">EN</span><span class="ms">battery_full</span></div>
+    <div class="clock"><div class="date">Понедельник, 2 ноября</div><div class="time">14:32</div></div>
+    <div class="login">
+      <div class="avatar">K</div>
+      <div class="who">Kiryl Novik <span class="ms">expand_less</span></div>
+      <div class="pw">Пароль<span class="go"><span class="ms">arrow_forward</span></span></div>
+      <div class="session">Hyprland <span class="ms">expand_more</span></div>
+      <div class="msg"></div>
+    </div>
+    <div class="menu" style="left:648px; top:746px; transform: translateY(-100%)">
+      <div class="row sel"><span class="mini">K</span>Kiryl Novik</div>
+      <div class="row"><span class="mini b">G</span>Guest</div>
+    </div>
+    <div class="power"><span><span class="ms">restart_alt</span></span><span><span class="ms">power_settings_new</span></span></div>
+  </div></div>
+</section>
+
+<section class="scene" id="greet-session">
+  <p class="scene-note"><b>Выбор сеанса</b> — капсула под полем пароля. В списке — сеансы из <code>/usr/share/wayland-sessions</code>; выбор запоминается вместе с пользователем.</p>
+  <div class="stage"><div class="screen greet-screen">
+    <div class="wall"></div><div class="dim"></div>
+    <div class="top-right"><span class="kb">EN</span><span class="ms">battery_full</span></div>
+    <div class="clock"><div class="date">Понедельник, 2 ноября</div><div class="time">14:32</div></div>
+    <div class="login">
+      <div class="avatar">K</div>
+      <div class="who">Kiryl Novik <span class="ms">expand_more</span></div>
+      <div class="pw typed">•••••••<span class="go"><span class="ms">arrow_forward</span></span></div>
+      <div class="session">Hyprland <span class="ms">expand_less</span></div>
+      <div class="msg"></div>
+    </div>
+    <div class="menu" style="left:648px; top:854px">
+      <div class="row sel"><span class="ms">check</span>Hyprland</div>
+      <div class="row"><span class="ms"></span>Hyprland (uwsm-managed)</div>
+    </div>
+    <div class="power"><span><span class="ms">restart_alt</span></span><span><span class="ms">power_settings_new</span></span></div>
+  </div></div>
+</section>
+
+</main>
+<script>
+// Вкладки и масштаб экранов под ширину страницы.
+const tabs = document.querySelectorAll('nav.tabs button');
+tabs.forEach(tab => tab.addEventListener('click', () => {
+  tabs.forEach(t => t.setAttribute('aria-selected', String(t === tab)));
+  document.querySelectorAll('.scene').forEach(s => s.classList.toggle('on', s.id === tab.dataset.scene));
+  fit();
+}));
+function fit() {
+  document.querySelectorAll('.scene.on .stage').forEach(stage => {
+    const screen = stage.querySelector('.screen');
+    const scale = stage.clientWidth / screen.offsetWidth;
+    screen.style.transform = `scale(${scale})`;
+    stage.style.height = `${screen.offsetHeight * scale}px`;
+  });
+}
+addEventListener('resize', fit);
+document.fonts.ready.then(fit);
+fit();
+</script>
+</body>
+</html>

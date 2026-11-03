@@ -14,10 +14,10 @@ def root(ctx, tmp_path):
     return ctx.root
 
 
-def test_greetd_config_launches_wayland_sessions(ctx, system, root):
+def test_greetd_config_opens_quietline_greeter(ctx, system, root):
     template = session.GREETD_TEMPLATE.read_text()
-    assert 'tuigreet --time --remember --remember-session --sessions /usr/share/wayland-sessions' in template
-    assert 'user = "greeter"' in template
+    assert template.startswith(session.GREETD_MARK)
+    assert 'command = "quietline-greeter"' in template and 'user = "greeter"' in template
     (root / 'etc/greetd/config.toml').write_text('[default_session]\ncommand = "agreety --cmd /bin/sh"\n')
     session.greetd_step().run(ctx)
     copy = next(call for call in system.calls if call['args'][:2] == ['cp', '-a'])
@@ -26,6 +26,28 @@ def test_greetd_config_launches_wayland_sessions(ctx, system, root):
     tee = next(call for call in system.calls if call['args'][:1] == ['tee'])
     assert tee['sudo'] and tee['input'] == template
     assert {'kind': 'file', 'path': '/etc/greetd/config.toml', 'backup': copy['args'][3]} in ctx.state.changes
+
+
+def test_previous_quietline_template_with_tuigreet_is_replaced(ctx, system, root):
+    previous = ('# Quietline: минимальный экран входа greetd, запускает сеанс Wayland (Hyprland с Quietline).\n'
+                '[terminal]\nvt = 1\n\n[default_session]\n'
+                'command = "tuigreet --time --remember --remember-session --sessions /usr/share/wayland-sessions"\n'
+                'user = "greeter"\n')
+    (root / 'etc/greetd/config.toml').write_text(previous)
+    step = session.greetd_step()
+    assert step.check(ctx) is False
+    step.run(ctx)
+    assert any(call['args'][:2] == ['cp', '-a'] for call in system.calls)
+    tee = next(call for call in system.calls if call['args'][:1] == ['tee'])
+    assert 'quietline-greeter' in tee['input']
+
+
+def test_greetd_config_already_on_quietline_greeter_is_kept(ctx, system, root):
+    (root / 'etc/greetd/config.toml').write_text(session.GREETD_TEMPLATE.read_text())
+    step = session.greetd_step()
+    assert step.check(ctx) is True
+    step.run(ctx)
+    assert not any(call['args'][:1] in (['tee'], ['cp']) for call in system.calls)
 
 
 def test_greetd_is_enabled_not_started(ctx, system, root):
@@ -224,7 +246,7 @@ def test_login_session_comes_before_aur_and_manual_steps_last():
     ids = [step.id for step in build_steps(FULL)]
     assert ids == ['system-upgrade', 'repo-packages', 'graphics', 'locales', 'quietline-package', 'services',
                    'hyprland-config', 'fish', 'tide', 'micro', 'quickshell-link', 'user-dirs', 'region', 'pins', 'greetd',
-                   'keyring', 'flatpak', 'fnm', 'uv', 'aur-google-chrome', 'aur-1password', 'default-shell', 'hyprbars', 'docker-group',
+                   'keyring', 'boot-theme', 'flatpak', 'fnm', 'uv', 'aur-google-chrome', 'aur-1password', 'default-shell', 'hyprbars', 'docker-group',
                    'docker-desktop', 'amneziavpn']
     steps = {step.id: step for step in build_steps(FULL)}
     assert all(steps[name].manual for name in ('docker-desktop', 'amneziavpn'))
@@ -235,7 +257,8 @@ def test_unselected_programs_have_no_steps():
     for absent in ('flatpak', 'fnm', 'uv', 'docker-group', 'docker-desktop', 'amneziavpn'):
         assert absent not in ids
     assert not any(name.startswith('aur-') for name in ids)
-    assert 'greetd' in ids and 'keyring' in ids and 'default-shell' in ids and 'hyprbars' in ids
+    assert 'greetd' in ids and 'keyring' in ids and 'boot-theme' in ids and 'default-shell' in ids
+    assert 'hyprbars' in ids
 
 
 LISTING_ENABLED = """→ Repository hyprland-plugins (by quietline-desktop):

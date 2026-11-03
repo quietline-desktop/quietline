@@ -1,0 +1,79 @@
+# Тема меню GRUB Quietline. Шаблон: `make-theme.py` подставляет тексты языка и имена шрифтов
+# и пишет theme-ru.txt и theme-en.txt. Размеры — пиксели экрана (GRUB не знает о масштабе),
+# положение — в процентах: макет рассчитан на 1920×1200, меню остаётся по центру и на других
+# разрешениях.
+
+title-text: ""
+desktop-image: "background.png"
+desktop-image-scale-method: "stretch"
+desktop-color: "#141a3c"
+
+# Консоль (`c`) и правка пункта (`e`): JetBrains Mono на чёрном фоне во весь экран с полями
+# 48 и 40 px.
+terminal-font: "@FONT_MONO@"
+terminal-box: "terminal_box_*.png"
+terminal-left: "48"
+terminal-top: "40"
+terminal-width: "100%-96"
+terminal-height: "100%-80"
+terminal-border: "0"
+
++ label {
+    left = 0
+    top = 23%
+    width = 100%
+    height = 36
+    align = "center"
+    text = "Quietline"
+    font = "@FONT_BRAND@"
+    color = "#9c9eb3"
+}
+
+# Пункты прямо на обоях, выбранный — капсула акцента 54 px. GRUB рисует картинку капсулы с
+# полями 12 px вокруг пункта высотой item_height, а шаг пунктов — item_height + item_spacing:
+# 30 + 24 = 54. У обычного пункта прозрачная рамка с теми же полями, поэтому текст всех
+# пунктов на одной высоте; item_icon_space отодвигает текст на 22 px от края капсулы. Высота
+# меню — семь пунктов, остальные прокручиваются.
++ boot_menu {
+    left = 50%-380
+    top = 30%
+    width = 760
+    height = 378
+    item_font = "@FONT_ITEM@"
+    selected_item_font = "@FONT_SELECTED@"
+    item_color = "#cbcdd8"
+    selected_item_color = "#ffffff"
+    item_height = 30
+    item_padding = 0
+    item_spacing = 24
+    icon_width = 0
+    icon_height = 0
+    item_icon_space = 10
+    item_pixmap_style = "item_*.png"
+    selected_item_pixmap_style = "select_*.png"
+    scrollbar = false
+}
+
++ label {
+    left = 0
+    top = 30%+398
+    width = 100%
+    height = 30
+    align = "center"
+    text = "@HINT@"
+    font = "@FONT_HINT@"
+    color = "#9c9eb3"
+}
+
+# Отсчёт до загрузки; исчезает, когда нажата любая клавиша.
++ label {
+    id = "__timeout__"
+    left = 0
+    top = 91%-30
+    width = 100%
+    height = 30
+    align = "center"
+    text = "@TIMEOUT@"
+    font = "@FONT_TIMEOUT@"
+    color = "#f2f2f5"
+}

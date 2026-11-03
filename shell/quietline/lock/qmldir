@@ -1,1 +1,5 @@
 LockSurface 1.0 LockSurface.qml
+LockStatus 1.0 LockStatus.qml
+LockClock 1.0 LockClock.qml
+UserAvatar 1.0 UserAvatar.qml
+PasswordField 1.0 PasswordField.qml

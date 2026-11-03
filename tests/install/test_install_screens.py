@@ -15,7 +15,7 @@ SECTION_KEYS = [
 STEP_IDS = [
     'system-upgrade', 'repo-packages', 'graphics', 'locales', 'quietline-package', 'services',
     'hyprland-config', 'fish', 'tide', 'micro', 'quickshell-link', 'user-dirs', 'region', 'pins', 'greetd',
-    'flatpak', 'fnm', 'uv', 'aur', 'default-shell', 'docker-group', 'docker-desktop',
+    'keyring', 'boot-theme', 'flatpak', 'fnm', 'uv', 'aur', 'default-shell', 'docker-group', 'docker-desktop',
     'amneziavpn', 'snapshot-prepare', 'snapshot',
 ]
 

@@ -9,8 +9,8 @@ license=('GPL-3.0-only')
 depends=('python' 'hyprland' 'quickshell' 'networkmanager' 'brightnessctl' 'power-profiles-daemon'
          'bluez' 'pipewire' 'wireplumber' 'glib2' 'libnotify' 'wl-clipboard' 'cliphist' 'grim'
          'slurp' 'satty' 'plocate' 'polkit' 'hypridle' 'inter-font' 'ttf-material-symbols-variable'
-         'ttf-jetbrains-mono' 'capitaine-cursors')
-makedepends=('git' 'python-build' 'python-installer' 'python-hatchling')
+         'ttf-jetbrains-mono' 'capitaine-cursors' 'greetd' 'greetd-tuigreet')
+makedepends=('git' 'python-build' 'python-installer' 'python-hatchling' 'grub' 'fontconfig')
 
 _repo="${QUIETLINE_REPO:-$(realpath "$startdir/../..")}"
 
@@ -29,6 +29,8 @@ prepare() {
 build() {
     cd "$srcdir/quietline"
     python -m build --wheel --no-isolation --outdir "$srcdir/dist"
+    # Тема меню GRUB: обои, капсула, шрифты .pf2 из Inter и JetBrains Mono, темы на двух языках.
+    python config/grub/make-theme.py "$srcdir/grub-theme"
 }
 
 package() {
@@ -45,5 +47,12 @@ package() {
     install -Dm644 config/fontconfig/50-quietline-titlebar.conf "$pkgdir/usr/share/fontconfig/conf.avail/50-quietline-titlebar.conf"
     install -dm755 "$pkgdir/usr/share/fontconfig/conf.default"
     ln -s ../conf.avail/50-quietline-titlebar.conf "$pkgdir/usr/share/fontconfig/conf.default/50-quietline-titlebar.conf"
+    # Экран входа: сценарий для greetd, Hyprland экрана входа и каталог его состояния.
+    install -Dm755 config/greeter/quietline-greeter "$pkgdir/usr/bin/quietline-greeter"
+    install -Dm644 config/greeter/hyprland.lua "$pkgdir/usr/share/quietline/greeter/hyprland.lua"
+    install -Dm755 config/greeter/run-ui "$pkgdir/usr/share/quietline/greeter/run-ui"
+    install -Dm644 config/greeter/quietline-greeter.conf "$pkgdir/usr/lib/tmpfiles.d/quietline-greeter.conf"
+    install -dm755 "$pkgdir/usr/share/quietline/grub"
+    install -m644 "$srcdir"/grub-theme/* "$pkgdir/usr/share/quietline/grub/"
     install -Dm644 LICENSE "$pkgdir/usr/share/licenses/$pkgname/LICENSE"
 }
