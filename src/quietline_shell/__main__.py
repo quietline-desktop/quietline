@@ -47,6 +47,10 @@
 - `clipboard store|list|restore|delete|image|wipe|pause` — история буфера сеанса:
   `store` читает запись из stdin, `list` — `{"entries": [{"id", "kind", "preview"}], "paused"}`,
   `image --id ID` — `{"path"}`, остальные — `{"ok": true}`;
+- `idle settings [--set JSON] [--path PATH]` — `{"lock", "screenOff", "suspend"}`: сроки блокировки,
+  отключения экрана и сна от батареи в минутах (0 — никогда); с `--set` часть полей проверяется и
+  пишется в `idle.json` и `hypridle.conf` рядом с ним, hypridle перезапускается с этим файлом, в ответ
+  добавляется `"applied": true | false`;
 - `idle suspend` — сон после долгого простоя (зовёт hypridle): `{"suspended": true}` или
   `{"suspended": false, "reason": "ac" | "no-battery"}` — от зарядки и без своей батареи сна нет;
 - `files QUERY [--limit N]` — файлы домашнего каталога `{"files": [path…], "indexedAt"}`;
@@ -70,7 +74,7 @@ from typing import Any
 from quietline_shell import capture, clipboard, network, search, session
 from quietline_shell.config import (
     about, apply_appearance, apply_display, apply_keyboard, default_appearance_path, default_display_path, display_outputs,
-    display_scales, default_input_path, load_input, updated_input, save_input, apply_input, has_touchpad,
+    display_scales, default_idle_path, load_idle, updated_idle, save_idle, restart_hypridle, default_input_path, load_input, updated_input, save_input, apply_input, has_touchpad,
     default_pins_path, default_region_path, load_appearance, load_display, load_pins, load_region, reduced_motion,
     notification_text, save_appearance, save_display, save_pins, save_region, updated_appearance, updated_display,
     validated_region,
@@ -126,9 +130,12 @@ def _parser() -> argparse.ArgumentParser:
     pause_switch = pause.add_mutually_exclusive_group(required=True)
     pause_switch.add_argument("--on", dest="paused", action="store_true")
     pause_switch.add_argument("--off", dest="paused", action="store_false")
-    idle = commands.add_parser("idle", help="actions for long idle periods (called by hypridle)")
-    idle.add_subparsers(dest="action", required=True).add_parser(
-        "suspend", help="suspend the computer if it runs on its own battery")
+    idle = commands.add_parser("idle", help="idle timeouts and actions for long idle periods")
+    idle_actions = idle.add_subparsers(dest="action", required=True, metavar="ACTION")
+    idle_actions.add_parser("suspend", help="suspend the computer if it runs on its own battery (called by hypridle)")
+    idle_settings = idle_actions.add_parser("settings", help="print the lock, screen off and sleep timeouts as JSON")
+    idle_settings.add_argument("--set", dest="change", metavar="JSON", help='apply {"lock", "screenOff", "suspend"} (minutes, 0 = never) first')
+    idle_settings.add_argument("--path", type=Path, help="idle file (default: $XDG_CONFIG_HOME/quietline/idle.json); hypridle.conf is written next to it")
     files = commands.add_parser("files", help="find files in the home directory by name")
     files.add_argument("query", nargs="?", help="part of the file name")
     files.add_argument("--limit", type=int, default=20)
@@ -201,7 +208,15 @@ def _run(args: argparse.Namespace) -> dict[str, Any]:
                 case _:
                     return clipboard.set_paused(args.paused)
         case "idle":
-            return session.idle_suspend()
+            if args.action == "suspend":
+                return session.idle_suspend()
+            path = args.path or default_idle_path()
+            current = load_idle(path)
+            if args.change is None:
+                return current
+            updated = updated_idle(json.loads(args.change), current)
+            save_idle(path, updated)
+            return {**updated, "applied": restart_hypridle(path.with_name("hypridle.conf"))}
         case "files":
             if args.update:
                 return search.update_index()

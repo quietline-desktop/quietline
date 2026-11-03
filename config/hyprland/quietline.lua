@@ -259,6 +259,16 @@ hl.on("window.open", function (window)
     end
 end)
 
+-- Сроки простоя из «Настроек» → «Питание»: оболочка пишет quietline/hypridle.conf каталога
+-- настроек; без него hypridle берёт файл пакета.
+local idle_conf = config_home .. "/quietline/hypridle.conf"
+local idle_file = io.open(idle_conf, "r")
+if idle_file then
+    idle_file:close()
+else
+    idle_conf = "/usr/share/quietline/hypridle/hypridle.conf"
+end
+
 -- Сервис движка и оболочка стартуют вместе с Hyprland отдельными процессами: сбой
 -- оболочки не останавливает движок и клавиши, оболочка сама переподключается к движку.
 -- История буфера пишут наблюдатели wl-paste за текстом и картинками; индекс файлов
@@ -268,7 +278,7 @@ hl.on("hyprland.start", function ()
     hl.exec_cmd("hyprpm reload -n")
     hl.exec_cmd("quietline-engine serve")
     hl.exec_cmd("qs -c quietline")
-    hl.exec_cmd("hypridle -c /usr/share/quietline/hypridle/hypridle.conf")
+    hl.exec_cmd("hypridle -c " .. idle_conf)
     hl.exec_cmd("wl-paste --type text --watch quietline-shell clipboard store")
     hl.exec_cmd("wl-paste --type image --watch quietline-shell clipboard store")
     hl.exec_cmd("quietline-shell files --update")

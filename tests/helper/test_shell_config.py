@@ -3,6 +3,7 @@
 import json
 import os
 import subprocess
+from pathlib import Path
 
 import pytest
 
@@ -391,6 +392,58 @@ def test_input_applies_in_hyprland_and_finds_touchpad(tmp_path, capsys, monkeypa
     assert (code, response["applied"], response["touchpad"]) == (0, True, True)
     evals = [args[2] for args in calls if args[1] == "eval"]
     assert evals == ["hl.config({ input = " + config.input_table({**config.INPUT_DEFAULTS, "numlock": True}) + " })"]
+
+
+# Сроки простоя: `idle.json`, `hypridle.conf` и CLI `idle settings`.
+
+def run_idle(capsys, *argv):
+    code = main(["idle", "settings", *argv])
+    return code, json.loads(capsys.readouterr().out)
+
+
+def _timeouts(text):
+    return [int(line.split("=")[1]) for line in text.splitlines() if line.strip().startswith("timeout")]
+
+
+def _general(text):
+    return text[text.index("general {"):text.index("}", text.index("general {")) + 1]
+
+
+def test_default_idle_conf_matches_the_packaged_file():
+    packaged = (Path(__file__).parents[2] / "config" / "hypridle" / "hypridle.conf").read_text(encoding="utf-8")
+    generated = config.hypridle_conf(config.IDLE_DEFAULTS)
+    assert _timeouts(generated) == _timeouts(packaged) == [300, 330, 900]
+    assert _general(generated) == _general(packaged)
+
+
+def test_idle_settings_write_conf_without_never_listeners(tmp_path, capsys, no_hyprland):
+    path = tmp_path / "quietline" / "idle.json"
+    assert run_idle(capsys, "--path", str(path)) == (0, {"lock": 5, "screenOff": 5, "suspend": 15})
+    code, response = run_idle(capsys, "--path", str(path), "--set", json.dumps({"lock": 0, "screenOff": 10, "suspend": 0}))
+    assert (code, response) == (0, {"lock": 0, "screenOff": 10, "suspend": 0, "applied": False})
+    conf = path.with_name("hypridle.conf").read_text(encoding="utf-8")
+    assert _timeouts(conf) == [600] and "lock-session\n}" not in conf and "idle suspend" not in conf
+    assert json.loads(path.read_text(encoding="utf-8")) == {"version": 1, "lock": 0, "screenOff": 10, "suspend": 0}
+
+
+@pytest.mark.parametrize("change", [{}, {"lock": 3}, {"suspend": 5}, {"screenOff": True}, {"sleep": 10}, [5]])
+def test_invalid_idle_changes_are_rejected(tmp_path, capsys, change, no_hyprland):
+    path = tmp_path / "idle.json"
+    code, response = run_idle(capsys, "--path", str(path), "--set", json.dumps(change))
+    assert code == 1 and "error" in response
+    assert not path.exists() and not path.with_name("hypridle.conf").exists()
+
+
+def test_idle_settings_restart_hypridle(tmp_path, capsys, monkeypatch):
+    monkeypatch.setenv("HYPRLAND_INSTANCE_SIGNATURE", "test")
+    runs, started = [], []
+    monkeypatch.setattr(config.subprocess, "run", lambda args, **kwargs: runs.append(args) or subprocess.CompletedProcess(args, 0, "", ""))
+    monkeypatch.setattr(config.subprocess, "Popen", lambda args, **kwargs: started.append((args, kwargs)))
+    path = tmp_path / "idle.json"
+    code, response = run_idle(capsys, "--path", str(path), "--set", '{"lock": 10}')
+    assert (code, response["applied"]) == (0, True)
+    assert runs == [["pkill", "-x", "hypridle"]]
+    assert started[0][0] == ["hypridle", "-c", str(tmp_path / "hypridle.conf")] and started[0][1]["start_new_session"]
 
 
 # Оформление: `appearance.json`, `appearance.lua` и CLI `appearance`.

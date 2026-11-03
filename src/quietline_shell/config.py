@@ -20,6 +20,9 @@
 "disableWhileTyping", "touchpadScrollSpeed", "repeatDelay", "repeatRate", "numlock"}`; рядом пишется
 `input.lua` с таблицей раздела `input` Hyprland.
 
+Сроки простоя — `idle.json` вида `{"version": 1, "lock", "screenOff", "suspend"}` в минутах
+(0 — никогда); рядом пишется `hypridle.conf`, с которым конфигурация Hyprland Quietline запускает hypridle.
+
 Оформление — `appearance.json` вида `{"version": 1, "theme", "cursor", "cursorSize", "batteryPercent"}`:
 тема окружения и цвет указателя (`dark` | `light`), размер указателя (24, 36 или 48), процент
 заряда на панели (`off` | `beside` — рядом с батареей | `inside` — внутри значка). Рядом пишется
@@ -545,6 +548,104 @@ def has_touchpad() -> bool:
     except (OSError, subprocess.TimeoutExpired, json.JSONDecodeError, AttributeError):
         return False
     return any(isinstance(mouse, dict) and "touchpad" in str(mouse.get("name", "")).lower() for mouse in mice)
+
+
+# Сроки простоя в минутах (0 — никогда) и допустимые значения для «Питания» → «Когда компьютер
+# не используется». По умолчанию — сроки файла пакета `hypridle.conf`.
+IDLE_DEFAULTS = {"lock": 5, "screenOff": 5, "suspend": 15}
+IDLE_CHOICES = {"lock": (1, 2, 5, 10, 15, 30, 0), "screenOff": (1, 2, 5, 10, 15, 30, 0), "suspend": (10, 15, 30, 60, 0)}
+# Если экран гаснет в один срок с блокировкой — на столько секунд позже: сначала виден экран блокировки.
+SCREEN_OFF_AFTER_LOCK = 30
+_HYPRIDLE_GENERAL = """general {
+    lock_cmd = quietline-shell lock
+    before_sleep_cmd = loginctl lock-session
+    after_sleep_cmd = hyprctl dispatch 'hl.dsp.dpms({ action = "enable" })'
+    inhibit_sleep = 3
+    ignore_dbus_inhibit = false
+    ignore_systemd_inhibit = false
+    ignore_wayland_inhibit = false
+}
+"""
+
+
+def default_idle_path() -> Path:
+    """`$XDG_CONFIG_HOME/quietline/idle.json`, без переменной — `~/.config/quietline/idle.json`."""
+    directory = os.environ.get("XDG_CONFIG_HOME") or Path.home() / ".config"
+    return Path(directory) / "quietline" / "idle.json"
+
+
+def _checked_idle(values: dict[str, Any]) -> dict[str, int]:
+    result = {}
+    for key, choices in IDLE_CHOICES.items():
+        value = values.get(key)
+        if isinstance(value, bool) or value not in choices:
+            raise ValueError(f"{key} must be one of {', '.join(map(str, choices))} minutes: {value!r}")
+        result[key] = value
+    return result
+
+
+def load_idle(path: Path) -> dict[str, int]:
+    """Сроки простоя из файла; без файла — сроки по умолчанию. Повреждённый файл — `ValueError`."""
+    if not path.exists():
+        return dict(IDLE_DEFAULTS)
+    try:
+        data = json.loads(path.read_text(encoding="utf-8"))
+    except (json.JSONDecodeError, UnicodeError) as error:
+        raise ValueError(f"cannot read idle settings from {path}") from error
+    if not isinstance(data, dict) or data.get("version") != 1:
+        raise ValueError(f"unknown idle file format in {path}")
+    try:
+        return _checked_idle({**IDLE_DEFAULTS, **{key: data[key] for key in IDLE_DEFAULTS if key in data}})
+    except ValueError as error:
+        raise ValueError(f"invalid idle settings in {path}: {error}") from error
+
+
+def updated_idle(change: object, current: dict[str, int]) -> dict[str, int]:
+    """Применяет часть полей `change` к `current`; неизвестное поле или срок — `ValueError`."""
+    if not isinstance(change, dict) or not change:
+        raise ValueError("idle change must be a non-empty JSON object")
+    unknown = set(change) - set(IDLE_DEFAULTS)
+    if unknown:
+        raise ValueError(f"unknown idle fields: {', '.join(sorted(unknown))}")
+    return _checked_idle({**current, **change})
+
+
+def hypridle_conf(values: dict[str, int]) -> str:
+    """`hypridle.conf` со сроками простоя: общий блок как у файла пакета, слушатели только для
+    сроков, отличных от «никогда»; сон — только от своей батареи (`quietline-shell idle suspend`)."""
+    checked = _checked_idle(values)
+    parts = ["# Quietline: простой и сон по срокам из «Настроек» → «Питание»; файл пишет quietline-shell idle settings.\n",
+             _HYPRIDLE_GENERAL]
+    if checked["lock"]:
+        parts.append(f"listener {{\n    timeout = {checked['lock'] * 60}\n    on-timeout = loginctl lock-session\n}}\n")
+    if checked["screenOff"]:
+        seconds = checked["screenOff"] * 60 + (SCREEN_OFF_AFTER_LOCK if checked["screenOff"] == checked["lock"] else 0)
+        parts.append(f"listener {{\n    timeout = {seconds}\n"
+                     "    on-timeout = hyprctl dispatch 'hl.dsp.dpms({ action = \"disable\" })'\n"
+                     "    on-resume = hyprctl dispatch 'hl.dsp.dpms({ action = \"enable\" })'\n}\n")
+    if checked["suspend"]:
+        parts.append(f"listener {{\n    timeout = {checked['suspend'] * 60}\n    on-timeout = quietline-shell idle suspend\n}}\n")
+    return "\n".join(parts)
+
+
+def save_idle(path: Path, values: dict[str, int]) -> None:
+    """Пишет `hypridle.conf` рядом с `path` и последним атомарно `idle.json`."""
+    checked = _checked_idle(values)
+    _atomic_write_text(path.with_name("hypridle.conf"), hypridle_conf(checked))
+    atomic_write_json(path, {"version": 1, **checked})
+
+
+def restart_hypridle(conf: Path) -> bool:
+    """Перезапускает hypridle с файлом `conf` в своей сессии; вне сеанса Hyprland — `False`."""
+    if not os.environ.get("HYPRLAND_INSTANCE_SIGNATURE"):
+        return False
+    _succeeds(["pkill", "-x", "hypridle"], _HYPRCTL_TIMEOUT)
+    try:
+        subprocess.Popen(["hypridle", "-c", str(conf)], stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL,
+                         stderr=subprocess.DEVNULL, start_new_session=True)
+    except OSError:
+        return False
+    return True
 
 
 APPEARANCE_DEFAULTS = {"theme": "dark", "cursor": "dark", "cursorSize": 24, "batteryPercent": "off"}
