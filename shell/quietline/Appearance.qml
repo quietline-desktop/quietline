@@ -4,7 +4,7 @@ import Quickshell
 import Quickshell.Io
 
 // Оформление из `quietline-shell appearance`: тема окружения, цвет и размер указателя, процент
-// заряда на панели. Читает
+// заряда на панели, автоскрытие дока. Читает
 // настройки при старте; `update` меняет значения в оболочке сразу (Theme перекрашивает поверхности),
 // затем записывает и применяет их через `--set` и перечитывает файл. Пока ответа нет — тёмная
 // тема, тёмный указатель 24 px.
@@ -18,6 +18,8 @@ Singleton {
     property int cursorSize: 24
     // Процент заряда на панели: `off` | `beside` (рядом с батареей) | `inside` (внутри значка).
     property string batteryPercent: "off"
+    // Прячется ли док, пока указатель не у нижнего края.
+    property bool dockAutohide: true
     readonly property bool light: theme === "light"
     // Текст последней ошибки чтения или записи; пусто — ошибок нет.
     property string error: ""
@@ -26,7 +28,7 @@ Singleton {
     // Изменения, пришедшие во время записи: отправляются следующей записью.
     property var pending: null
 
-    // Сохраняет часть настроек (`{theme, cursor, cursorSize, batteryPercent}`) и применяет их.
+    // Сохраняет часть настроек (`{theme, cursor, cursorSize, batteryPercent, dockAutohide}`) и применяет их.
     function update(changes) {
         apply(changes);
         if (writer.running) {
@@ -48,6 +50,7 @@ Singleton {
         if (data.cursor === "dark" || data.cursor === "light") cursor = data.cursor;
         if ([24, 36, 48].indexOf(data.cursorSize) >= 0) cursorSize = data.cursorSize;
         if (["off", "beside", "inside"].indexOf(data.batteryPercent) >= 0) batteryPercent = data.batteryPercent;
+        if (typeof data.dockAutohide === "boolean") dockAutohide = data.dockAutohide;
     }
     function failure(key, detail) { error = Lang.s[key] + (detail ? ": " + detail : ""); }
 

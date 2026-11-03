@@ -22,9 +22,9 @@
   указателя −1…1, скорости прокрутки 0.25–3, задержка повтора 150–1000 мс, частота 10–60 в секунду),
   `touchpad` — есть ли тачпад; с `--set` часть полей проверяется и пишется в `input.json` и
   `input.lua` рядом с ним, применяется в Hyprland, в ответ добавляется `"applied": true | false`;
-- `appearance [--set JSON] [--path PATH]` — `{"theme", "cursor", "cursorSize", "batteryPercent"}`:
-  тема окружения и цвет указателя (`dark` | `light`), размер указателя (24, 36, 48), процент
-  заряда на панели (`off` | `beside` | `inside`); с `--set` часть полей
+- `appearance [--set JSON] [--path PATH]` — `{"theme", "cursor", "cursorSize", "batteryPercent",
+  "dockAutohide"}`: тема окружения и цвет указателя (`dark` | `light`), размер указателя (24, 36, 48),
+  процент заряда на панели (`off` | `beside` | `inside`), прячется ли док (`true` | `false`); с `--set` часть полей
   проверяется и пишется в `appearance.json` и `appearance.lua` рядом с ним, схема приложений
   меняется в gsettings, в Hyprland перечитывается конфигурация и меняется указатель; в ответ
   добавляется `"applied": true | false`;
@@ -103,7 +103,7 @@ def _parser() -> argparse.ArgumentParser:
     pointer.add_argument("--set", dest="change", metavar="JSON", help="apply this JSON object of fields first")
     pointer.add_argument("--path", type=Path, help="input file (default: $XDG_CONFIG_HOME/quietline/input.json); input.lua is written next to it")
     appearance = commands.add_parser("appearance", help="print the theme and pointer settings as JSON")
-    appearance.add_argument("--set", dest="change", metavar="JSON", help='apply {"theme", "cursor", "cursorSize", "batteryPercent"} (any of them) first')
+    appearance.add_argument("--set", dest="change", metavar="JSON", help='apply {"theme", "cursor", "cursorSize", "batteryPercent", "dockAutohide"} (any of them) first')
     appearance.add_argument("--path", type=Path, help="appearance file (default: $XDG_CONFIG_HOME/quietline/appearance.json); appearance.lua is written next to it")
     clock = commands.add_parser("time", help="print the time zone and network time setting as JSON")
     clock.add_argument("--set", dest="change", metavar="JSON", help='apply {"timezone": NAME} or {"ntp": true | false} first')

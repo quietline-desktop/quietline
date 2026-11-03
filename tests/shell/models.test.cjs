@@ -606,8 +606,9 @@ test('minimized windows stay in the dock with a hollow mark',()=>{
 });
 test('dock shows itself only in windows mode and when wanted',()=>{
  assert.equal(M.dockRevealed({available:false,hovered:true,empty:true}),false);
+ assert.equal(M.dockRevealed({available:false,always:true}),false);
  assert.equal(M.dockRevealed({available:true}),false);
- for(const key of ['hovered','menuOpen','dragging','keyboard','empty'])
+ for(const key of ['always','hovered','menuOpen','dragging','keyboard','empty'])
   assert.equal(M.dockRevealed({available:true,[key]:true}),true,key);
 });
 test('a workspace without shown windows counts as empty',()=>{

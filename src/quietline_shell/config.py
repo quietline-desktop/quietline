@@ -23,9 +23,10 @@
 Сроки простоя — `idle.json` вида `{"version": 1, "lock", "screenOff", "suspend"}` в минутах
 (0 — никогда); рядом пишется `hypridle.conf`, с которым конфигурация Hyprland Quietline запускает hypridle.
 
-Оформление — `appearance.json` вида `{"version": 1, "theme", "cursor", "cursorSize", "batteryPercent"}`:
-тема окружения и цвет указателя (`dark` | `light`), размер указателя (24, 36 или 48), процент
-заряда на панели (`off` | `beside` — рядом с батареей | `inside` — внутри значка). Рядом пишется
+Оформление — `appearance.json` вида `{"version": 1, "theme", "cursor", "cursorSize", "batteryPercent",
+"dockAutohide"}`: тема окружения и цвет указателя (`dark` | `light`), размер указателя (24, 36 или 48),
+процент заряда на панели (`off` | `beside` — рядом с батареей | `inside` — внутри значка), прячется
+ли док (`true` | `false`). Рядом пишется
 `appearance.lua` для конфигурации Hyprland. Только стандартная библиотека.
 """
 
@@ -578,7 +579,7 @@ def _checked_idle(values: dict[str, Any]) -> dict[str, int]:
     result = {}
     for key, choices in IDLE_CHOICES.items():
         value = values.get(key)
-        if isinstance(value, bool) or value not in choices:
+        if isinstance(value, bool) != isinstance(choices[0], bool) or value not in choices:
             raise ValueError(f"{key} must be one of {', '.join(map(str, choices))} minutes: {value!r}")
         result[key] = value
     return result
@@ -797,9 +798,9 @@ def set_default_app(change: object, config_home: Path, language: str = "en") -> 
     return default_apps(language)
 
 
-APPEARANCE_DEFAULTS = {"theme": "dark", "cursor": "dark", "cursorSize": 24, "batteryPercent": "off"}
+APPEARANCE_DEFAULTS = {"theme": "dark", "cursor": "dark", "cursorSize": 24, "batteryPercent": "off", "dockAutohide": True}
 _APPEARANCE_CHOICES = {"theme": ("dark", "light"), "cursor": ("dark", "light"), "cursorSize": (24, 36, 48),
-                       "batteryPercent": ("off", "beside", "inside")}
+                       "batteryPercent": ("off", "beside", "inside"), "dockAutohide": (True, False)}
 CURSOR_THEMES = {"dark": "capitaine-cursors", "light": "capitaine-cursors-light"}
 _GSETTINGS_TIMEOUT = 5
 
@@ -815,7 +816,7 @@ def _checked_appearance(values: dict[str, Any]) -> dict[str, Any]:
     result = {}
     for key, choices in _APPEARANCE_CHOICES.items():
         value = values.get(key)
-        if isinstance(value, bool) or value not in choices:
+        if isinstance(value, bool) != isinstance(choices[0], bool) or value not in choices:
             raise ValueError(f"{key} must be one of {', '.join(map(str, choices))}: {value!r}")
         result[key] = value
     return result

@@ -9,10 +9,11 @@ import "../surfaces"
 import "../logic/Models.js" as Models
 
 // Док экрана: закреплённые и запущенные на мониторе приложения. Есть только в режиме
-// «Окна» без полноэкранного окна и места не резервирует: окна занимают экран до низа.
-// Скрыт, пока указатель не коснётся нижнего края (полоса 2 px) или не окажется на доке;
-// прячется через 400 мс после ухода. Не прячется при открытом меню, перетаскивании,
-// навигации с клавиатуры и на пустом пространстве.
+// «Окна» без полноэкранного окна. С автоскрытием (`Appearance.dockAutohide`, по умолчанию)
+// места не резервирует — окна занимают экран до низа — и скрыт, пока указатель не коснётся
+// нижнего края (полоса 2 px) или не окажется на доке; прячется через 400 мс после ухода. Не
+// прячется при открытом меню, перетаскивании, навигации с клавиатуры и на пустом пространстве.
+// Без автоскрытия виден всегда и резервирует внизу свою высоту.
 PanelWindow {
     id: root
     required property var engine
@@ -32,7 +33,7 @@ PanelWindow {
     readonly property bool pointerInside: edgeHover.hovered || surfaceHover.hovered
     property bool hoverHold: false
     readonly property bool revealed: Models.dockRevealed({
-        available: shown, hovered: hoverHold, menuOpen: menu.opened, dragging: dragging,
+        available: shown, always: !Appearance.dockAutohide, hovered: hoverHold, menuOpen: menu.opened, dragging: dragging,
         keyboard: keyboardNavigation, empty: !!workspace && Models.workspaceEmpty(desktop.windows, monitorName, workspace.workspace_id)
     })
     onPointerInsideChanged: {
@@ -49,8 +50,9 @@ PanelWindow {
     }
     HyprlandFocusGrab { windows: [root]; active: root.keyboardNavigation; onCleared: root.keyboardNavigation = false }
     anchors { bottom: true; left: true; right: true }
-    exclusionMode: ExclusionMode.Ignore
-    exclusiveZone: 0
+    readonly property bool reserves: shown && !Appearance.dockAutohide
+    exclusionMode: reserves ? ExclusionMode.Normal : ExclusionMode.Ignore
+    exclusiveZone: reserves ? surface.height + Theme.dockBottom : 0
     implicitHeight: Theme.dockIconSize + Theme.dockPadding * 2 + Theme.dockBottom + 14
     visible: shown || surface.y < height
     color: "transparent"

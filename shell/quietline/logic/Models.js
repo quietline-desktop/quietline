@@ -305,11 +305,11 @@ function workspaceEmpty(windows, monitor, workspace) {
 }
 
 // Виден ли док: только в режиме «Окна» без полноэкранного окна (`available`), и тогда —
-// пока указатель у нижнего края или на доке, открыто меню, идёт перетаскивание,
-// навигация с клавиатуры или пространство пусто.
+// всегда, если автоскрытие выключено (`always`), иначе пока указатель у нижнего края или на
+// доке, открыто меню, идёт перетаскивание, навигация с клавиатуры или пространство пусто.
 function dockRevealed(state) {
     if (!state.available) return false;
-    return !!(state.hovered || state.menuOpen || state.dragging || state.keyboard || state.empty);
+    return !!(state.always || state.hovered || state.menuOpen || state.dragging || state.keyboard || state.empty);
 }
 
 function clickTarget(group) {

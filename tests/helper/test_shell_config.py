@@ -566,7 +566,7 @@ def commands(monkeypatch):
 
 
 def test_missing_appearance_file_means_dark_theme_and_dark_pointer(tmp_path, capsys, no_hyprland):
-    expected = {"theme": "dark", "cursor": "dark", "cursorSize": 24, "batteryPercent": "off"}
+    expected = {"theme": "dark", "cursor": "dark", "cursorSize": 24, "batteryPercent": "off", "dockAutohide": True}
     assert load_appearance(tmp_path / "appearance.json") == expected
     assert run_appearance(capsys, "--path", str(tmp_path / "appearance.json")) == (0, expected)
 
@@ -576,8 +576,8 @@ def test_partial_set_writes_json_and_lua_and_applies_in_hyprland(tmp_path, capsy
     monkeypatch.setenv("HYPRLAND_INSTANCE_SIGNATURE", "test")
     path = tmp_path / "quietline" / "appearance.json"
     code, response = run_appearance(capsys, "--path", str(path), "--set", json.dumps({"theme": "light"}))
-    assert (code, response) == (0, {"theme": "light", "cursor": "dark", "cursorSize": 24, "batteryPercent": "off", "applied": True})
-    assert json.loads(path.read_text(encoding="utf-8")) == {"version": 1, "theme": "light", "cursor": "dark", "cursorSize": 24, "batteryPercent": "off"}
+    assert (code, response) == (0, {"theme": "light", "cursor": "dark", "cursorSize": 24, "batteryPercent": "off", "dockAutohide": True, "applied": True})
+    assert json.loads(path.read_text(encoding="utf-8")) == {"version": 1, "theme": "light", "cursor": "dark", "cursorSize": 24, "batteryPercent": "off", "dockAutohide": True}
     assert path.with_name("appearance.lua").read_text(encoding="utf-8") == (
         'return { theme = "light", cursor = "dark", cursor_size = 24 }\n')
     assert calls == [
@@ -589,7 +589,7 @@ def test_partial_set_writes_json_and_lua_and_applies_in_hyprland(tmp_path, capsy
 
     calls.clear()
     code, response = run_appearance(capsys, "--path", str(path), "--set", json.dumps({"cursor": "light", "cursorSize": 48}))
-    assert response == {"theme": "light", "cursor": "light", "cursorSize": 48, "batteryPercent": "off", "applied": True}
+    assert response == {"theme": "light", "cursor": "light", "cursorSize": 48, "batteryPercent": "off", "dockAutohide": True, "applied": True}
     assert calls[-1] == ["hyprctl", "setcursor", "capitaine-cursors-light", "48"]
 
 
@@ -630,6 +630,8 @@ def test_missing_programs_mean_not_applied(monkeypatch):
     {"cursorSize": True},
     {"cursorSize": "24"},
     {"batteryPercent": True},
+    {"dockAutohide": 1},
+    {"dockAutohide": "no"},
     {"batteryPercent": "under"},
     {"theme": 'light", os.exit() --'},
     {"accent": "red"},
@@ -656,7 +658,7 @@ def test_corrupt_appearance_file_is_reported_without_overwriting(tmp_path, capsy
 def test_appearance_file_without_some_fields_keeps_defaults(tmp_path):
     path = tmp_path / "appearance.json"
     path.write_text('{"version": 1, "theme": "light"}', encoding="utf-8")
-    assert load_appearance(path) == {"theme": "light", "cursor": "dark", "cursorSize": 24, "batteryPercent": "off"}
+    assert load_appearance(path) == {"theme": "light", "cursor": "dark", "cursorSize": 24, "batteryPercent": "off", "dockAutohide": True}
 
 
 def test_default_appearance_path_follows_xdg_config_home(tmp_path, monkeypatch):
@@ -669,5 +671,7 @@ def test_battery_percent_flag_is_saved_without_touching_lua_fields(tmp_path, cap
     code, response = run_appearance(capsys, "--path", str(path), "--set", json.dumps({"batteryPercent": "inside"}))
     assert (code, response["batteryPercent"]) == (0, "inside")
     assert load_appearance(path)["batteryPercent"] == "inside"
+    code, response = run_appearance(capsys, "--path", str(path), "--set", json.dumps({"dockAutohide": False}))
+    assert (code, response["dockAutohide"], load_appearance(path)["dockAutohide"]) == (0, False, False)
     assert path.with_name("appearance.lua").read_text(encoding="utf-8") == (
         'return { theme = "dark", cursor = "dark", cursor_size = 24 }\n')
