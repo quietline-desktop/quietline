@@ -29,7 +29,8 @@ QtObject {
     // Предупреждение: низкий заряд, индикатор микрофона и записи экрана.
     readonly property color warning: light ? "#ff9500" : "#ff9f0a"
     // Поверхности: панель, всплывающие окна, окна по центру (поиск, буфер), окно «Настройки».
-    readonly property color barSurface: light ? Qt.rgba(246 / 255, 246 / 255, 248 / 255, 0.62) : Qt.rgba(22 / 255, 22 / 255, 26 / 255, 0.50)
+    // В тёмной теме панели фона нет: текст стоит прямо на обоях.
+    readonly property color barSurface: light ? Qt.rgba(246 / 255, 246 / 255, 248 / 255, 0.62) : "transparent"
     readonly property color popupSurface: light ? Qt.rgba(246 / 255, 246 / 255, 248 / 255, 0.82) : Qt.rgba(32 / 255, 32 / 255, 36 / 255, 0.80)
     readonly property color solidSurface: light ? Qt.rgba(246 / 255, 246 / 255, 248 / 255, 0.90) : Qt.rgba(32 / 255, 32 / 255, 36 / 255, 0.88)
     readonly property color solidSurfaceHover: light ? Qt.rgba(232 / 255, 232 / 255, 236 / 255, 0.95) : Qt.rgba(48 / 255, 48 / 255, 54 / 255, 0.92)
@@ -63,8 +64,7 @@ QtObject {
     readonly property color shadow: light ? Qt.rgba(0, 0, 0, 0.18) : Qt.rgba(0, 0, 0, 0.42)
     // Ползунки, показатели и полоса прокрутки.
     readonly property color track: light ? Qt.rgba(0, 0, 0, 0.09) : Qt.rgba(1, 1, 1, 0.12)
-    readonly property color sliderFill: light ? "#ffffff" : "#eef0f4"
-    readonly property color sliderIcon: "#3a3a40"
+    readonly property color sliderFill: light ? Qt.rgba(29 / 255, 29 / 255, 31 / 255, 0.72) : "#eef0f4"
     readonly property color knob: "#ffffff"
     readonly property color knobBorder: Qt.rgba(0, 0, 0, 0.12)
     readonly property color scrollHandle: light ? Qt.rgba(0, 0, 0, 0.22) : Qt.rgba(1, 1, 1, 0.22)

@@ -58,7 +58,7 @@ scripts/                  — сценарии проверки в живом с
 shell/quietline/          — конфигурация Quickshell (`qs -c quietline`): `shell.qml`, тема `Theme.qml`, стенд IPC `IpcHarness.qml`
 shell/quietline/controls/ — общие элементы: значок Material Symbols, кнопка, сегменты, пункт меню, полоса прокрутки, группа и строка настроек
 shell/quietline/surfaces/ — поверхности: всплывающее окно, диалог по центру, подсказка
-shell/quietline/inputs/   — поля форм: текстовое поле, переключатель, ползунок, выпадающий список
+shell/quietline/inputs/   — поля форм: текстовое поле, переключатель, ползунок, выпадающий список; колесо мыши `WheelSteps`
 shell/quietline/bar/      — верхняя панель `TopBar.qml`
 shell/quietline/dock/     — док `Dock.qml`
 shell/quietline/services/ — клиент IPC движка, окна и приложения, показатели панели
