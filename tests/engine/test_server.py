@@ -219,6 +219,11 @@ def test_ipc_rejects_invalid_number_and_survives_client_disconnect(path, env):
             assert reply["error"]["code"] == "invalid_request"
             reply = await client.call("toggle", {"monitr": KEY}, id=5)
             assert reply["error"]["code"] == "invalid_request"
+            for address in ("55d0", "0xZZ", 7, ""):
+                reply = await client.call("maximize", {"address": address}, id=6)
+                assert reply["error"]["code"] == "invalid_request"
+            reply = await client.call("maximize", {}, id=8)
+            assert reply["error"] == {"code": "command_failed", "message": "no active window to maximize"}
 
             impatient = await connect(path)
             await impatient.send(b'{"id": 1, "method": "toggle", "params": {}}\n')
@@ -619,6 +624,8 @@ def test_cli_prints_results_and_fails_on_errors(path, env, monkeypatch, capsys):
             assert captured.out == "" and "no active window to move" in captured.err
             assert await asyncio.to_thread(main, ["switch", "11"]) == 1
             assert "1 to 10" in capsys.readouterr().err
+            assert await asyncio.to_thread(main, ["maximize", "--window", "0xa1"]) == 1
+            assert "window 0xa1 does not exist" in capsys.readouterr().err
             assert await asyncio.to_thread(main, ["state"]) == 0
             state = json.loads(capsys.readouterr().out)
             assert active_mode(state, "HDMI-A-1") == "tiles"
@@ -657,7 +664,6 @@ def test_shortcuts_target_expected_cli_calls():
     expected_others = {
         "SUPER + W": ("hl.dsp.window.close()", "close", ""),
         "SUPER + ALT + Space": ('hl.dsp.window.float({ action = "toggle" })', "float", ""),
-        "SUPER + F": ('hl.dsp.window.fullscreen({ mode = "maximized" })', "maximize", ""),
         "SUPER + SHIFT + F": ('hl.dsp.window.fullscreen({ mode = "fullscreen" })', "fullscreen", ""),
         "ALT + Tab": ("function ()", "cycle", ""),
         "SUPER + mouse:272": ("hl.dsp.window.drag()", "drag", "{ mouse = true }"),
@@ -682,6 +688,7 @@ def test_shortcuts_target_expected_cli_calls():
         expected[f"SUPER + {key}"] = f"quietline-engine switch {number}"
         expected[f"SUPER + SHIFT + {key}"] = f"quietline-engine move {number}"
     expected["SUPER + M"] = "quietline-engine toggle"
+    expected["SUPER + F"] = "quietline-engine maximize"
     expected["SUPER + Return"] = "ghostty"
     expected["SUPER + L"] = "quietline-shell lock"
     expected["SUPER + Q"] = "quietline-shell app quit --notify"

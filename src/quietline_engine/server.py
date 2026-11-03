@@ -4,8 +4,10 @@
 `id` — строка или целое число, `params` — объект (можно не передавать). Ответ несёт тот же
 `id` и либо `result`, либо `error {code, message}`:
 
-- `switch {number, monitor?}`, `move {number}`, `toggle {monitor?}` — `result` —
-  подтверждённое состояние (`PublicState.to_json`), `result.error` всегда `null`;
+- `switch {number, monitor?}`, `move {number}`, `toggle {monitor?}`, `maximize {address?}` —
+  `result` — подтверждённое состояние (`PublicState.to_json`), `result.error` всегда `null`.
+  `maximize` разворачивает окно `address` (`0x` и шестнадцатеричные цифры; без него —
+  активное окно) размером или возвращает ему прежний размер (`WindowController.maximize`);
 - `state {}` — последнее опубликованное состояние с ошибкой последней команды или сверки;
 - `subscribe {}` — `result` — то же полное состояние; затем по этому соединению приходят
   события `{"event": "state", "state": {...}}`, когда `revision` растёт или меняется
@@ -21,7 +23,8 @@
 
 - `invalid_request` — строка не JSON-объект; нет `id` или он не строка и не целое число
   (тогда в ответе `id` равен `null`); `method` не строка; `params` не объект; лишний
-  параметр; `monitor` не строка; у `takeover` нет `signature` или она недопустима;
+  параметр; `monitor` не строка; `address` не адрес окна; у `takeover` нет `signature`
+  или она недопустима;
 - `unknown_method` — метода нет в списке выше;
 - `invalid_number` — номер пространства не целое число от 1 до 10; Hyprland не вызывается;
 - `command_failed` — команда не выполнена: `message` — текст `error` подтверждённого
@@ -64,6 +67,8 @@ TAKEOVER_TIMEOUT_SECONDS = 5.0
 # Первая и наибольшая пауза перед повторным подключением к событиям Hyprland.
 RECONNECT_DELAY_SECONDS = (0.5, 10.0)
 
+# Адрес окна Hyprland.
+_WINDOW_ADDRESS = re.compile(r"0x[0-9a-f]+")
 # Допустимая сигнатура экземпляра Hyprland.
 _SIGNATURE = re.compile(r"[A-Za-z0-9_.-]+")
 # Файлы работающего экземпляра Hyprland в его каталоге.
@@ -74,6 +79,7 @@ _METHODS: dict[str, frozenset[str]] = {
     "switch": frozenset({"number", "monitor"}),
     "move": frozenset({"number"}),
     "toggle": frozenset({"monitor"}),
+    "maximize": frozenset({"address"}),
     "state": frozenset(),
     "subscribe": frozenset(),
     "takeover": frozenset({"signature"}),
@@ -299,6 +305,9 @@ class EngineServer:
         monitor = params.get("monitor")
         if monitor is not None and not isinstance(monitor, str):
             raise EngineError("invalid_request", "monitor must be a string")
+        address = params.get("address")
+        if address is not None and not (isinstance(address, str) and _WINDOW_ADDRESS.fullmatch(address)):
+            raise EngineError("invalid_request", "address must be a window address like 0x55d0c1a2b3c0")
         signature = params.get("signature")
         if method == "takeover" and not _valid_signature(signature):
             raise EngineError("invalid_request", "signature must be a Hyprland instance signature")
@@ -325,6 +334,8 @@ class EngineServer:
                 state = await self._controller.switch(number, monitor)
             case "move":
                 state = await self._controller.move(number)
+            case "maximize":
+                state = await self._controller.maximize(address)
             case _:
                 state = await self._controller.toggle(monitor)
         self._publish(state)

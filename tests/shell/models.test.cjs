@@ -170,6 +170,8 @@ test('Lua dispatch accepts only literal compositor addresses',()=>{
  assert.equal(M.focusWindowCommand('0xabc'),
   'function() hl.dispatch(hl.dsp.focus({ window = "address:0xabc" })); hl.dispatch(hl.dsp.window.bring_to_top()) end');
  assert.equal(M.focusWindowCommand('0x1"); os.execute("bad")'),null);
+ assert.deepEqual(plain(M.maximizeCommand('55D0abc')),['quietline-engine','maximize','--window','0x55d0abc']);
+ assert.equal(M.maximizeCommand('0x1; rm -rf ~'),null);
 });
 test('stable keys let delegates survive snapshot and title refreshes',()=>{
  const s={...state,workspaces:[...state.workspaces,{monitor_key:'right',display_monitor_key:'left',number:2,workspace_id:5,mode:'windows'}]};
@@ -433,6 +435,7 @@ test('texts follow the English table',()=>{
  assert.equal(M.errorText({code:'unknown_method',message:"unknown method 'x'"},en),"The window service does not know this command: unknown method 'x'");
  assert.equal(M.errorText({},en),'Command failed');
  assert.equal(M.bindAction('quietline-engine toggle',en),'Switch “Windows / Tiles” mode');
+ assert.equal(M.bindAction('quietline-engine maximize',en),'Maximize window');
  assert.equal(M.bindAction('quietline-engine move 3',en),'Move window to workspace 3');
  assert.equal(M.bindAction('my-tool --flag',en),'my-tool --flag');
  assert.equal(M.remainingText([{app:'code',title:'notes.md'},{app:'',title:''}],en),

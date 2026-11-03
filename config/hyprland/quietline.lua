@@ -177,7 +177,7 @@ if hl.plugin and hl.plugin.hyprbars then
                 bar_button_padding = 6,
                 bar_part_of_window = true,
                 bar_precedence_over_border = true,
-                on_double_click = [[hyprctl dispatch 'hl.dsp.window.fullscreen({ mode = "maximized", action = "toggle" })']],
+                on_double_click = "quietline-engine maximize",
             },
         },
     })
@@ -199,7 +199,7 @@ if hl.plugin and hl.plugin.hyprbars then
         size = 26,
         icon_size = 14,
         icon = "\u{E3C6}",
-        action = [[hyprctl dispatch 'hl.dsp.window.fullscreen({ mode = "maximized", action = "toggle" })']],
+        action = "quietline-engine maximize",
     })
     hl.plugin.hyprbars.add_button({
         bg_color = "rgba(00000000)",
@@ -334,8 +334,9 @@ act("SUPER + ALT + Right", hl.dsp.focus({ monitor = "r" }), "monitor-right")
 -- Временно вынуть окно из колонки и вернуть обратно; движок не трогает такое окно до смены режима.
 act("SUPER + ALT + Space", hl.dsp.window.float({ action = "toggle" }), "float")
 
--- Развернуть в рабочей области / настоящий полноэкранный режим.
-act("SUPER + F", hl.dsp.window.fullscreen({ mode = "maximized" }), "maximize")
+-- Развернуть на рабочую область размером (движок; повтор возвращает размер) / настоящий
+-- полноэкранный режим Hyprland.
+run("SUPER + F", "quietline-engine maximize")
 act("SUPER + SHIFT + F", hl.dsp.window.fullscreen({ mode = "fullscreen" }), "fullscreen")
 
 -- Следующее окно текущего пространства, поверх остальных.

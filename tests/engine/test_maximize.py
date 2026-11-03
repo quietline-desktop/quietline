@@ -1,11 +1,14 @@
 """Тесты разворачивания окна размером: команда планировщика и перевод `maximized` Hyprland в сверке."""
 
-import pytest
-from fakes import monitor, snapshot, window, workspace
+import asyncio
 
+import pytest
+from fakes import FakeAdapter, monitor, snapshot, window, workspace
+
+from quietline_engine.controller import WindowController
 from quietline_engine.layout import LayoutError, LayoutPlanner
 from quietline_engine.types import FrameExtents, MoveWindow, ResizeWindow, SetFloating, SetMaximized
-from quietline_engine.workspaces import WorkspaceRef
+from quietline_engine.workspaces import WorkspaceRef, WorkspaceRegistry
 
 KEY = "Dell Inc.|U2723QE|SN1"
 # Панель 30 px сверху: рабочая область (0, 30, 2560, 1410); рамка окна 2 px, заголовок 32 px.
@@ -142,3 +145,43 @@ def test_closed_window_drops_its_maximize_record():
     update = reconcile(workspace_ref, window("0xb", at=(100, 200), size=(800, 600), floating=True))
 
     assert "maximized" not in update.extra and "maximizing" not in update.extra
+
+
+@pytest.fixture
+def registry(tmp_path):
+    return WorkspaceRegistry(tmp_path / "quietline" / "state.json", "sig")
+
+
+def test_controller_maximizes_active_window_and_saves_geometry(registry):
+    one = registry.resolve(1, KEY, snap())
+    registry.update(one, extra={"managed": ["0xa"], "dialogs": []})
+    before = snap(window("0xa", at=(100, 200), size=(800, 600), floating=True), active="0xa")
+    after = snap(window("0xa", at=FRAME_AT, size=FRAME_SIZE, floating=True), active="0xa")
+    adapter = FakeAdapter([before, after])
+
+    state = asyncio.run(WindowController(adapter, registry).maximize())
+
+    assert state.error is None
+    assert adapter.applied == [[MoveWindow("0xa", *FRAME_AT), ResizeWindow("0xa", *FRAME_SIZE)]]
+    assert registry.get(KEY, 1).extra["maximized"] == {"0xa": {"at": [100, 200], "size": [800, 600]}}
+
+
+def test_controller_reports_missing_window_without_hyprland_actions(registry):
+    registry.resolve(1, KEY, snap())
+    adapter = FakeAdapter([snap(window("0xa", floating=True))])
+    controller = WindowController(adapter, registry)
+
+    assert asyncio.run(controller.maximize()).error == "no active window to maximize"
+    assert asyncio.run(controller.maximize("0xb")).error == "window 0xb does not exist"
+    assert adapter.applied == []
+
+
+def test_controller_keeps_workspace_state_when_hyprland_rejects(registry):
+    one = registry.resolve(1, KEY, snap())
+    registry.update(one, extra={"managed": ["0xa"], "dialogs": []})
+    adapter = FakeAdapter([snap(window("0xa", at=(100, 200), size=(800, 600), floating=True))], fail_on=[0])
+
+    state = asyncio.run(WindowController(adapter, registry).maximize("0xa"))
+
+    assert state.error.startswith("window maximize failed")
+    assert "maximized" not in registry.get(KEY, 1).extra

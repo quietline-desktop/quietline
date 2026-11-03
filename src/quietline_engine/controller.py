@@ -156,6 +156,18 @@ class WindowController:
         async with self._lock:
             return await _run_to_completion(self._move(number))
 
+    async def maximize(self, address: str | None = None) -> PublicState:
+        """Разворачивает окно `address` (без него — активное) или возвращает ему прежний размер.
+
+        Плавающее окно растягивается на рамку разворачивания размером, тайловое переключает
+        `maximized` Hyprland (см. `LayoutPlanner.maximize`). Ошибка без действий Hyprland:
+        нет такого или активного окна, окно не на управляемом пространстве, окно в настоящем
+        полноэкранном режиме. Данные пространства сохраняются после принятых действий.
+        Выполняется до конца под блокировкой, как `toggle`.
+        """
+        async with self._lock:
+            return await _run_to_completion(self._maximize(address))
+
     async def toggle(self, monitor_key: str | None = None) -> PublicState:
         """Меняет режим активного пространства монитора `monitor_key` (без него — монитора с фокусом).
 
@@ -265,6 +277,36 @@ class WindowController:
             if moved is None or moved.workspace_id != ref.workspace_id:
                 raise CommandError(f"window {window.address} did not move to workspace {number}")
             await self._converge(snapshot, known)
+        except CommandError as error:
+            return self._publish(str(error))
+        return self._publish()
+
+    async def _maximize(self, address: str | None) -> PublicState:
+        try:
+            snapshot = await self._read()
+            self._sync(snapshot)
+            if address is None:
+                window = _active_window(snapshot)
+                if window is None:
+                    raise CommandError("no active window to maximize")
+            else:
+                window = next((w for w in snapshot.windows if w.address == address), None)
+                if window is None:
+                    raise CommandError(f"window {address} does not exist")
+            ref = self._ref_by_id(window.workspace_id)
+            if ref is None:
+                raise CommandError(f"workspace {window.workspace_id} of window {window.address} is not managed")
+            plan = self._planner.maximize(ref, snapshot, window.address)
+        except (CommandError, LayoutError) as error:
+            return self._publish(str(error))
+        try:
+            await self._apply(plan.actions, "window maximize failed")
+            if plan.extra != ref.extra:
+                try:
+                    self._registry.update(ref, extra=plan.extra)
+                except Exception as error:
+                    raise CommandError(f"cannot save workspace state: {_reason(error)}") from error
+            self._sync(await self._read())
         except CommandError as error:
             return self._publish(str(error))
         return self._publish()

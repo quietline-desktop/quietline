@@ -1,4 +1,4 @@
-"""CLI `quietline-engine`: сервис `serve` и клиентские команды `switch`, `move`, `toggle`, `state`.
+"""CLI `quietline-engine`: сервис `serve` и клиентские команды `switch`, `move`, `toggle`, `maximize`, `state`.
 
 Клиентская команда отправляет один запрос в сокет сервиса и печатает короткую строку
 (`state` — состояние в JSON). Код выхода: 0 — успех, 1 — ошибка, 2 — неверные аргументы.
@@ -33,6 +33,8 @@ def _parser() -> argparse.ArgumentParser:
     move.add_argument("number", type=int, metavar="N")
     toggle = commands.add_parser("toggle", help="switch the active workspace between windows and tiles mode")
     toggle.add_argument("--monitor", metavar="KEY", help="monitor key (default: the focused monitor)")
+    maximize = commands.add_parser("maximize", help="maximize a window to the work area or restore its size")
+    maximize.add_argument("--window", metavar="ADDRESS", help="window address (default: the active window)")
     commands.add_parser("state", help="print the engine state as JSON")
     return parser
 
@@ -57,6 +59,9 @@ def main(argv: Sequence[str] | None = None) -> int:
                 params = {} if args.monitor is None else {"monitor": args.monitor}
                 state = request(path, "toggle", params)
                 print(_mode_line(state, args.monitor))
+            case "maximize":
+                request(path, "maximize", {} if args.window is None else {"address": args.window})
+                print("Window size toggled.")
             case _:
                 print(json.dumps(request(path, "state"), indent=2, ensure_ascii=False))
     except (EngineError, ServerError, WorkspaceError) as error:

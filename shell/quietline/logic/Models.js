@@ -267,6 +267,13 @@ function windowSelector(address) {
     return /^[0-9a-fA-F]+$/.test(raw) ? "address:0x" + raw : null;
 }
 
+// Команда движка, которая разворачивает окно размером или возвращает ему прежний размер;
+// адрес не литерал — `null`.
+function maximizeCommand(address) {
+    var selector = windowSelector(address);
+    return selector ? ["quietline-engine", "maximize", "--window", selector.slice("address:".length).toLowerCase()] : null;
+}
+
 // Выражение для `Hyprland.dispatch`: фокус окна и подъём его поверх остальных одним вызовом —
 // фокус сам по себе плавающее окно не поднимает. Адрес не литерал — `null`.
 function focusWindowCommand(address) {
@@ -495,7 +502,7 @@ var QUIETLINE_BIND_KEYS = {
     "focus-up": "bindFocusUp", "focus-down": "bindFocusDown", "move-left": "bindMoveLeft",
     "move-right": "bindMoveRight", "move-up": "bindMoveUp", "move-down": "bindMoveDown",
     "monitor-left": "bindMonitorLeft", "monitor-right": "bindMonitorRight", "float": "bindFloat",
-    "maximize": "bindMaximize", "fullscreen": "bindFullscreen", "cycle": "bindCycle",
+    "fullscreen": "bindFullscreen", "cycle": "bindCycle",
     "drag": "bindDrag", "resize": "bindResize"
 };
 
@@ -509,6 +516,7 @@ function bindAction(command, s) {
     if ((match = /^quietline-engine switch (\d+)$/.exec(command))) return format(s.bindSwitch, [match[1]]);
     if ((match = /^quietline-engine move (\d+)$/.exec(command))) return format(s.bindMove, [match[1]]);
     if (command === "quietline-engine toggle") return s.bindToggle;
+    if (command === "quietline-engine maximize") return s.bindMaximize;
     if (command === "ghostty") return s.bindTerminal;
     if (command === "quietline-shell lock") return s.bindLock;
     if (/^quietline-shell app quit/.test(command)) return s.bindQuit;

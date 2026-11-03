@@ -81,11 +81,12 @@ Scope {
         Hyprland.dispatch('hl.dsp.window.move({window="' + selector + '", workspace=' + workspace + ', follow=false})');
         focusWindow(window);
     }
-    // Разворачивает окно на рабочую область или возвращает прежний размер; окно сначала получает фокус.
+    // Разворачивает окно на рабочую область или возвращает прежний размер (движок); окно сначала получает фокус.
     function toggleMaximize(window) {
-        if (!window) return;
+        var command = window ? Models.maximizeCommand(window.address) : null;
+        if (!command) return;
         focusWindow(window);
-        Hyprland.dispatch('hl.dsp.window.fullscreen({ mode = "maximized", action = "toggle" })');
+        Quickshell.execDetached(command);
     }
     function cycle(group, direction) { focusWindow(Models.cycleTarget(group, direction)); }
     function closeWindow(window) {
